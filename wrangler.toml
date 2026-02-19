@@ -1,0 +1,12 @@
+name = "trip-itinerary"
+main = "src/worker.ts"
+compatibility_date = "2026-02-19"
+
+# Serve the Vite build output as static assets.
+assets = { directory = "./dist", binding = "ASSETS" }
+
+# D1 database (create later with: wrangler d1 create trip-itinerary)
+[[d1_databases]]
+binding = "DB"
+database_name = "trip-itinerary"
+database_id = "REPLACE_ME"
