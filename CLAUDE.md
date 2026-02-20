@@ -4,9 +4,35 @@ This file provides guidance for AI assistants working on the **trip-itinerary** 
 
 ## Project Overview
 
-A travel itinerary web app (Japanese: 旅程) for managing and sharing day-by-day trip timelines. Runs entirely on Cloudflare's platform (Workers + D1 + Assets). Currently in early MVP stage.
+テーマを選んで旅程を入力するだけで、そのまま人に見せられる綺麗なページが完成する旅行共有Webサービス。Cloudflareプラットフォーム上で完結（Workers + D1 + R2 + Assets）。
 
-**Core features (planned):** Day-based timeline management, spot memos/budgets/map links, token-based sharing URLs, PDF/print export.
+**コンセプト:** 「作るだけで綺麗」な旅程ページを招待リンクで限定共有。Web完結でアプリDL不要。
+
+### MVP機能
+
+1. **ランディングページ** — サービス紹介
+2. **Google / LINE ログイン** — ソーシャル認証
+3. **旅行一覧・作成** — 1旅行 = 1つの縦長ページ
+4. **テーマ選択（2種）** — 「しずか」（ミニマル） / 「写真映え」（ビジュアル重視）
+5. **テキスト→旅程AI生成** — テキスト貼り付けで自動パース（Claude API）
+6. **カバー画像アップロード** — 写真映えテーマ用、1枚（R2保存）
+7. **招待リンク** — トークンベース、無効化・再発行可能
+8. **OGP動的プレビュー** — LINE/X共有時にテーマ連動の綺麗なカード生成
+
+### 将来の追加機能
+
+- 有料化（追加旅行 ¥100/ページ、MVP期間は無料）
+- 写真アルバム（複数枚アップロード）
+- デザイン変更・テーマ追加
+- 旅程AI解析（周辺情報・店舗情報チップス表示）
+- PWA / オフライン対応
+
+### 競合との差別化
+
+- **「作るだけで綺麗」** — テーマ選択 + 旅程入力だけで完成品。ツール感ではなく完成品感
+- **Web完結 × 招待リンク** — tabiori等はアプリDL必須。本サービスはURLだけで閲覧可能
+- **限定公開が前提** — Holiday等の「みんなに公開」ではなく、身内だけに共有
+- **テキスト→AI自動生成** — 旅程入力の手間を最小化
 
 ## Tech Stack
 
@@ -16,6 +42,10 @@ A travel itinerary web app (Japanese: 旅程) for managing and sharing day-by-da
 | Frontend    | React 19 + Vite 7                   |
 | Backend/API | Cloudflare Workers + Hono 4         |
 | Database    | Cloudflare D1 (SQLite)              |
+| Storage     | Cloudflare R2 (画像アップロード)      |
+| AI          | Claude API (旅程テキストパース)       |
+| Auth        | 未定 (Clerk or 自前OAuth: Google/LINE) |
+| OGP生成     | Satori等 (Workers上で動的生成)        |
 | Hosting     | Cloudflare Workers (API + Assets)   |
 | Deployment  | Wrangler 4                          |
 
@@ -56,9 +86,10 @@ npm run lint       # Run ESLint
 ### Backend (src/worker.ts)
 
 - Single Cloudflare Worker handles both API and static asset serving
-- Hono framework with typed environment bindings (`Bindings: { DB: D1Database, ASSETS }`)
+- Hono framework with typed environment bindings (`Bindings: { DB: D1Database, ASSETS, BUCKET: R2Bucket }`)
 - API routes under `/api/*`, all other requests fall through to static assets (`c.env.ASSETS.fetch`)
 - D1 accessed via `c.env.DB.prepare(...).all()`
+- R2 accessed via `c.env.BUCKET` (カバー画像保存)
 - Current endpoints: `GET /api/health`, `GET /api/trips`
 
 ### Frontend (src/)
@@ -66,16 +97,29 @@ npm run lint       # Run ESLint
 - Standard React + Vite setup with `react-jsx` transform
 - Entry at `src/main.tsx` -> `src/App.tsx`
 - Built output goes to `dist/` (served by Workers ASSETS binding)
-- Frontend has a "しずか" (quiet) design with trip list and day timeline views (sample data)
+- 2つのテーマ: 「しずか」（ミニマル）と「写真映え」（ビジュアル重視）
 
 ### Database (migrations/)
 
-Three tables with TEXT primary keys (UUIDs):
+既存テーブル (TEXT primary keys, UUIDs):
 - **trips**: id, title, start_date, end_date, created_at, updated_at
 - **days**: id, trip_id (FK), date, sort
 - **items**: id, trip_id (FK), day_id (FK), title, area, time_start, time_end, map_url, note, cost, sort, created_at, updated_at
 
+MVP追加予定テーブル:
+- **users**: id, provider (google/line), provider_id, name, avatar_url, created_at
+- **share_tokens**: id, trip_id (FK), token (unique), is_active, created_at, expires_at
+
 All foreign keys use `ON DELETE CASCADE`. Timestamps default to ISO 8601 via `strftime`.
+
+### 実装フェーズ
+
+```
+Phase 1: 土台        — 認証 → DB/API → 旅行CRUD → 一覧画面
+Phase 2: コア体験    — テーマ2種 → カバー画像アップ(R2) → 旅程入力UI
+Phase 3: 差別化      — テキスト→旅程AI生成 → 招待リンク → OGP動的生成
+Phase 4: 仕上げ      — LP → 全体の磨き込み
+```
 
 ## Code Conventions
 
@@ -120,7 +164,9 @@ No test framework is configured yet. When adding tests, Vitest is the recommende
 
 `npm run deploy` builds the project and deploys to Cloudflare Workers. The `wrangler.toml` `database_id` must be set to a real D1 database ID before deploying.
 
-## Design System — "しずか" (quiet) aesthetic
+## Design System — 2 Themes
+
+### Theme 1: 「しずか」 (quiet) — ミニマル
 
 Inspired by katasu.me. The design should feel calm, warm, and unhurried.
 
@@ -175,10 +221,41 @@ Inspired by katasu.me. The design should feel calm, warm, and unhurried.
 - DON'T: add animations beyond subtle opacity/color transitions
 - DON'T: use icon libraries — use text and minimal symbols
 
+### Theme 2: 「写真映え」 — ビジュアル重視
+
+雑誌やトラベルブログのような見た目。カバー画像が主役。
+
+#### Principles
+
+1. **写真が主役** — カバー画像を大きく見せる。テキストは写真を引き立てる
+2. **コントラスト** — しずかテーマより明暗差をつける
+3. **雑誌的レイアウト** — 見出しや日付をタイポグラフィで演出
+
+#### Color Tokens (写真映え)
+
+| Token               | Value     | Usage                        |
+|---------------------|-----------|------------------------------|
+| `--color-bg`        | `#fafafa` | 明るいニュートラル背景        |
+| `--color-bg-elevated` | `#ffffff` | カード                       |
+| `--color-text`      | `#1a1a1a` | 濃いテキスト（コントラスト強） |
+| `--color-text-muted`| `#6b6b6b` | 補助テキスト                 |
+| `--color-accent`    | `#2a2a2a` | CTA、強調                    |
+
+#### Component Patterns (写真映え)
+
+- **カバー画像**: ページ上部に幅100%で表示、アスペクト比 16:9、角丸なし
+- **タイトル**: カバー画像にオーバーレイ or 画像直下に大きめサイズ
+- **タイムライン**: しずかと同じグリッドだが、フォントサイズやウェイトでメリハリ
+
+### Theme共通ルール
+
+- テーマはCSSカスタムプロパティの切り替えで実装
+- `data-theme="shizuka"` / `data-theme="photo"` をルート要素に付与
+- レイアウト構造は共通、色・フォント・カバー画像の扱いがテーマで変わる
+
 ## Important Notes
 
 - The `wrangler.toml` `database_id` is a placeholder (`REPLACE_ME`) — D1 will not work without a real ID
-- The React frontend has basic UI with sample data; needs API integration
-- There is no authentication yet — token-based sharing is planned
+- 認証方式（Clerk vs 自前OAuth）は未決定
 - No CI/CD pipeline exists
 - No Dockerfile or containerization — the app is Cloudflare-native
