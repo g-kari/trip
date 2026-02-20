@@ -14,7 +14,7 @@ This file provides guidance for AI assistants working on the **trip-itinerary** 
 2. **Google / LINE ログイン** — ソーシャル認証
 3. **旅行一覧・作成** — 1旅行 = 1つの縦長ページ
 4. **テーマ選択（2種）** — 「しずか」（ミニマル） / 「写真映え」（ビジュアル重視）
-5. **テキスト→旅程AI生成** — テキスト貼り付けで自動パース（Claude API）
+5. **テキスト→旅程AI生成** — テキスト貼り付けで自動パース（Workers AI）
 6. **カバー画像アップロード** — 写真映えテーマ用、1枚（R2保存）
 7. **招待リンク** — トークンベース、無効化・再発行可能
 8. **OGP動的プレビュー** — LINE/X共有時にテーマ連動の綺麗なカード生成
@@ -43,7 +43,7 @@ This file provides guidance for AI assistants working on the **trip-itinerary** 
 | Backend/API | Cloudflare Workers + Hono 4         |
 | Database    | Cloudflare D1 (SQLite)              |
 | Storage     | Cloudflare R2 (画像アップロード)      |
-| AI          | Claude API (旅程テキストパース)       |
+| AI          | Cloudflare Workers AI (旅程テキストパース) |
 | Auth        | 未定 (Clerk or 自前OAuth: Google/LINE) |
 | OGP生成     | Satori等 (Workers上で動的生成)        |
 | Hosting     | Cloudflare Workers (API + Assets)   |
@@ -86,10 +86,11 @@ npm run lint       # Run ESLint
 ### Backend (src/worker.ts)
 
 - Single Cloudflare Worker handles both API and static asset serving
-- Hono framework with typed environment bindings (`Bindings: { DB: D1Database, ASSETS, BUCKET: R2Bucket }`)
+- Hono framework with typed environment bindings (`Bindings: { DB: D1Database, ASSETS, BUCKET: R2Bucket, AI: Ai }`)
 - API routes under `/api/*`, all other requests fall through to static assets (`c.env.ASSETS.fetch`)
 - D1 accessed via `c.env.DB.prepare(...).all()`
 - R2 accessed via `c.env.BUCKET` (カバー画像保存)
+- Workers AI accessed via `c.env.AI.run()` (旅程テキストパース)
 - Current endpoints: `GET /api/health`, `GET /api/trips`
 
 ### Frontend (src/)

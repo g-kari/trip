@@ -39,7 +39,7 @@
 | Backend/API | Cloudflare Workers + Hono 4 |
 | Database | Cloudflare D1 (SQLite) |
 | Storage | Cloudflare R2 (画像) |
-| AI | Claude API (旅程パース) |
+| AI | Cloudflare Workers AI (旅程パース) |
 | Auth | 未定 (Clerk or 自前OAuth) |
 | OGP生成 | Satori等 (Workers上) |
 | Hosting | Cloudflare Workers (API + Assets) |
