@@ -63,6 +63,20 @@ function App() {
   const [newTripEndDate, setNewTripEndDate] = useState('')
   const [creating, setCreating] = useState(false)
 
+  // Day form state
+  const [showDayForm, setShowDayForm] = useState(false)
+  const [newDayDate, setNewDayDate] = useState('')
+  const [creatingDay, setCreatingDay] = useState(false)
+
+  // Item form state
+  const [showItemFormForDay, setShowItemFormForDay] = useState<string | null>(null)
+  const [newItemTitle, setNewItemTitle] = useState('')
+  const [newItemTime, setNewItemTime] = useState('')
+  const [newItemArea, setNewItemArea] = useState('')
+  const [newItemNote, setNewItemNote] = useState('')
+  const [newItemCost, setNewItemCost] = useState('')
+  const [creatingItem, setCreatingItem] = useState(false)
+
   // Fetch trips list
   useEffect(() => {
     async function fetchTrips() {
@@ -87,6 +101,13 @@ function App() {
       setSelectedTrip(data.trip)
     } catch (err) {
       console.error('Failed to fetch trip:', err)
+    }
+  }
+
+  // Refresh selected trip
+  async function refreshTrip() {
+    if (selectedTrip) {
+      await selectTrip(selectedTrip.id)
     }
   }
 
@@ -119,6 +140,67 @@ function App() {
       console.error('Failed to create trip:', err)
     } finally {
       setCreating(false)
+    }
+  }
+
+  // Create new day
+  async function createDay(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedTrip || !newDayDate) return
+
+    setCreatingDay(true)
+    try {
+      const res = await fetch(`/api/trips/${selectedTrip.id}/days`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: newDayDate }),
+      })
+      const data = (await res.json()) as { day: Day }
+      if (data.day) {
+        setNewDayDate('')
+        setShowDayForm(false)
+        await refreshTrip()
+      }
+    } catch (err) {
+      console.error('Failed to create day:', err)
+    } finally {
+      setCreatingDay(false)
+    }
+  }
+
+  // Create new item
+  async function createItem(e: React.FormEvent, dayId: string) {
+    e.preventDefault()
+    if (!selectedTrip || !newItemTitle.trim()) return
+
+    setCreatingItem(true)
+    try {
+      const res = await fetch(`/api/trips/${selectedTrip.id}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayId,
+          title: newItemTitle.trim(),
+          timeStart: newItemTime || undefined,
+          area: newItemArea || undefined,
+          note: newItemNote || undefined,
+          cost: newItemCost ? parseInt(newItemCost, 10) : undefined,
+        }),
+      })
+      const data = (await res.json()) as { item: Item }
+      if (data.item) {
+        setNewItemTitle('')
+        setNewItemTime('')
+        setNewItemArea('')
+        setNewItemNote('')
+        setNewItemCost('')
+        setShowItemFormForDay(null)
+        await refreshTrip()
+      }
+    } catch (err) {
+      console.error('Failed to create item:', err)
+    } finally {
+      setCreatingItem(false)
     }
   }
 
@@ -214,15 +296,123 @@ function App() {
                           </div>
                         ))
                       )}
+
+                      {/* Add item form */}
+                      {showItemFormForDay === day.id ? (
+                        <form className="inline-form" onSubmit={(e) => createItem(e, day.id)}>
+                          <input
+                            type="text"
+                            placeholder="予定のタイトル"
+                            value={newItemTitle}
+                            onChange={(e) => setNewItemTitle(e.target.value)}
+                            className="input"
+                            autoFocus
+                          />
+                          <div className="form-row">
+                            <input
+                              type="time"
+                              value={newItemTime}
+                              onChange={(e) => setNewItemTime(e.target.value)}
+                              className="input input-small"
+                              placeholder="時刻"
+                            />
+                            <input
+                              type="text"
+                              placeholder="エリア"
+                              value={newItemArea}
+                              onChange={(e) => setNewItemArea(e.target.value)}
+                              className="input"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="メモ"
+                            value={newItemNote}
+                            onChange={(e) => setNewItemNote(e.target.value)}
+                            className="input"
+                          />
+                          <div className="form-row">
+                            <input
+                              type="number"
+                              placeholder="費用（円）"
+                              value={newItemCost}
+                              onChange={(e) => setNewItemCost(e.target.value)}
+                              className="input input-small"
+                            />
+                            <div className="form-actions">
+                              <button
+                                type="button"
+                                className="btn-text"
+                                onClick={() => setShowItemFormForDay(null)}
+                              >
+                                キャンセル
+                              </button>
+                              <button
+                                type="submit"
+                                className="btn-filled"
+                                disabled={creatingItem || !newItemTitle.trim()}
+                              >
+                                {creatingItem ? '追加中...' : '追加'}
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          className="btn-text add-item-btn"
+                          onClick={() => setShowItemFormForDay(day.id)}
+                        >
+                          + 予定を追加
+                        </button>
+                      )}
                     </div>
                   )
                 })
             )}
 
+            {/* Add day form */}
+            <div className="add-day-section">
+              {showDayForm ? (
+                <form className="inline-form" onSubmit={createDay}>
+                  <div className="form-row">
+                    <input
+                      type="date"
+                      value={newDayDate}
+                      onChange={(e) => setNewDayDate(e.target.value)}
+                      className="input"
+                      autoFocus
+                    />
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="btn-text"
+                        onClick={() => setShowDayForm(false)}
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-filled"
+                        disabled={creatingDay || !newDayDate}
+                      >
+                        {creatingDay ? '追加中...' : '追加'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  className="btn-outline"
+                  onClick={() => setShowDayForm(true)}
+                >
+                  + 日程を追加
+                </button>
+              )}
+            </div>
+
             <button
-              className="btn-outline"
+              className="btn-text back-btn"
               onClick={() => setSelectedTrip(null)}
-              style={{ marginTop: 'var(--space-5)' }}
             >
               ← 旅程一覧に戻る
             </button>
