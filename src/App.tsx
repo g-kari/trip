@@ -77,6 +77,22 @@ function App() {
   const [newItemCost, setNewItemCost] = useState('')
   const [creatingItem, setCreatingItem] = useState(false)
 
+  // Edit item state
+  const [editingItem, setEditingItem] = useState<Item | null>(null)
+  const [editItemTitle, setEditItemTitle] = useState('')
+  const [editItemTime, setEditItemTime] = useState('')
+  const [editItemArea, setEditItemArea] = useState('')
+  const [editItemNote, setEditItemNote] = useState('')
+  const [editItemCost, setEditItemCost] = useState('')
+  const [savingItem, setSavingItem] = useState(false)
+
+  // Edit trip state
+  const [editingTrip, setEditingTrip] = useState(false)
+  const [editTripTitle, setEditTripTitle] = useState('')
+  const [editTripStartDate, setEditTripStartDate] = useState('')
+  const [editTripEndDate, setEditTripEndDate] = useState('')
+  const [savingTrip, setSavingTrip] = useState(false)
+
   // Fetch trips list
   useEffect(() => {
     async function fetchTrips() {
@@ -143,6 +159,58 @@ function App() {
     }
   }
 
+  // Update trip
+  async function updateTrip(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedTrip || !editTripTitle.trim()) return
+
+    setSavingTrip(true)
+    try {
+      const res = await fetch(`/api/trips/${selectedTrip.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTripTitle.trim(),
+          startDate: editTripStartDate || undefined,
+          endDate: editTripEndDate || undefined,
+        }),
+      })
+      const data = (await res.json()) as { trip: Trip }
+      if (data.trip) {
+        setTrips((prev) => prev.map((t) => (t.id === data.trip.id ? { ...t, ...data.trip } : t)))
+        setEditingTrip(false)
+        await refreshTrip()
+      }
+    } catch (err) {
+      console.error('Failed to update trip:', err)
+    } finally {
+      setSavingTrip(false)
+    }
+  }
+
+  // Delete trip
+  async function deleteTrip() {
+    if (!selectedTrip) return
+    if (!confirm('この旅程を削除しますか？')) return
+
+    try {
+      await fetch(`/api/trips/${selectedTrip.id}`, { method: 'DELETE' })
+      setTrips((prev) => prev.filter((t) => t.id !== selectedTrip.id))
+      setSelectedTrip(null)
+    } catch (err) {
+      console.error('Failed to delete trip:', err)
+    }
+  }
+
+  // Start editing trip
+  function startEditTrip() {
+    if (!selectedTrip) return
+    setEditTripTitle(selectedTrip.title)
+    setEditTripStartDate(selectedTrip.startDate || '')
+    setEditTripEndDate(selectedTrip.endDate || '')
+    setEditingTrip(true)
+  }
+
   // Create new day
   async function createDay(e: React.FormEvent) {
     e.preventDefault()
@@ -165,6 +233,19 @@ function App() {
       console.error('Failed to create day:', err)
     } finally {
       setCreatingDay(false)
+    }
+  }
+
+  // Delete day
+  async function deleteDay(dayId: string) {
+    if (!selectedTrip) return
+    if (!confirm('この日程を削除しますか？関連する予定も削除されます。')) return
+
+    try {
+      await fetch(`/api/trips/${selectedTrip.id}/days/${dayId}`, { method: 'DELETE' })
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to delete day:', err)
     }
   }
 
@@ -201,6 +282,56 @@ function App() {
       console.error('Failed to create item:', err)
     } finally {
       setCreatingItem(false)
+    }
+  }
+
+  // Start editing item
+  function startEditItem(item: Item) {
+    setEditingItem(item)
+    setEditItemTitle(item.title)
+    setEditItemTime(item.timeStart || '')
+    setEditItemArea(item.area || '')
+    setEditItemNote(item.note || '')
+    setEditItemCost(item.cost?.toString() || '')
+  }
+
+  // Update item
+  async function updateItem(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedTrip || !editingItem || !editItemTitle.trim()) return
+
+    setSavingItem(true)
+    try {
+      await fetch(`/api/trips/${selectedTrip.id}/items/${editingItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editItemTitle.trim(),
+          timeStart: editItemTime || undefined,
+          area: editItemArea || undefined,
+          note: editItemNote || undefined,
+          cost: editItemCost ? parseInt(editItemCost, 10) : undefined,
+        }),
+      })
+      setEditingItem(null)
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to update item:', err)
+    } finally {
+      setSavingItem(false)
+    }
+  }
+
+  // Delete item
+  async function deleteItem(itemId: string) {
+    if (!selectedTrip) return
+    if (!confirm('この予定を削除しますか？')) return
+
+    try {
+      await fetch(`/api/trips/${selectedTrip.id}/items/${itemId}`, { method: 'DELETE' })
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to delete item:', err)
     }
   }
 
@@ -242,11 +373,52 @@ function App() {
         {selectedTrip && (
           <>
             <div className="hero" style={{ padding: 'var(--space-7) 0 var(--space-5)' }}>
-              <h1 className="hero-title">{selectedTrip.title}</h1>
-              {selectedTrip.startDate && selectedTrip.endDate && (
-                <p className="hero-subtitle">
-                  {formatDateRange(selectedTrip.startDate, selectedTrip.endDate)}
-                </p>
+              {editingTrip ? (
+                <form className="edit-trip-form" onSubmit={updateTrip}>
+                  <input
+                    type="text"
+                    value={editTripTitle}
+                    onChange={(e) => setEditTripTitle(e.target.value)}
+                    className="input hero-title-input"
+                    autoFocus
+                  />
+                  <div className="date-inputs">
+                    <input
+                      type="date"
+                      value={editTripStartDate}
+                      onChange={(e) => setEditTripStartDate(e.target.value)}
+                      className="input"
+                    />
+                    <span className="date-separator">〜</span>
+                    <input
+                      type="date"
+                      value={editTripEndDate}
+                      onChange={(e) => setEditTripEndDate(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div className="form-actions" style={{ justifyContent: 'center', marginTop: 'var(--space-3)' }}>
+                    <button type="button" className="btn-text" onClick={() => setEditingTrip(false)}>
+                      キャンセル
+                    </button>
+                    <button type="submit" className="btn-filled" disabled={savingTrip || !editTripTitle.trim()}>
+                      {savingTrip ? '保存中...' : '保存'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <h1 className="hero-title">{selectedTrip.title}</h1>
+                  {selectedTrip.startDate && selectedTrip.endDate && (
+                    <p className="hero-subtitle">
+                      {formatDateRange(selectedTrip.startDate, selectedTrip.endDate)}
+                    </p>
+                  )}
+                  <div className="hero-actions-row">
+                    <button className="btn-text" onClick={startEditTrip}>編集</button>
+                    <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
+                  </div>
+                </>
               )}
             </div>
 
@@ -267,6 +439,12 @@ function App() {
                       <div className="day-header">
                         <span className="day-label">{label}</span>
                         <span className="day-date">{dateStr}</span>
+                        <button
+                          className="btn-text btn-small btn-danger"
+                          onClick={() => deleteDay(day.id)}
+                        >
+                          削除
+                        </button>
                       </div>
                       {items.length === 0 ? (
                         <div className="timeline-item">
@@ -280,19 +458,81 @@ function App() {
                       ) : (
                         items.map((item) => (
                           <div key={item.id} className="timeline-item">
-                            <span className="timeline-time">{item.timeStart || '—'}</span>
-                            <div className="timeline-content">
-                              <span className="timeline-title">{item.title}</span>
-                              <div className="timeline-meta">
-                                {item.area && <span>{item.area}</span>}
-                                {item.cost != null && item.cost > 0 && (
-                                  <span>{formatCost(item.cost)}</span>
-                                )}
-                              </div>
-                              {item.note && (
-                                <p className="timeline-note">{item.note}</p>
-                              )}
-                            </div>
+                            {editingItem?.id === item.id ? (
+                              <form className="edit-item-form" onSubmit={updateItem}>
+                                <div className="form-row">
+                                  <input
+                                    type="time"
+                                    value={editItemTime}
+                                    onChange={(e) => setEditItemTime(e.target.value)}
+                                    className="input input-small"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={editItemTitle}
+                                    onChange={(e) => setEditItemTitle(e.target.value)}
+                                    className="input"
+                                    placeholder="タイトル"
+                                    autoFocus
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <input
+                                    type="text"
+                                    value={editItemArea}
+                                    onChange={(e) => setEditItemArea(e.target.value)}
+                                    className="input"
+                                    placeholder="エリア"
+                                  />
+                                  <input
+                                    type="number"
+                                    value={editItemCost}
+                                    onChange={(e) => setEditItemCost(e.target.value)}
+                                    className="input input-small"
+                                    placeholder="費用"
+                                  />
+                                </div>
+                                <input
+                                  type="text"
+                                  value={editItemNote}
+                                  onChange={(e) => setEditItemNote(e.target.value)}
+                                  className="input"
+                                  placeholder="メモ"
+                                />
+                                <div className="form-actions">
+                                  <button type="button" className="btn-text" onClick={() => setEditingItem(null)}>
+                                    キャンセル
+                                  </button>
+                                  <button type="submit" className="btn-filled" disabled={savingItem || !editItemTitle.trim()}>
+                                    {savingItem ? '保存中...' : '保存'}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <span className="timeline-time">{item.timeStart || '—'}</span>
+                                <div className="timeline-content">
+                                  <span className="timeline-title">{item.title}</span>
+                                  <div className="timeline-meta">
+                                    {item.area && <span>{item.area}</span>}
+                                    {item.cost != null && item.cost > 0 && (
+                                      <span>{formatCost(item.cost)}</span>
+                                    )}
+                                  </div>
+                                  {item.note && (
+                                    <p className="timeline-note">{item.note}</p>
+                                  )}
+                                  <div className="item-actions">
+                                    <button className="btn-text btn-small" onClick={() => startEditItem(item)}>
+                                      編集
+                                    </button>
+                                    <button className="btn-text btn-small btn-danger" onClick={() => deleteItem(item.id)}>
+                                      削除
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ))
                       )}

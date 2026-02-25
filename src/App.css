@@ -349,3 +349,79 @@
   margin-top: var(--space-4);
   padding-left: 0;
 }
+
+/* ========================================
+   Edit & Delete styles
+   ======================================== */
+
+/* Hero actions row */
+.hero-actions-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Edit trip form */
+.edit-trip-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 320px;
+}
+
+.hero-title-input {
+  font-size: 1.25rem;
+  text-align: center;
+  font-weight: var(--font-weight-normal);
+}
+
+/* Item actions */
+.item-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Small button variant */
+.btn-small {
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.75rem;
+}
+
+/* Danger button */
+.btn-danger {
+  color: #b55050;
+}
+
+.btn-danger:hover {
+  color: #993333;
+}
+
+/* Edit item form (inline in timeline) */
+.edit-item-form {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+/* Day header with delete button */
+.day-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.day-header .btn-text {
+  margin-left: auto;
+}
