@@ -9,4 +9,4 @@ assets = { directory = "./dist", binding = "ASSETS" }
 [[d1_databases]]
 binding = "DB"
 database_name = "trip-itinerary"
-database_id = "REPLACE_ME"
+database_id = "03cacfd7-1a0f-408b-b892-07a8baa34e8c"
