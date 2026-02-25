@@ -1,4 +1,4 @@
-name = "trip-itinerary"
+name = "trip"
 main = "src/worker.ts"
 compatibility_date = "2026-02-19"
 
