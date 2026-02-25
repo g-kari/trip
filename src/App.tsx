@@ -1,50 +1,41 @@
+import { useState, useEffect } from 'react'
 import './App.css'
 
-// Sample data for demo — will be replaced with API calls
-const sampleTrips = [
-  {
-    id: '1',
-    title: '京都・奈良',
-    startDate: '2026-03-20',
-    endDate: '2026-03-23',
-    days: [
-      {
-        id: 'd1',
-        label: 'Day 1',
-        date: '3/20 (金)',
-        items: [
-          { id: 'i1', time: '10:00', title: '京都駅 到着', area: '京都駅', note: '新幹線のぞみ' },
-          { id: 'i2', time: '11:30', title: '伏見稲荷大社', area: '伏見', note: '千本鳥居を散策', cost: 0 },
-          { id: 'i3', time: '14:00', title: '錦市場', area: '中京区', note: '昼食・食べ歩き', cost: 2000 },
-          { id: 'i4', time: '16:00', title: 'ホテルチェックイン', area: '四条', note: '' },
-        ],
-      },
-      {
-        id: 'd2',
-        label: 'Day 2',
-        date: '3/21 (土)',
-        items: [
-          { id: 'i5', time: '09:00', title: '嵐山 竹林の小径', area: '嵐山', note: '早朝がおすすめ' },
-          { id: 'i6', time: '12:00', title: '天龍寺', area: '嵐山', note: '庭園が見どころ', cost: 500 },
-          { id: 'i7', time: '15:00', title: '金閣寺', area: '北区', note: '', cost: 400 },
-        ],
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: '台北 週末旅行',
-    startDate: '2026-04-10',
-    endDate: '2026-04-12',
-    days: [],
-  },
-]
+// API response types
+type Trip = {
+  id: string
+  title: string
+  startDate: string | null
+  endDate: string | null
+  createdAt: string
+  days?: Day[]
+  items?: Item[]
+}
 
-function formatDateRange(start: string, end: string): string {
+type Day = {
+  id: string
+  date: string
+  sort: number
+}
+
+type Item = {
+  id: string
+  dayId: string
+  title: string
+  area: string | null
+  timeStart: string | null
+  timeEnd: string | null
+  mapUrl: string | null
+  note: string | null
+  cost: number | null
+  sort: number
+}
+
+function formatDateRange(start: string | null, end: string | null): string {
+  if (!start || !end) return ''
   const s = new Date(start)
   const e = new Date(end)
-  const fmt = (d: Date) =>
-    `${d.getMonth() + 1}/${d.getDate()}`
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
   return `${fmt(s)} – ${fmt(e)}`
 }
 
@@ -52,18 +43,116 @@ function formatCost(cost: number): string {
   return `¥${cost.toLocaleString()}`
 }
 
-type Trip = (typeof sampleTrips)[number]
-type Day = Trip['days'][number]
+function formatDayLabel(date: string, index: number): { label: string; dateStr: string } {
+  const d = new Date(date)
+  const days = ['日', '月', '火', '水', '木', '金', '土']
+  const dayOfWeek = days[d.getDay()]
+  return {
+    label: `Day ${index + 1}`,
+    dateStr: `${d.getMonth() + 1}/${d.getDate()} (${dayOfWeek})`,
+  }
+}
 
 function App() {
-  // In the future this will use state + API fetching
-  const trips = sampleTrips
-  const selectedTrip = trips[0]
+  const [trips, setTrips] = useState<Trip[]>([])
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [newTripTitle, setNewTripTitle] = useState('')
+  const [newTripStartDate, setNewTripStartDate] = useState('')
+  const [newTripEndDate, setNewTripEndDate] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  // Fetch trips list
+  useEffect(() => {
+    async function fetchTrips() {
+      try {
+        const res = await fetch('/api/trips')
+        const data = (await res.json()) as { trips: Trip[] }
+        setTrips(data.trips || [])
+      } catch (err) {
+        console.error('Failed to fetch trips:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTrips()
+  }, [])
+
+  // Fetch single trip with details
+  async function selectTrip(tripId: string) {
+    try {
+      const res = await fetch(`/api/trips/${tripId}`)
+      const data = (await res.json()) as { trip: Trip }
+      setSelectedTrip(data.trip)
+    } catch (err) {
+      console.error('Failed to fetch trip:', err)
+    }
+  }
+
+  // Create new trip
+  async function createTrip(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newTripTitle.trim()) return
+
+    setCreating(true)
+    try {
+      const res = await fetch('/api/trips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTripTitle.trim(),
+          startDate: newTripStartDate || undefined,
+          endDate: newTripEndDate || undefined,
+        }),
+      })
+      const data = (await res.json()) as { trip: Trip }
+      if (data.trip) {
+        setTrips((prev) => [data.trip, ...prev])
+        setNewTripTitle('')
+        setNewTripStartDate('')
+        setNewTripEndDate('')
+        setShowCreateForm(false)
+        selectTrip(data.trip.id)
+      }
+    } catch (err) {
+      console.error('Failed to create trip:', err)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  // Group items by day
+  function getItemsForDay(dayId: string): Item[] {
+    return (selectedTrip?.items || [])
+      .filter((item) => item.dayId === dayId)
+      .sort((a, b) => {
+        if (a.timeStart && b.timeStart) return a.timeStart.localeCompare(b.timeStart)
+        return a.sort - b.sort
+      })
+  }
+
+  if (loading) {
+    return (
+      <div className="app">
+        <header className="header">
+          <span className="header-logo">旅程</span>
+        </header>
+        <main className="main">
+          <div className="empty-state">
+            <p className="empty-state-text">読み込み中...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
       <header className="header">
-        <span className="header-logo">旅程</span>
+        <span className="header-logo" onClick={() => setSelectedTrip(null)} style={{ cursor: 'pointer' }}>
+          旅程
+        </span>
       </header>
 
       <main className="main">
@@ -72,65 +161,150 @@ function App() {
           <>
             <div className="hero" style={{ padding: 'var(--space-7) 0 var(--space-5)' }}>
               <h1 className="hero-title">{selectedTrip.title}</h1>
-              <p className="hero-subtitle">
-                {formatDateRange(selectedTrip.startDate, selectedTrip.endDate)}
-              </p>
+              {selectedTrip.startDate && selectedTrip.endDate && (
+                <p className="hero-subtitle">
+                  {formatDateRange(selectedTrip.startDate, selectedTrip.endDate)}
+                </p>
+              )}
             </div>
 
-            {selectedTrip.days.map((day: Day) => (
-              <div key={day.id} className="day-section">
-                <div className="day-header">
-                  <span className="day-label">{day.label}</span>
-                  <span className="day-date">{day.date}</span>
-                </div>
-                {day.items.map((item) => (
-                  <div key={item.id} className="timeline-item">
-                    <span className="timeline-time">{item.time}</span>
-                    <div className="timeline-content">
-                      <span className="timeline-title">{item.title}</span>
-                      <div className="timeline-meta">
-                        {item.area && <span>{item.area}</span>}
-                        {item.cost != null && item.cost > 0 && (
-                          <span>{formatCost(item.cost)}</span>
-                        )}
+            {(!selectedTrip.days || selectedTrip.days.length === 0) ? (
+              <div className="empty-state">
+                <p className="empty-state-text">
+                  日程がまだありません。
+                </p>
+              </div>
+            ) : (
+              selectedTrip.days
+                .sort((a, b) => a.sort - b.sort)
+                .map((day, index) => {
+                  const { label, dateStr } = formatDayLabel(day.date, index)
+                  const items = getItemsForDay(day.id)
+                  return (
+                    <div key={day.id} className="day-section">
+                      <div className="day-header">
+                        <span className="day-label">{label}</span>
+                        <span className="day-date">{dateStr}</span>
                       </div>
-                      {item.note && (
-                        <p className="timeline-note">{item.note}</p>
+                      {items.length === 0 ? (
+                        <div className="timeline-item">
+                          <span className="timeline-time">—</span>
+                          <div className="timeline-content">
+                            <span className="timeline-title" style={{ color: 'var(--color-text-faint)' }}>
+                              予定がありません
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        items.map((item) => (
+                          <div key={item.id} className="timeline-item">
+                            <span className="timeline-time">{item.timeStart || '—'}</span>
+                            <div className="timeline-content">
+                              <span className="timeline-title">{item.title}</span>
+                              <div className="timeline-meta">
+                                {item.area && <span>{item.area}</span>}
+                                {item.cost != null && item.cost > 0 && (
+                                  <span>{formatCost(item.cost)}</span>
+                                )}
+                              </div>
+                              {item.note && (
+                                <p className="timeline-note">{item.note}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+                  )
+                })
+            )}
+
+            <button
+              className="btn-outline"
+              onClick={() => setSelectedTrip(null)}
+              style={{ marginTop: 'var(--space-5)' }}
+            >
+              ← 旅程一覧に戻る
+            </button>
           </>
         )}
 
         {/* Trip list section */}
-        <div className="trip-list-section">
-          <div className="section-header">
-            <span className="section-title">trips</span>
-            <button className="btn-outline">あたらしい旅程</button>
-          </div>
-
-          {trips.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">—</div>
-              <p className="empty-state-text">
-                まだ旅程がありません。<br />
-                あたらしい旅程をつくりましょう。
-              </p>
+        {!selectedTrip && (
+          <div className="trip-list-section">
+            <div className="section-header">
+              <span className="section-title">trips</span>
+              <button
+                className="btn-outline"
+                onClick={() => setShowCreateForm(!showCreateForm)}
+              >
+                {showCreateForm ? 'キャンセル' : 'あたらしい旅程'}
+              </button>
             </div>
-          ) : (
-            trips.map((trip) => (
-              <div key={trip.id} className="trip-card">
-                <div className="trip-card-title">{trip.title}</div>
-                <div className="trip-card-date">
-                  {formatDateRange(trip.startDate, trip.endDate)}
+
+            {/* Create form */}
+            {showCreateForm && (
+              <form className="create-form" onSubmit={createTrip}>
+                <input
+                  type="text"
+                  placeholder="旅程のタイトル"
+                  value={newTripTitle}
+                  onChange={(e) => setNewTripTitle(e.target.value)}
+                  className="input"
+                  autoFocus
+                />
+                <div className="date-inputs">
+                  <input
+                    type="date"
+                    value={newTripStartDate}
+                    onChange={(e) => setNewTripStartDate(e.target.value)}
+                    className="input"
+                  />
+                  <span className="date-separator">〜</span>
+                  <input
+                    type="date"
+                    value={newTripEndDate}
+                    onChange={(e) => setNewTripEndDate(e.target.value)}
+                    className="input"
+                  />
                 </div>
+                <button
+                  type="submit"
+                  className="btn-filled"
+                  disabled={creating || !newTripTitle.trim()}
+                >
+                  {creating ? '作成中...' : '作成する'}
+                </button>
+              </form>
+            )}
+
+            {trips.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">—</div>
+                <p className="empty-state-text">
+                  まだ旅程がありません。<br />
+                  あたらしい旅程をつくりましょう。
+                </p>
               </div>
-            ))
-          )}
-        </div>
+            ) : (
+              trips.map((trip) => (
+                <div
+                  key={trip.id}
+                  className="trip-card"
+                  onClick={() => selectTrip(trip.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="trip-card-title">{trip.title}</div>
+                  {trip.startDate && trip.endDate && (
+                    <div className="trip-card-date">
+                      {formatDateRange(trip.startDate, trip.endDate)}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </main>
 
       <footer className="footer">
