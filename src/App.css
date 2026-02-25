@@ -226,6 +226,18 @@
   margin-top: var(--space-1);
 }
 
+/* Map link */
+.map-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.map-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
 /* ========================================
    Forms & inputs
    ======================================== */
@@ -342,6 +354,13 @@
 .add-day-section {
   margin-top: var(--space-4);
   margin-bottom: var(--space-6);
+}
+
+.add-day-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 /* Back button */

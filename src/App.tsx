@@ -82,6 +82,7 @@ function App() {
   const [newItemArea, setNewItemArea] = useState('')
   const [newItemNote, setNewItemNote] = useState('')
   const [newItemCost, setNewItemCost] = useState('')
+  const [newItemMapUrl, setNewItemMapUrl] = useState('')
   const [creatingItem, setCreatingItem] = useState(false)
 
   // Edit item state
@@ -91,7 +92,11 @@ function App() {
   const [editItemArea, setEditItemArea] = useState('')
   const [editItemNote, setEditItemNote] = useState('')
   const [editItemCost, setEditItemCost] = useState('')
+  const [editItemMapUrl, setEditItemMapUrl] = useState('')
   const [savingItem, setSavingItem] = useState(false)
+
+  // Auto-generate days state
+  const [generatingDays, setGeneratingDays] = useState(false)
 
   // Edit trip state
   const [editingTrip, setEditingTrip] = useState(false)
@@ -310,6 +315,7 @@ function App() {
           area: newItemArea || undefined,
           note: newItemNote || undefined,
           cost: newItemCost ? parseInt(newItemCost, 10) : undefined,
+          mapUrl: newItemMapUrl || undefined,
         }),
       })
       const data = (await res.json()) as { item: Item }
@@ -319,6 +325,7 @@ function App() {
         setNewItemArea('')
         setNewItemNote('')
         setNewItemCost('')
+        setNewItemMapUrl('')
         setShowItemFormForDay(null)
         await refreshTrip()
       }
@@ -337,6 +344,7 @@ function App() {
     setEditItemArea(item.area || '')
     setEditItemNote(item.note || '')
     setEditItemCost(item.cost?.toString() || '')
+    setEditItemMapUrl(item.mapUrl || '')
   }
 
   // Update item
@@ -355,6 +363,7 @@ function App() {
           area: editItemArea || undefined,
           note: editItemNote || undefined,
           cost: editItemCost ? parseInt(editItemCost, 10) : undefined,
+          mapUrl: editItemMapUrl || undefined,
         }),
       })
       setEditingItem(null)
@@ -376,6 +385,50 @@ function App() {
       await refreshTrip()
     } catch (err) {
       console.error('Failed to delete item:', err)
+    }
+  }
+
+  // Auto-generate days from trip date range
+  async function generateDays() {
+    if (!selectedTrip || !selectedTrip.startDate || !selectedTrip.endDate) return
+
+    const existingDates = new Set((selectedTrip.days || []).map(d => d.date))
+    const start = new Date(selectedTrip.startDate)
+    const end = new Date(selectedTrip.endDate)
+
+    // Calculate days to add
+    const daysToAdd: string[] = []
+    const current = new Date(start)
+    while (current <= end) {
+      const dateStr = current.toISOString().split('T')[0]
+      if (!existingDates.has(dateStr)) {
+        daysToAdd.push(dateStr)
+      }
+      current.setDate(current.getDate() + 1)
+    }
+
+    if (daysToAdd.length === 0) {
+      alert('追加する日程がありません')
+      return
+    }
+
+    if (!confirm(`${daysToAdd.length}日分の日程を自動生成しますか？`)) return
+
+    setGeneratingDays(true)
+    try {
+      // Create days sequentially
+      for (const date of daysToAdd) {
+        await fetch(`/api/trips/${selectedTrip.id}/days`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date }),
+        })
+      }
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to generate days:', err)
+    } finally {
+      setGeneratingDays(false)
     }
   }
 
@@ -551,6 +604,16 @@ function App() {
                 <p className="empty-state-text">
                   日程がまだありません。
                 </p>
+                {!isSharedView && selectedTrip.startDate && selectedTrip.endDate && (
+                  <button
+                    className="btn-outline no-print"
+                    onClick={generateDays}
+                    disabled={generatingDays}
+                    style={{ marginTop: 'var(--space-4)' }}
+                  >
+                    {generatingDays ? '生成中...' : '日程を自動生成'}
+                  </button>
+                )}
               </div>
             ) : (
               selectedTrip.days
@@ -625,6 +688,13 @@ function App() {
                                   className="input"
                                   placeholder="メモ"
                                 />
+                                <input
+                                  type="url"
+                                  value={editItemMapUrl}
+                                  onChange={(e) => setEditItemMapUrl(e.target.value)}
+                                  className="input"
+                                  placeholder="地図URL（Google Maps等）"
+                                />
                                 <div className="form-actions">
                                   <button type="button" className="btn-text" onClick={() => setEditingItem(null)}>
                                     キャンセル
@@ -643,6 +713,17 @@ function App() {
                                     {item.area && <span>{item.area}</span>}
                                     {item.cost != null && item.cost > 0 && (
                                       <span>{formatCost(item.cost)}</span>
+                                    )}
+                                    {item.mapUrl && (
+                                      <a
+                                        href={item.mapUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="map-link"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        地図を見る
+                                      </a>
                                     )}
                                   </div>
                                   {item.note && (
@@ -697,6 +778,13 @@ function App() {
                             placeholder="メモ"
                             value={newItemNote}
                             onChange={(e) => setNewItemNote(e.target.value)}
+                            className="input"
+                          />
+                          <input
+                            type="url"
+                            placeholder="地図URL（Google Maps等）"
+                            value={newItemMapUrl}
+                            onChange={(e) => setNewItemMapUrl(e.target.value)}
                             className="input"
                           />
                           <div className="form-row">
@@ -778,12 +866,23 @@ function App() {
                     </div>
                   </form>
                 ) : (
-                  <button
-                    className="btn-outline"
-                    onClick={() => setShowDayForm(true)}
-                  >
-                    + 日程を追加
-                  </button>
+                  <div className="add-day-buttons">
+                    <button
+                      className="btn-outline"
+                      onClick={() => setShowDayForm(true)}
+                    >
+                      + 日程を追加
+                    </button>
+                    {selectedTrip.startDate && selectedTrip.endDate && (
+                      <button
+                        className="btn-text"
+                        onClick={generateDays}
+                        disabled={generatingDays}
+                      >
+                        {generatingDays ? '生成中...' : '日程を自動生成'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
