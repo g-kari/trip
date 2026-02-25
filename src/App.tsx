@@ -53,6 +53,13 @@ function formatDayLabel(date: string, index: number): { label: string; dateStr: 
   }
 }
 
+// Check if we're viewing a shared trip
+function getShareToken(): string | null {
+  const path = window.location.pathname
+  const match = path.match(/^\/s\/([a-zA-Z0-9]+)$/)
+  return match ? match[1] : null
+}
+
 function App() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
@@ -93,21 +100,54 @@ function App() {
   const [editTripEndDate, setEditTripEndDate] = useState('')
   const [savingTrip, setSavingTrip] = useState(false)
 
-  // Fetch trips list
+  // Share state
+  const [shareToken, setShareToken] = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [isSharedView, setIsSharedView] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
+
+  // Check for shared view on mount
   useEffect(() => {
-    async function fetchTrips() {
-      try {
-        const res = await fetch('/api/trips')
-        const data = (await res.json()) as { trips: Trip[] }
-        setTrips(data.trips || [])
-      } catch (err) {
-        console.error('Failed to fetch trips:', err)
-      } finally {
-        setLoading(false)
-      }
+    const token = getShareToken()
+    if (token) {
+      setIsSharedView(true)
+      fetchSharedTrip(token)
+    } else {
+      fetchTrips()
     }
-    fetchTrips()
   }, [])
+
+  // Fetch shared trip
+  async function fetchSharedTrip(token: string) {
+    try {
+      const res = await fetch(`/api/shared/${token}`)
+      if (!res.ok) {
+        setShareError('この共有リンクは無効です')
+        setLoading(false)
+        return
+      }
+      const data = (await res.json()) as { trip: Trip }
+      setSelectedTrip(data.trip)
+    } catch (err) {
+      console.error('Failed to fetch shared trip:', err)
+      setShareError('旅程の読み込みに失敗しました')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch trips list
+  async function fetchTrips() {
+    try {
+      const res = await fetch('/api/trips')
+      const data = (await res.json()) as { trips: Trip[] }
+      setTrips(data.trips || [])
+    } catch (err) {
+      console.error('Failed to fetch trips:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Fetch single trip with details
   async function selectTrip(tripId: string) {
@@ -115,6 +155,10 @@ function App() {
       const res = await fetch(`/api/trips/${tripId}`)
       const data = (await res.json()) as { trip: Trip }
       setSelectedTrip(data.trip)
+      // Fetch share token
+      const shareRes = await fetch(`/api/trips/${tripId}/share`)
+      const shareData = (await shareRes.json()) as { token: string | null }
+      setShareToken(shareData.token)
     } catch (err) {
       console.error('Failed to fetch trip:', err)
     }
@@ -335,6 +379,47 @@ function App() {
     }
   }
 
+  // Create share link
+  async function createShareLink() {
+    if (!selectedTrip) return
+
+    try {
+      const res = await fetch(`/api/trips/${selectedTrip.id}/share`, { method: 'POST' })
+      const data = (await res.json()) as { token: string }
+      setShareToken(data.token)
+      setShowShareModal(true)
+    } catch (err) {
+      console.error('Failed to create share link:', err)
+    }
+  }
+
+  // Delete share link
+  async function deleteShareLink() {
+    if (!selectedTrip) return
+    if (!confirm('共有リンクを削除しますか？')) return
+
+    try {
+      await fetch(`/api/trips/${selectedTrip.id}/share`, { method: 'DELETE' })
+      setShareToken(null)
+      setShowShareModal(false)
+    } catch (err) {
+      console.error('Failed to delete share link:', err)
+    }
+  }
+
+  // Copy share link
+  function copyShareLink() {
+    if (!shareToken) return
+    const url = `${window.location.origin}/s/${shareToken}`
+    navigator.clipboard.writeText(url)
+    alert('リンクをコピーしました')
+  }
+
+  // Print trip
+  function printTrip() {
+    window.print()
+  }
+
   // Group items by day
   function getItemsForDay(dayId: string): Item[] {
     return (selectedTrip?.items || [])
@@ -343,6 +428,11 @@ function App() {
         if (a.timeStart && b.timeStart) return a.timeStart.localeCompare(b.timeStart)
         return a.sort - b.sort
       })
+  }
+
+  // Calculate total cost
+  function getTotalCost(): number {
+    return (selectedTrip?.items || []).reduce((sum, item) => sum + (item.cost || 0), 0)
   }
 
   if (loading) {
@@ -360,10 +450,35 @@ function App() {
     )
   }
 
+  // Shared view error
+  if (isSharedView && shareError) {
+    return (
+      <div className="app">
+        <header className="header">
+          <span className="header-logo">旅程</span>
+        </header>
+        <main className="main">
+          <div className="empty-state">
+            <p className="empty-state-text">{shareError}</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
-      <header className="header">
-        <span className="header-logo" onClick={() => setSelectedTrip(null)} style={{ cursor: 'pointer' }}>
+      <header className="header no-print">
+        <span
+          className="header-logo"
+          onClick={() => {
+            if (!isSharedView) {
+              setSelectedTrip(null)
+              window.history.pushState({}, '', '/')
+            }
+          }}
+          style={{ cursor: isSharedView ? 'default' : 'pointer' }}
+        >
           旅程
         </span>
       </header>
@@ -372,9 +487,9 @@ function App() {
         {/* Trip detail: day timeline */}
         {selectedTrip && (
           <>
-            <div className="hero" style={{ padding: 'var(--space-7) 0 var(--space-5)' }}>
-              {editingTrip ? (
-                <form className="edit-trip-form" onSubmit={updateTrip}>
+            <div className="hero print-hero" style={{ padding: 'var(--space-7) 0 var(--space-5)' }}>
+              {editingTrip && !isSharedView ? (
+                <form className="edit-trip-form no-print" onSubmit={updateTrip}>
                   <input
                     type="text"
                     value={editTripTitle}
@@ -414,10 +529,19 @@ function App() {
                       {formatDateRange(selectedTrip.startDate, selectedTrip.endDate)}
                     </p>
                   )}
-                  <div className="hero-actions-row">
-                    <button className="btn-text" onClick={startEditTrip}>編集</button>
-                    <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
-                  </div>
+                  {!isSharedView && (
+                    <div className="hero-actions-row no-print">
+                      <button className="btn-text" onClick={startEditTrip}>編集</button>
+                      <button className="btn-text" onClick={createShareLink}>共有</button>
+                      <button className="btn-text" onClick={printTrip}>印刷</button>
+                      <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
+                    </div>
+                  )}
+                  {isSharedView && (
+                    <div className="hero-actions-row no-print">
+                      <button className="btn-text" onClick={printTrip}>印刷</button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -439,12 +563,14 @@ function App() {
                       <div className="day-header">
                         <span className="day-label">{label}</span>
                         <span className="day-date">{dateStr}</span>
-                        <button
-                          className="btn-text btn-small btn-danger"
-                          onClick={() => deleteDay(day.id)}
-                        >
-                          削除
-                        </button>
+                        {!isSharedView && (
+                          <button
+                            className="btn-text btn-small btn-danger no-print"
+                            onClick={() => deleteDay(day.id)}
+                          >
+                            削除
+                          </button>
+                        )}
                       </div>
                       {items.length === 0 ? (
                         <div className="timeline-item">
@@ -458,8 +584,8 @@ function App() {
                       ) : (
                         items.map((item) => (
                           <div key={item.id} className="timeline-item">
-                            {editingItem?.id === item.id ? (
-                              <form className="edit-item-form" onSubmit={updateItem}>
+                            {editingItem?.id === item.id && !isSharedView ? (
+                              <form className="edit-item-form no-print" onSubmit={updateItem}>
                                 <div className="form-row">
                                   <input
                                     type="time"
@@ -522,14 +648,16 @@ function App() {
                                   {item.note && (
                                     <p className="timeline-note">{item.note}</p>
                                   )}
-                                  <div className="item-actions">
-                                    <button className="btn-text btn-small" onClick={() => startEditItem(item)}>
-                                      編集
-                                    </button>
-                                    <button className="btn-text btn-small btn-danger" onClick={() => deleteItem(item.id)}>
-                                      削除
-                                    </button>
-                                  </div>
+                                  {!isSharedView && (
+                                    <div className="item-actions no-print">
+                                      <button className="btn-text btn-small" onClick={() => startEditItem(item)}>
+                                        編集
+                                      </button>
+                                      <button className="btn-text btn-small btn-danger" onClick={() => deleteItem(item.id)}>
+                                        削除
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </>
                             )}
@@ -538,8 +666,8 @@ function App() {
                       )}
 
                       {/* Add item form */}
-                      {showItemFormForDay === day.id ? (
-                        <form className="inline-form" onSubmit={(e) => createItem(e, day.id)}>
+                      {!isSharedView && showItemFormForDay === day.id ? (
+                        <form className="inline-form no-print" onSubmit={(e) => createItem(e, day.id)}>
                           <input
                             type="text"
                             placeholder="予定のタイトル"
@@ -597,9 +725,9 @@ function App() {
                             </div>
                           </div>
                         </form>
-                      ) : (
+                      ) : !isSharedView && (
                         <button
-                          className="btn-text add-item-btn"
+                          className="btn-text add-item-btn no-print"
                           onClick={() => setShowItemFormForDay(day.id)}
                         >
                           + 予定を追加
@@ -610,57 +738,69 @@ function App() {
                 })
             )}
 
-            {/* Add day form */}
-            <div className="add-day-section">
-              {showDayForm ? (
-                <form className="inline-form" onSubmit={createDay}>
-                  <div className="form-row">
-                    <input
-                      type="date"
-                      value={newDayDate}
-                      onChange={(e) => setNewDayDate(e.target.value)}
-                      className="input"
-                      autoFocus
-                    />
-                    <div className="form-actions">
-                      <button
-                        type="button"
-                        className="btn-text"
-                        onClick={() => setShowDayForm(false)}
-                      >
-                        キャンセル
-                      </button>
-                      <button
-                        type="submit"
-                        className="btn-filled"
-                        disabled={creatingDay || !newDayDate}
-                      >
-                        {creatingDay ? '追加中...' : '追加'}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              ) : (
-                <button
-                  className="btn-outline"
-                  onClick={() => setShowDayForm(true)}
-                >
-                  + 日程を追加
-                </button>
-              )}
-            </div>
+            {/* Total cost */}
+            {getTotalCost() > 0 && (
+              <div className="total-cost">
+                <span className="total-cost-label">合計費用</span>
+                <span className="total-cost-value">{formatCost(getTotalCost())}</span>
+              </div>
+            )}
 
-            <button
-              className="btn-text back-btn"
-              onClick={() => setSelectedTrip(null)}
-            >
-              ← 旅程一覧に戻る
-            </button>
+            {/* Add day form */}
+            {!isSharedView && (
+              <div className="add-day-section no-print">
+                {showDayForm ? (
+                  <form className="inline-form" onSubmit={createDay}>
+                    <div className="form-row">
+                      <input
+                        type="date"
+                        value={newDayDate}
+                        onChange={(e) => setNewDayDate(e.target.value)}
+                        className="input"
+                        autoFocus
+                      />
+                      <div className="form-actions">
+                        <button
+                          type="button"
+                          className="btn-text"
+                          onClick={() => setShowDayForm(false)}
+                        >
+                          キャンセル
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn-filled"
+                          disabled={creatingDay || !newDayDate}
+                        >
+                          {creatingDay ? '追加中...' : '追加'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                ) : (
+                  <button
+                    className="btn-outline"
+                    onClick={() => setShowDayForm(true)}
+                  >
+                    + 日程を追加
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!isSharedView && (
+              <button
+                className="btn-text back-btn no-print"
+                onClick={() => setSelectedTrip(null)}
+              >
+                ← 旅程一覧に戻る
+              </button>
+            )}
           </>
         )}
 
         {/* Trip list section */}
-        {!selectedTrip && (
+        {!selectedTrip && !isSharedView && (
           <div className="trip-list-section">
             <div className="section-header">
               <span className="section-title">trips</span>
@@ -737,9 +877,32 @@ function App() {
         )}
       </main>
 
-      <footer className="footer">
+      <footer className="footer no-print">
         <span className="footer-text">旅程</span>
       </footer>
+
+      {/* Share modal */}
+      {showShareModal && shareToken && (
+        <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">共有リンク</h2>
+            <div className="share-url-box">
+              <code className="share-url">{window.location.origin}/s/{shareToken}</code>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-text btn-danger" onClick={deleteShareLink}>
+                リンクを削除
+              </button>
+              <button className="btn-filled" onClick={copyShareLink}>
+                コピー
+              </button>
+            </div>
+            <button className="btn-text modal-close" onClick={() => setShowShareModal(false)}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

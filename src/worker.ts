@@ -302,6 +302,112 @@ app.delete('/api/trips/:tripId/items/:itemId', async (c) => {
   return c.json({ ok: true });
 });
 
+// ============ Share Tokens ============
+
+// Generate short random token
+function generateToken(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let token = '';
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  for (let i = 0; i < 8; i++) {
+    token += chars[array[i] % chars.length];
+  }
+  return token;
+}
+
+// Create share token for a trip
+app.post('/api/trips/:tripId/share', async (c) => {
+  const tripId = c.req.param('tripId');
+
+  const trip = await c.env.DB.prepare('SELECT id FROM trips WHERE id = ?').bind(tripId).first();
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Check if share token already exists
+  const existing = await c.env.DB.prepare(
+    'SELECT token FROM share_tokens WHERE trip_id = ?'
+  ).bind(tripId).first<{ token: string }>();
+
+  if (existing) {
+    return c.json({ token: existing.token });
+  }
+
+  // Create new token
+  const id = generateId();
+  const token = generateToken();
+
+  await c.env.DB.prepare(
+    'INSERT INTO share_tokens (id, trip_id, token) VALUES (?, ?, ?)'
+  ).bind(id, tripId, token).run();
+
+  return c.json({ token }, 201);
+});
+
+// Get share token for a trip
+app.get('/api/trips/:tripId/share', async (c) => {
+  const tripId = c.req.param('tripId');
+
+  const share = await c.env.DB.prepare(
+    'SELECT token FROM share_tokens WHERE trip_id = ?'
+  ).bind(tripId).first<{ token: string }>();
+
+  if (!share) {
+    return c.json({ token: null });
+  }
+
+  return c.json({ token: share.token });
+});
+
+// Delete share token
+app.delete('/api/trips/:tripId/share', async (c) => {
+  const tripId = c.req.param('tripId');
+
+  await c.env.DB.prepare('DELETE FROM share_tokens WHERE trip_id = ?').bind(tripId).run();
+
+  return c.json({ ok: true });
+});
+
+// Get shared trip by token (public endpoint)
+app.get('/api/shared/:token', async (c) => {
+  const token = c.req.param('token');
+
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    return c.json({ error: 'Invalid share link' }, 404);
+  }
+
+  const trip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(share.trip_id).first();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(share.trip_id).all();
+
+  const { results: items } = await c.env.DB.prepare(
+    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(share.trip_id).all();
+
+  return c.json({ trip: { ...trip, days, items } });
+});
+
+// Serve shared trip page (SPA route)
+app.get('/s/:token', async (c) => {
+  // Serve index.html for SPA routing
+  const url = new URL(c.req.url);
+  url.pathname = '/index.html';
+  return c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw));
+});
+
 // Fallback to static assets
 app.get('*', async (c) => {
   return c.env.ASSETS.fetch(c.req.raw);

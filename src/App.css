@@ -425,3 +425,131 @@
 .day-header .btn-text {
   margin-left: auto;
 }
+
+/* ========================================
+   Total cost
+   ======================================== */
+
+.total-cost {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.total-cost-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.total-cost-value {
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+/* ========================================
+   Share modal
+   ======================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  z-index: 100;
+}
+
+.modal {
+  background-color: var(--color-bg-elevated);
+  border-radius: var(--radius-m);
+  padding: var(--space-6);
+  max-width: 400px;
+  width: 100%;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.share-url-box {
+  padding: var(--space-3);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.share-url {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.modal-close {
+  width: 100%;
+  text-align: center;
+}
+
+/* ========================================
+   Print styles
+   ======================================== */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .app {
+    min-height: auto;
+  }
+
+  .main {
+    padding: 0;
+    max-width: none;
+  }
+
+  .hero {
+    padding: var(--space-4) 0 !important;
+  }
+
+  .hero-title {
+    font-size: 1.25rem;
+  }
+
+  .hero-subtitle {
+    margin-bottom: var(--space-3);
+  }
+
+  .day-section {
+    page-break-inside: avoid;
+    margin-bottom: var(--space-4);
+  }
+
+  .timeline-item {
+    page-break-inside: avoid;
+  }
+
+  .total-cost {
+    margin-top: var(--space-3);
+  }
+}
