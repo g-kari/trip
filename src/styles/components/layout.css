@@ -1,0 +1,173 @@
+/* ========================================
+   App layout & page styles
+   ======================================== */
+
+/* App shell */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-5);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.header-logo {
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.08em;
+  color: var(--color-text);
+}
+
+/* Main content area */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-5);
+}
+
+/* Hero / landing section */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-9) 0 var(--space-8);
+}
+
+.hero-title {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-normal);
+  line-height: 1.6;
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.hero-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-7);
+}
+
+.hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 280px;
+}
+
+/* Trip list */
+.trip-list-section {
+  padding-top: var(--space-6);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.section-title {
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.section-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Trip card */
+.trip-card {
+  display: block;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+  transition: border-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.trip-card:hover {
+  border-color: var(--color-border);
+}
+
+.trip-card + .trip-card {
+  margin-top: var(--space-3);
+}
+
+.trip-card-title {
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.trip-card-date {
+  font-size: 0.8125rem;
+  color: var(--color-text-faint);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8) 0;
+}
+
+.empty-state-icon {
+  font-size: 2rem;
+  margin-bottom: var(--space-4);
+  opacity: 0.3;
+}
+
+.empty-state-text {
+  font-size: 0.875rem;
+  color: var(--color-text-faint);
+  line-height: 1.8;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5);
+}
+
+.footer-text {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+}
+
+.footer-link {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footer-link:hover {
+  color: var(--color-text-muted);
+}

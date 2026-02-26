@@ -1,0 +1,230 @@
+/* ========================================
+   Total cost
+   ======================================== */
+
+.total-cost {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.total-cost-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.total-cost-value {
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+/* ========================================
+   Budget Summary
+   ======================================== */
+
+.budget-summary-card {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.budget-summary-title {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin: 0 0 var(--space-4) 0;
+}
+
+.budget-overview {
+  margin-bottom: var(--space-5);
+}
+
+.budget-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+}
+
+.budget-row + .budget-row {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.budget-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.budget-value {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.budget-value.budget-over {
+  color: var(--color-danger);
+}
+
+.budget-value.budget-under {
+  color: var(--color-success);
+}
+
+/* Progress bar */
+.budget-progress-container {
+  height: 8px;
+  background-color: var(--color-border-light);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: var(--space-3);
+}
+
+.budget-progress-bar {
+  height: 100%;
+  background-color: var(--color-accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.budget-progress-bar.over {
+  background-color: var(--color-danger);
+}
+
+/* Warning */
+.budget-warning {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  font-size: 0.8125rem;
+  color: var(--color-warning-text);
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-m);
+  text-align: center;
+}
+
+/* Category breakdown */
+.budget-categories {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.budget-categories-title {
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.budget-category-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 80px 40px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.budget-category-row + .budget-category-row {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.budget-category-name {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.budget-category-bar-container {
+  height: 6px;
+  background-color: var(--color-border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.budget-category-bar {
+  height: 100%;
+  background-color: var(--color-accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.budget-category-amount {
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  text-align: right;
+}
+
+.budget-category-percent {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  text-align: right;
+}
+
+/* Budget input section in edit page */
+.budget-input-section {
+  margin-top: var(--space-3);
+  width: 100%;
+  max-width: 200px;
+}
+
+.budget-input-section .input {
+  text-align: center;
+}
+
+/* Mobile responsive for total cost */
+@media (max-width: 480px) {
+  .total-cost {
+    padding: var(--space-3);
+  }
+}
+
+/* Mobile responsive for budget summary */
+@media (max-width: 480px) {
+  .budget-summary-card {
+    padding: var(--space-4);
+  }
+
+  .budget-category-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .budget-category-name {
+    font-size: 0.875rem;
+  }
+
+  .budget-category-bar-container {
+    order: 3;
+    height: 4px;
+  }
+
+  .budget-category-amount {
+    order: 2;
+    text-align: left;
+    font-size: 0.75rem;
+  }
+
+  .budget-category-percent {
+    order: 2;
+    display: inline;
+    text-align: left;
+  }
+
+  .budget-category-amount::after {
+    content: ' ';
+  }
+
+  .budget-input-section {
+    max-width: 100%;
+  }
+}

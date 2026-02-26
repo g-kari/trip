@@ -1,0 +1,78 @@
+/* ========================================
+   Design Tokens — "しずか" (quiet) aesthetic
+   ======================================== */
+
+:root {
+  /* Colors — warm, muted palette (Light mode) */
+  --color-bg:          #f6f3ee;
+  --color-bg-elevated: #ffffff;
+  --color-text:        #3d2e1f;
+  --color-text-muted:  #8c7b6b;
+  --color-text-faint:  #b5a899;
+  --color-border:      #d9d0c5;
+  --color-border-light:#e8e2da;
+  --color-accent:      #3d2e1f;
+  --color-accent-hover:#5a4636;
+
+  /* Toast colors (Light mode) */
+  --toast-error-bg:    #fef5f5;
+  --toast-error-border:#d9a9a9;
+  --toast-success-bg:  #f5fef5;
+  --toast-success-border:#a9d9a9;
+
+  /* Danger/Error colors */
+  --color-danger:      #b55050;
+  --color-danger-hover:#993333;
+
+  /* Success colors */
+  --color-success:     #4a7c4a;
+  --color-success-hover:#3d6d3d;
+
+  /* Warning colors (for budget etc) */
+  --color-warning-text:  #8b3030;
+  --color-warning-bg:    #fef5f5;
+  --color-warning-border:#e8c8c8;
+
+  /* Typography */
+  --font-sans: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold:   600;
+  --line-height:        1.8;
+  --letter-spacing:     0.02em;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radius */
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+
+  /* Transitions */
+  --transition-fast:  150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* Layout */
+  --content-width: 480px;
+
+  font-family: var(--font-sans);
+  line-height: var(--line-height);
+  font-weight: var(--font-weight-normal);
+  letter-spacing: var(--letter-spacing);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

@@ -1,0 +1,73 @@
+/* ========================================
+   Photo uploader badge
+   ======================================== */
+
+.photo-uploader {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.day-photo-item {
+  position: relative;
+}
+
+.day-photo-item .photo-uploader {
+  position: absolute;
+  bottom: var(--space-1);
+  left: var(--space-1);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.625rem;
+}
+
+.photo-upload-section {
+  margin-top: var(--space-2);
+}
+
+/* ========================================
+   Item Photos (Memory Photos)
+   ======================================== */
+
+.item-photo {
+  margin-top: var(--space-3);
+  position: relative;
+  display: inline-block;
+}
+
+.memory-photo {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.item-photo-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  color: var(--color-danger);
+}
+
+.item-photo-delete:hover {
+  background: rgba(255, 255, 255, 1);
+  color: var(--color-danger-hover);
+}
+
+.item-photo:hover .item-photo-delete {
+  opacity: 1;
+}

@@ -1,0 +1,99 @@
+/* ========================================
+   Archive tabs & archived card styles
+   ======================================== */
+
+.archive-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.archive-tab {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: -1px;
+}
+
+.archive-tab:hover {
+  color: var(--color-text);
+}
+
+.archive-tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+/* Archived trip card (dimmed appearance) */
+.trip-card-archived {
+  opacity: 0.6;
+}
+
+.trip-card-archived:hover {
+  opacity: 0.8;
+}
+
+/* Archive button on trip card */
+.archive-btn {
+  margin-top: var(--space-2);
+  padding-left: 0;
+  color: var(--color-text-faint);
+}
+
+.archive-btn:hover {
+  color: var(--color-text-muted);
+}
+
+.archive-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Trip card actions container */
+.trip-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Duplicate button on trip card */
+.duplicate-btn {
+  padding-left: 0;
+  color: var(--color-text-faint);
+}
+
+.duplicate-btn:hover {
+  color: var(--color-text-muted);
+}
+
+.duplicate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .filter-buttons {
+    flex-direction: column;
+  }
+
+  .filter-btn {
+    text-align: center;
+  }
+
+  .filter-date-inputs {
+    flex-direction: column;
+  }
+
+  .filter-date-inputs .date-separator {
+    display: none;
+  }
+}

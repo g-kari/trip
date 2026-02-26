@@ -1,0 +1,145 @@
+/* ========================================
+   Skeleton Loading Animation
+   ======================================== */
+
+/* Base skeleton with shimmer animation */
+.skeleton {
+  background: var(--color-border-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  transform: translateX(-100%);
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Skeleton trip card */
+.skeleton-trip-card {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.skeleton-trip-card + .skeleton-trip-card {
+  margin-top: var(--space-3);
+}
+
+/* Skeleton hero */
+.skeleton-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-7) 0 var(--space-5);
+}
+
+.skeleton-hero-with-cover {
+  padding: var(--space-9) 0 var(--space-7);
+}
+
+.skeleton-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* Skeleton day section */
+.skeleton-day-section {
+  margin-bottom: var(--space-6);
+}
+
+.skeleton-day-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* Skeleton timeline item */
+.skeleton-timeline-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.skeleton-timeline-item + .skeleton-timeline-item {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.skeleton-timeline-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Skeleton album grid */
+.skeleton-album-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.skeleton-album-item {
+  aspect-ratio: 1;
+}
+
+/* Skeleton album section */
+.skeleton-album-section {
+  margin-bottom: var(--space-6);
+}
+
+.skeleton-album-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* Mobile responsive skeleton adjustments */
+@media (max-width: 480px) {
+  .skeleton-timeline-item {
+    grid-template-columns: 48px 1fr;
+    gap: var(--space-2);
+  }
+
+  .skeleton-album-grid {
+    gap: var(--space-2);
+  }
+}
+
+@media (max-width: 360px) {
+  .skeleton-timeline-item {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .skeleton-album-grid {
+    grid-template-columns: 1fr;
+  }
+}

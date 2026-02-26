@@ -270,6 +270,11 @@ export function ProfilePage() {
               <span className="profile-stat-label">アーカイブ済み</span>
             </div>
           </div>
+          <div className="profile-actions" style={{ marginTop: 'var(--space-4)' }}>
+            <Link to="/stats" className="btn-outline profile-action-btn">
+              詳細な統計を見る
+            </Link>
+          </div>
         </div>
       )}
 

@@ -1,0 +1,52 @@
+/* ========================================
+   Trip Itinerary - Main Style Entry Point
+   ======================================== */
+
+/* Base styles - order matters */
+@import './base/tokens.css';
+@import './base/themes.css';
+@import './base/reset.css';
+
+/* Components */
+@import './components/buttons.css';
+@import './components/forms.css';
+@import './components/layout.css';
+@import './components/header-nav.css';
+@import './components/user-menu.css';
+@import './components/theme-toggle.css';
+@import './components/modal.css';
+@import './components/toast.css';
+@import './components/skeleton.css';
+@import './components/timeline.css';
+@import './components/cover.css';
+@import './components/edit-delete.css';
+@import './components/budget.css';
+@import './components/search.css';
+@import './components/archive.css';
+@import './components/photo-uploader.css';
+@import './components/day-notes.css';
+@import './components/ai-generation.css';
+@import './components/share-buttons.css';
+@import './components/date-picker.css';
+@import './components/time-picker.css';
+@import './components/map.css';
+@import './components/reminder.css';
+@import './components/collaborative.css';
+@import './components/comments.css';
+@import './components/expense.css';
+@import './components/offline.css';
+@import './components/error-boundary.css';
+@import './components/print.css';
+
+/* Pages */
+@import './pages/login.css';
+@import './pages/landing.css';
+@import './pages/album.css';
+@import './pages/stats.css';
+@import './pages/templates.css';
+@import './pages/feedback.css';
+@import './pages/profile.css';
+@import './pages/invite.css';
+
+/* Responsive - must be last */
+@import './base/responsive.css';

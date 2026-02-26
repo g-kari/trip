@@ -1,0 +1,130 @@
+/* ========================================
+   Forms & inputs
+   ======================================== */
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  transition: border-color var(--transition-fast);
+}
+
+.input::placeholder {
+  color: var(--color-text-faint);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.date-inputs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.date-inputs .input {
+  flex: 1;
+}
+
+.date-separator {
+  font-size: 0.875rem;
+  color: var(--color-text-faint);
+}
+
+/* Inline form (for adding days/items) */
+.inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.form-row .input {
+  flex: 1;
+}
+
+.input-small {
+  max-width: 120px;
+  flex: 0 0 auto !important;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+/* Text button */
+.btn-text {
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.btn-text:hover {
+  color: var(--color-text);
+}
+
+/* Add item button */
+.add-item-btn {
+  margin-top: var(--space-2);
+  padding-left: 0;
+  color: var(--color-text-faint);
+}
+
+.add-item-btn:hover {
+  color: var(--color-text-muted);
+}
+
+/* Add day section */
+.add-day-section {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.add-day-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Back button */
+.back-btn {
+  margin-top: var(--space-4);
+  padding-left: 0;
+}

@@ -1,0 +1,231 @@
+/* ========================================
+   Collaborative Editing Styles
+   ======================================== */
+
+/* Active editors indicator */
+.active-editors {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  font-size: 0.8125rem;
+}
+
+.active-editors-label {
+  color: var(--color-text-muted);
+}
+
+.active-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background-color: rgba(144, 202, 249, 0.2);
+  border-radius: var(--radius-s);
+}
+
+.active-editor-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.active-editor-name {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Collaborator role badge */
+.collaborator-role-badge {
+  display: inline-block;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background-color: rgba(144, 202, 249, 0.15);
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  border-radius: var(--radius-m);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* Collaborator manager modal */
+.collaborator-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.collaborator-invite-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-4);
+}
+
+.collaborator-invite-form .form-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.collaborator-invite-form .form-row .input {
+  flex: 1;
+}
+
+.collaborator-role-select {
+  min-width: 100px;
+  flex: 0 0 auto !important;
+}
+
+.collaborator-error {
+  padding: var(--space-3);
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: var(--radius-m);
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-4);
+}
+
+.collaborator-loading {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+}
+
+.collaborator-section {
+  margin-bottom: var(--space-5);
+}
+
+.collaborator-section-title {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.collaborator-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.collaborator-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-2);
+}
+
+.collaborator-item.pending {
+  background-color: rgba(255, 193, 7, 0.05);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+.collaborator-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.collaborator-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.collaborator-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.collaborator-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.collaborator-email {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.collaborator-role {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  padding: var(--space-1) var(--space-2);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-s);
+}
+
+.collaborator-expiry {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+}
+
+.collaborator-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.collaborator-empty {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.collaborator-note {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Mobile responsive for collaborators */
+@media (max-width: 480px) {
+  .collaborator-modal {
+    max-height: 90vh;
+    margin: var(--space-3);
+  }
+
+  .collaborator-invite-form .form-row {
+    flex-direction: column;
+  }
+
+  .collaborator-role-select {
+    width: 100%;
+  }
+
+  .collaborator-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .collaborator-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .active-editors {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

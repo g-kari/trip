@@ -1,0 +1,95 @@
+/* ========================================
+   Print styles
+   ======================================== */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .app {
+    min-height: auto;
+  }
+
+  .main {
+    padding: 0;
+    max-width: none;
+  }
+
+  .hero {
+    padding: var(--space-4) 0 !important;
+  }
+
+  .hero-title {
+    font-size: 1.25rem;
+  }
+
+  .hero-subtitle {
+    margin-bottom: var(--space-3);
+  }
+
+  .day-section {
+    page-break-inside: avoid;
+    margin-bottom: var(--space-4);
+  }
+
+  .timeline-item {
+    page-break-inside: avoid;
+  }
+
+  .total-cost {
+    margin-top: var(--space-3);
+  }
+
+  /* Print photo styles */
+  .item-photo {
+    margin-top: var(--space-2);
+    page-break-inside: avoid;
+  }
+
+  .memory-photo {
+    max-width: 200px;
+    max-height: 150px;
+    border-radius: 6px;
+  }
+
+  .day-notes-section {
+    page-break-inside: avoid;
+  }
+
+  .day-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+  }
+
+  .day-photo {
+    max-width: 100%;
+    max-height: 120px;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+
+  /* Hero cover image for print */
+  .hero-with-cover {
+    background-size: cover !important;
+    background-position: center !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Album print styles */
+  .album-page {
+    padding: 0;
+  }
+
+  .album-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+  }
+
+  .album-item {
+    page-break-inside: avoid;
+  }
+}

@@ -624,7 +624,6 @@ export function SharedTripPage() {
           )}
           <div className="hero-actions-row no-print">
             <button className="btn-text" onClick={() => window.print()}>印刷</button>
-            <button className="btn-text" onClick={() => window.open(`/api/shared/${token}/pdf`, '_blank')}>PDF</button>
             <button className="btn-text" onClick={() => window.open(`/api/shared/${token}/calendar.ics`, '_blank')}>カレンダー</button>
             <button className="btn-text" onClick={duplicateTrip}>
               {user ? '複製' : '複製してログイン'}

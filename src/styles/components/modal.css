@@ -1,0 +1,57 @@
+/* ========================================
+   Share modal
+   ======================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  z-index: 100;
+}
+
+.modal {
+  background-color: var(--color-bg-elevated);
+  border-radius: var(--radius-m);
+  padding: var(--space-6);
+  max-width: 400px;
+  width: 100%;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+.share-url-box {
+  padding: var(--space-3);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.share-url {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.modal-close {
+  width: 100%;
+  text-align: center;
+}

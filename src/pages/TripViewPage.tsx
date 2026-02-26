@@ -260,11 +260,6 @@ export function TripViewPage() {
     window.print()
   }
 
-  function downloadPdf() {
-    if (!trip) return
-    window.open(`/api/trips/${trip.id}/pdf`, '_blank')
-  }
-
   function exportCalendar() {
     if (!trip) return
     window.open(`/api/trips/${trip.id}/calendar.ics`, '_blank')
@@ -639,7 +634,6 @@ export function TripViewPage() {
             </>
           )}
           <button className="btn-text" onClick={printTrip}>印刷</button>
-          <button className="btn-text" onClick={downloadPdf}>PDF</button>
           <button className="btn-text" onClick={exportCalendar}>カレンダー</button>
           {isOwner && (
             <div className="export-dropdown-container" ref={exportDropdownRef}>

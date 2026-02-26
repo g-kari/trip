@@ -1,0 +1,93 @@
+/* ========================================
+   Day Notes Section (その他)
+   ======================================== */
+
+.day-notes-section {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--color-border-light);
+}
+
+.day-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.day-notes-label {
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.day-notes-text {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  line-height: 1.6;
+  margin-bottom: var(--space-2);
+  white-space: pre-wrap;
+}
+
+.day-notes-edit {
+  margin-bottom: var(--space-3);
+}
+
+.day-notes-edit .textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin-bottom: var(--space-2);
+}
+
+/* Day photos grid */
+.day-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.day-photo-item {
+  position: relative;
+}
+
+.day-photo {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light);
+}
+
+.day-photo-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  color: var(--color-danger);
+}
+
+.day-photo-delete:hover {
+  background: rgba(255, 255, 255, 1);
+  color: var(--color-danger-hover);
+}
+
+.day-photo-item:hover .day-photo-delete {
+  opacity: 1;
+}

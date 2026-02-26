@@ -1,0 +1,186 @@
+/* ========================================
+   Day timeline view
+   ======================================== */
+
+.day-section {
+  margin-bottom: var(--space-6);
+}
+
+.day-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.day-label {
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+
+.day-date {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+}
+
+/* Timeline item */
+.timeline-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.timeline-item + .timeline-item {
+  border-top: 1px solid var(--color-border-light);
+}
+
+.timeline-time {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  padding-top: 1px;
+}
+
+/* Drag handle */
+.drag-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  position: relative;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Drag handle icon (always visible) */
+.drag-handle::before {
+  content: '⋮⋮';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  font-size: 0.75rem;
+  letter-spacing: -2px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.timeline-item:hover .drag-handle::before {
+  opacity: 1;
+  color: var(--color-text-muted);
+}
+
+/* Visual indicator for drag handle on touch devices */
+@media (pointer: coarse) {
+  .drag-handle::before {
+    left: -14px;
+    font-size: 0.875rem;
+    opacity: 0.7;
+  }
+}
+
+/* Draggable timeline item */
+.timeline-item[draggable="true"] {
+  cursor: grab;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.timeline-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Dragging state */
+.timeline-item.dragging {
+  opacity: 0.4;
+  background-color: var(--color-bg);
+}
+
+/* Drag over state (drop target highlight) */
+.timeline-item.drag-over {
+  background-color: var(--color-bg-elevated);
+  border-top: 2px solid var(--color-accent);
+  margin-top: -2px;
+}
+
+/* Touch dragging visual feedback */
+.timeline-item.touch-dragging {
+  opacity: 0.7;
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-text-muted);
+}
+
+/* Day section drop zone */
+.day-section {
+  transition: background-color 0.15s ease;
+}
+
+.day-section.day-drop-zone-active {
+  background-color: rgba(var(--color-accent-rgb, 61, 46, 31), 0.03);
+}
+
+/* Empty day drop zone */
+.empty-day-drop-zone {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  min-height: 60px;
+  border-radius: var(--radius-m);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.empty-day-drop-zone.drop-zone-highlight {
+  background-color: var(--color-bg-elevated);
+  border: 2px dashed var(--color-accent);
+  padding: calc(var(--space-3) - 2px) calc(var(--space-3) - 2px);
+}
+
+.empty-day-drop-zone.drop-zone-highlight .timeline-title {
+  color: var(--color-accent) !important;
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.timeline-title {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+}
+
+.timeline-note {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  margin-top: var(--space-1);
+}
+
+/* Map link */
+.map-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.map-link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}

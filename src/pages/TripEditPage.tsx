@@ -1380,7 +1380,6 @@ export function TripEditPage() {
         )}
         <div className="hero-actions-row no-print" style={{ marginTop: 'var(--space-3)' }}>
           <Link to={`/trips/${trip.id}`} className="btn-text">プレビュー</Link>
-          <button className="btn-text" onClick={() => window.open(`/api/trips/${trip.id}/pdf`, '_blank')}>PDF</button>
           <button className="btn-text" onClick={duplicateTrip}>複製</button>
           <button className="btn-text" onClick={() => setShowReminderModal(true)}>リマインダー</button>
           {currentUserRole === 'owner' && (

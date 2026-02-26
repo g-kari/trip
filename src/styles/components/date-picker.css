@@ -1,0 +1,206 @@
+/* ========================================
+   DatePicker Component
+   ======================================== */
+
+.date-picker {
+  position: relative;
+  width: 100%;
+}
+
+.date-picker-input {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+  text-align: left;
+}
+
+.date-picker-input:hover {
+  border-color: var(--color-text-muted);
+}
+
+.date-picker-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.date-picker-value {
+  color: var(--color-text);
+}
+
+.date-picker-placeholder {
+  color: var(--color-text-faint);
+}
+
+.date-picker-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.date-picker-calendar {
+  position: absolute;
+  z-index: 200;
+  min-width: 280px;
+  padding: var(--space-4);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-text-muted);
+  border-radius: var(--radius-m);
+}
+
+/* Calendar header */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.calendar-title {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  flex: 1;
+  text-align: center;
+}
+
+.calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calendar-nav-btn:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+/* Weekday headers */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: var(--space-2);
+}
+
+.calendar-weekday {
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-faint);
+  text-align: center;
+  padding: var(--space-1) 0;
+}
+
+.calendar-weekday.sunday {
+  color: var(--color-danger);
+}
+
+.calendar-weekday.saturday {
+  color: #3a7bd5;
+}
+
+/* Calendar grid */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.calendar-day:hover:not(.disabled):not(.empty) {
+  background-color: var(--color-bg);
+}
+
+.calendar-day.empty {
+  cursor: default;
+}
+
+.calendar-day.sunday:not(.disabled) {
+  color: var(--color-danger);
+}
+
+.calendar-day.saturday:not(.disabled) {
+  color: #3a7bd5;
+}
+
+.calendar-day.today {
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--color-border);
+}
+
+.calendar-day.selected {
+  background-color: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: var(--font-weight-medium);
+}
+
+.calendar-day.selected.sunday,
+.calendar-day.selected.saturday {
+  color: var(--color-bg);
+}
+
+.calendar-day.disabled {
+  color: var(--color-text-faint);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Calendar footer */
+.calendar-footer {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.calendar-footer-btn {
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.calendar-footer-btn:hover {
+  color: var(--color-text);
+}

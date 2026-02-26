@@ -1,0 +1,178 @@
+/* ========================================
+   Search and Filter
+   ======================================== */
+
+.search-filter-section {
+  margin-bottom: var(--space-5);
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.search-input {
+  flex: 1;
+}
+
+.filter-toggle {
+  white-space: nowrap;
+  position: relative;
+}
+
+.filter-toggle.active {
+  color: var(--color-accent);
+}
+
+.filter-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-accent);
+  border-radius: 50%;
+}
+
+.filter-options {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.filter-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.filter-buttons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.filter-btn.active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.filter-date-inputs {
+  flex: 1;
+}
+
+.filter-date-inputs .input {
+  font-size: 0.8125rem;
+}
+
+.sort-select {
+  width: 100%;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.clear-filters-btn {
+  align-self: flex-start;
+  padding-left: 0;
+  color: var(--color-text-faint);
+}
+
+.clear-filters-btn:hover {
+  color: var(--color-text-muted);
+}
+
+/* Active filters summary (tags) */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-s);
+}
+
+.filter-tag-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  font-size: 0.625rem;
+  font-family: inherit;
+  color: var(--color-text-faint);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-tag-remove:hover {
+  background-color: var(--color-border-light);
+  color: var(--color-text);
+}
+
+/* Trip card with theme indicator */
+.trip-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.trip-card-theme {
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-s);
+  color: var(--color-text-muted);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  white-space: nowrap;
+}
+
+.trip-card-theme-photo {
+  color: var(--color-accent);
+  border-color: var(--color-border);
+}

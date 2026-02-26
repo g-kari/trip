@@ -1,0 +1,127 @@
+/* ========================================
+   Theme selector (for trip edit page)
+   ======================================== */
+
+.theme-selector {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.theme-btn {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.theme-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.theme-btn.active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* ========================================
+   Theme Toggle (Color Mode Switcher)
+   Icon-based dropdown
+   ======================================== */
+
+.theme-toggle-dropdown {
+  position: relative;
+}
+
+.theme-toggle-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 1.125rem;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle-icon-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background-color: var(--color-bg-elevated);
+}
+
+.theme-toggle-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 140px;
+  padding: var(--space-2);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  z-index: 100;
+}
+
+.theme-toggle-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.theme-toggle-menu-item:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.theme-toggle-menu-item.active {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.theme-toggle-menu-icon {
+  font-size: 1rem;
+  width: 1.25rem;
+  text-align: center;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .theme-toggle-icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+}
+
+@media (pointer: coarse) {
+  .theme-toggle-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .theme-toggle-menu-item {
+    min-height: 44px;
+  }
+}
