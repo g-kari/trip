@@ -83,7 +83,6 @@ app.get('/api/auth/me', (c) => {
     user: {
       id: user.id,
       name: user.name,
-      email: user.email,
       avatarUrl: user.avatarUrl,
     },
   });
@@ -140,17 +139,16 @@ app.get('/api/auth/google/callback', async (c) => {
       .first<User>();
 
     if (!user) {
-      // Create new user
+      // Create new user (email not stored for privacy)
       const userId = generateId();
       await c.env.DB.prepare(
-        `INSERT INTO users (id, provider, provider_id, email, name, avatar_url)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO users (id, provider, provider_id, name, avatar_url)
+         VALUES (?, ?, ?, ?, ?)`
       )
         .bind(
           userId,
           'google',
           googleUser.id,
-          googleUser.email,
           googleUser.name,
           googleUser.picture
         )
@@ -160,19 +158,19 @@ app.get('/api/auth/google/callback', async (c) => {
         id: userId,
         provider: 'google',
         providerId: googleUser.id,
-        email: googleUser.email,
+        email: null,
         name: googleUser.name,
         avatarUrl: googleUser.picture,
         createdAt: new Date().toISOString(),
       };
     } else {
-      // Update user info
+      // Update user info (email not stored)
       await c.env.DB.prepare(
-        `UPDATE users SET email = ?, name = ?, avatar_url = ?,
+        `UPDATE users SET name = ?, avatar_url = ?,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
          WHERE id = ?`
       )
-        .bind(googleUser.email, googleUser.name, googleUser.picture, user.id)
+        .bind(googleUser.name, googleUser.picture, user.id)
         .run();
     }
 
@@ -514,7 +512,6 @@ app.get('/api/profile', async (c) => {
     profile: {
       id: user.id,
       name: user.name,
-      email: user.email,
       avatarUrl: user.avatarUrl,
       provider: user.provider,
       createdAt: user.createdAt,
@@ -552,8 +549,8 @@ app.put('/api/profile', async (c) => {
 
   // Fetch updated user
   const updatedUser = await c.env.DB.prepare(
-    `SELECT id, name, email, avatar_url as avatarUrl FROM users WHERE id = ?`
-  ).bind(user.id).first<{ id: string; name: string | null; email: string | null; avatarUrl: string | null }>();
+    `SELECT id, name, avatar_url as avatarUrl FROM users WHERE id = ?`
+  ).bind(user.id).first<{ id: string; name: string | null; avatarUrl: string | null }>();
 
   return c.json({
     profile: updatedUser,
@@ -667,10 +664,10 @@ app.get('/api/trips/:id', async (c) => {
   if (uniqueUploaderIds.length > 0) {
     const placeholders = uniqueUploaderIds.map(() => '?').join(',');
     const { results: users } = await c.env.DB.prepare(
-      `SELECT id, name, email FROM users WHERE id IN (${placeholders})`
-    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null; email: string | null }>();
+      `SELECT id, name FROM users WHERE id IN (${placeholders})`
+    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null }>();
     for (const u of users) {
-      uploaderNames.set(u.id, u.name || u.email || '匿名');
+      uploaderNames.set(u.id, u.name || '匿名');
     }
   }
 
@@ -1486,10 +1483,10 @@ app.get('/api/shared/:token', async (c) => {
   if (uniqueUploaderIds.length > 0) {
     const placeholders = uniqueUploaderIds.map(() => '?').join(',');
     const { results: users } = await c.env.DB.prepare(
-      `SELECT id, name, email FROM users WHERE id IN (${placeholders})`
-    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null; email: string | null }>();
+      `SELECT id, name FROM users WHERE id IN (${placeholders})`
+    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null }>();
     for (const u of users) {
-      uploaderNames.set(u.id, u.name || u.email || '匿名');
+      uploaderNames.set(u.id, u.name || '匿名');
     }
   }
 
@@ -1656,7 +1653,7 @@ app.get('/api/trips/:tripId/collaborators', async (c) => {
   // Get collaborators with user info
   const { results: collaborators } = await c.env.DB.prepare(`
     SELECT tc.id, tc.user_id as userId, tc.role, tc.created_at as createdAt,
-           u.name as userName, u.email as userEmail, u.avatar_url as userAvatarUrl,
+           u.name as userName, u.avatar_url as userAvatarUrl,
            ib.name as invitedByName
     FROM trip_collaborators tc
     LEFT JOIN users u ON tc.user_id = u.id
@@ -1669,14 +1666,13 @@ app.get('/api/trips/:tripId/collaborators', async (c) => {
     role: string;
     createdAt: string;
     userName: string | null;
-    userEmail: string | null;
     userAvatarUrl: string | null;
     invitedByName: string | null;
   }>();
 
-  // Get pending invites
+  // Get pending invites (link-based, no email)
   const { results: pendingInvites } = await c.env.DB.prepare(`
-    SELECT ci.id, ci.email, ci.role, ci.token, ci.created_at as createdAt, ci.expires_at as expiresAt,
+    SELECT ci.id, ci.role, ci.token, ci.created_at as createdAt, ci.expires_at as expiresAt,
            u.name as invitedByName
     FROM collaborator_invites ci
     LEFT JOIN users u ON ci.invited_by = u.id
@@ -1684,7 +1680,6 @@ app.get('/api/trips/:tripId/collaborators', async (c) => {
     ORDER BY ci.created_at ASC
   `).bind(tripId).all<{
     id: string;
-    email: string;
     role: string;
     token: string;
     createdAt: string;
@@ -1695,7 +1690,7 @@ app.get('/api/trips/:tripId/collaborators', async (c) => {
   return c.json({ collaborators, pendingInvites });
 });
 
-// Add collaborator (by email - creates invite)
+// Create invite link (no email required)
 app.post('/api/trips/:tripId/collaborators', async (c) => {
   const tripId = c.req.param('tripId');
   const user = c.get('user');
@@ -1706,73 +1701,10 @@ app.post('/api/trips/:tripId/collaborators', async (c) => {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
 
-  const body = await c.req.json<{ email: string; role?: string }>();
-
-  if (!body.email?.trim()) {
-    return c.json({ error: 'メールアドレスを入力してください' }, 400);
-  }
-
-  const email = body.email.trim().toLowerCase();
+  const body = await c.req.json<{ role?: string }>();
   const role = body.role === 'viewer' ? 'viewer' : 'editor';
 
-  // Check if user already has access (is owner)
-  const trip = await c.env.DB.prepare(
-    'SELECT user_id as userId FROM trips WHERE id = ?'
-  ).bind(tripId).first<{ userId: string | null }>();
-
-  // Check if the email belongs to an existing user
-  const existingUser = await c.env.DB.prepare(
-    'SELECT id, email FROM users WHERE email = ?'
-  ).bind(email).first<{ id: string; email: string }>();
-
-  if (existingUser) {
-    // Check if they're the owner
-    if (trip?.userId === existingUser.id) {
-      return c.json({ error: 'オーナーを共同編集者として追加することはできません' }, 400);
-    }
-
-    // Check if already a collaborator
-    const existingCollab = await c.env.DB.prepare(
-      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
-    ).bind(tripId, existingUser.id).first();
-
-    if (existingCollab) {
-      return c.json({ error: 'このユーザーは既に共同編集者です' }, 400);
-    }
-
-    // Add them directly as a collaborator
-    const id = generateId();
-    await c.env.DB.prepare(`
-      INSERT INTO trip_collaborators (id, trip_id, user_id, role, invited_by)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(id, tripId, existingUser.id, role, user!.id).run();
-
-    return c.json({
-      collaborator: {
-        id,
-        userId: existingUser.id,
-        role,
-        createdAt: new Date().toISOString(),
-      },
-      addedDirectly: true,
-    }, 201);
-  }
-
-  // Delete any expired invites for this email first (to allow re-inviting)
-  await c.env.DB.prepare(
-    'DELETE FROM collaborator_invites WHERE trip_id = ? AND email = ? AND expires_at <= strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')'
-  ).bind(tripId, email).run();
-
-  // Check if a valid (non-expired) invite already exists
-  const existingInvite = await c.env.DB.prepare(
-    'SELECT id FROM collaborator_invites WHERE trip_id = ? AND email = ? AND expires_at > strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')'
-  ).bind(tripId, email).first();
-
-  if (existingInvite) {
-    return c.json({ error: 'このメールアドレスには既に招待を送信済みです' }, 400);
-  }
-
-  // Create an invite
+  // Create an invite link (no email required)
   const id = generateId();
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
@@ -1780,17 +1712,15 @@ app.post('/api/trips/:tripId/collaborators', async (c) => {
   await c.env.DB.prepare(`
     INSERT INTO collaborator_invites (id, trip_id, email, role, token, invited_by, expires_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, tripId, email, role, token, user!.id, expiresAt).run();
+  `).bind(id, tripId, '', role, token, user!.id, expiresAt).run();
 
   return c.json({
     invite: {
       id,
-      email,
       role,
       token,
       expiresAt,
     },
-    addedDirectly: false,
   }, 201);
 });
 
@@ -1805,13 +1735,12 @@ app.post('/api/collaborator-invites/:token/accept', async (c) => {
 
   // Get the invite
   const invite = await c.env.DB.prepare(`
-    SELECT id, trip_id as tripId, email, role, expires_at as expiresAt, invited_by as invitedBy
+    SELECT id, trip_id as tripId, role, expires_at as expiresAt, invited_by as invitedBy
     FROM collaborator_invites
     WHERE token = ?
   `).bind(token).first<{
     id: string;
     tripId: string;
-    email: string;
     role: string;
     expiresAt: string;
     invitedBy: string;
@@ -1824,14 +1753,6 @@ app.post('/api/collaborator-invites/:token/accept', async (c) => {
   // Check if expired
   if (new Date(invite.expiresAt) < new Date()) {
     return c.json({ error: '招待リンクの有効期限が切れています' }, 400);
-  }
-
-  // Verify that the logged-in user's email matches the invited email
-  if (user.email?.toLowerCase() !== invite.email.toLowerCase()) {
-    return c.json({
-      error: 'この招待は別のメールアドレス宛てです。招待されたメールアドレスでログインしてください。',
-      invitedEmail: invite.email.replace(/(.{2}).*(@.*)/, '$1***$2'), // mask email for privacy
-    }, 403);
   }
 
   // Check if already a collaborator

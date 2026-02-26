@@ -23,7 +23,7 @@ export function Layout() {
                     {user.avatarUrl && (
                       <img src={user.avatarUrl} alt="" className="user-avatar" />
                     )}
-                    <span className="user-name">{user.name || user.email}</span>
+                    <span className="user-name">{user.name || 'ユーザー'}</span>
                   </Link>
                 ) : (
                   <Link to="/login" className="btn-text">
