@@ -58,6 +58,10 @@ export function TripListPage() {
   const [aiLimitReached, setAiLimitReached] = useState(false)
   const aiImageInputRef = useRef<HTMLInputElement>(null)
 
+  // Import state
+  const [importing, setImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
+
   const fetchAiUsage = useCallback(async () => {
     try {
       const res = await fetch('/api/ai/usage')
@@ -301,6 +305,50 @@ export function TripListPage() {
     }
   }
 
+  async function handleImport(file: File) {
+    if (!file) return
+
+    // Validate file type
+    if (!file.name.endsWith('.json')) {
+      showError('JSONファイルを選択してください')
+      return
+    }
+
+    setImporting(true)
+    try {
+      const text = await file.text()
+      let data: unknown
+      try {
+        data = JSON.parse(text)
+      } catch {
+        showError('無効なJSONファイルです')
+        setImporting(false)
+        return
+      }
+
+      const res = await fetch('/api/trips/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      const result = (await res.json()) as { tripId?: string; error?: string }
+      if (!res.ok) {
+        showError(result.error || 'インポートに失敗しました')
+        return
+      }
+
+      if (result.tripId) {
+        navigate(`/trips/${result.tripId}/edit`)
+      }
+    } catch (err) {
+      console.error('Failed to import trip:', err)
+      showError('インポートに失敗しました')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   if (loading || authLoading) {
     return (
       <div className="trip-list-section">
@@ -360,6 +408,28 @@ export function TripListPage() {
           >
             {showCreateForm ? 'キャンセル' : '手動で作成'}
           </button>
+          {user && (
+            <button
+              className="btn-outline"
+              onClick={() => importInputRef.current?.click()}
+              disabled={importing}
+            >
+              {importing ? 'インポート中...' : 'インポート'}
+            </button>
+          )}
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) {
+                handleImport(file)
+              }
+              e.target.value = ''
+            }}
+          />
         </div>
       </div>
 

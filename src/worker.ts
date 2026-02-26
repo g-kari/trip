@@ -1961,6 +1961,158 @@ app.get('/api/trips/:tripId/export', async (c) => {
   });
 });
 
+// Import trip from JSON - requires login
+app.post('/api/trips/import', async (c) => {
+  const user = c.get('user');
+
+  // Require login for import
+  if (!user) {
+    return c.json({ error: 'インポートにはログインが必要です' }, 401);
+  }
+
+  let data: unknown;
+  try {
+    data = await c.req.json();
+  } catch {
+    return c.json({ error: '無効なJSONファイルです' }, 400);
+  }
+
+  // Validate basic structure
+  if (!data || typeof data !== 'object') {
+    return c.json({ error: '無効なJSONファイルです' }, 400);
+  }
+
+  const importData = data as {
+    trip?: {
+      title?: unknown;
+      startDate?: unknown;
+      endDate?: unknown;
+      theme?: unknown;
+      budget?: unknown;
+    };
+    days?: Array<{
+      date?: unknown;
+      notes?: unknown;
+      items?: Array<{
+        title?: unknown;
+        area?: unknown;
+        timeStart?: unknown;
+        timeEnd?: unknown;
+        note?: unknown;
+        cost?: unknown;
+        costCategory?: unknown;
+      }>;
+    }>;
+  };
+
+  // Validate trip object
+  if (!importData.trip || typeof importData.trip !== 'object') {
+    return c.json({ error: '旅程データが見つかりません' }, 400);
+  }
+
+  // Validate title
+  if (!importData.trip.title || typeof importData.trip.title !== 'string' || !importData.trip.title.trim()) {
+    return c.json({ error: 'タイトルが必要です' }, 400);
+  }
+
+  // Validate days array
+  if (!Array.isArray(importData.days)) {
+    return c.json({ error: '日程データが見つかりません' }, 400);
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+  const validateDate = (date: unknown): boolean => {
+    if (date === null || date === undefined) return true;
+    return typeof date === 'string' && dateRegex.test(date);
+  };
+
+  // Validate startDate and endDate format
+  if (importData.trip.startDate && !validateDate(importData.trip.startDate)) {
+    return c.json({ error: '開始日の形式が不正です（YYYY-MM-DD）' }, 400);
+  }
+
+  if (importData.trip.endDate && !validateDate(importData.trip.endDate)) {
+    return c.json({ error: '終了日の形式が不正です（YYYY-MM-DD）' }, 400);
+  }
+
+  // Validate each day's date
+  for (let i = 0; i < importData.days.length; i++) {
+    const day = importData.days[i];
+    if (!day || typeof day !== 'object') {
+      return c.json({ error: `日程 ${i + 1} のデータが不正です` }, 400);
+    }
+    if (!day.date || !validateDate(day.date)) {
+      return c.json({ error: `日程 ${i + 1} の日付が不正です（YYYY-MM-DD）` }, 400);
+    }
+  }
+
+  // Create new trip with "(インポート)" suffix
+  const tripId = generateId();
+  const theme = importData.trip.theme === 'photo' ? 'photo' : 'quiet';
+  const title = `${importData.trip.title}（インポート）`;
+
+  await c.env.DB.prepare(
+    'INSERT INTO trips (id, title, start_date, end_date, theme, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(
+    tripId,
+    title,
+    importData.trip.startDate || null,
+    importData.trip.endDate || null,
+    theme,
+    typeof importData.trip.budget === 'number' ? importData.trip.budget : null,
+    user.id
+  ).run();
+
+  // Create days and items
+  for (let dayIndex = 0; dayIndex < importData.days.length; dayIndex++) {
+    const day = importData.days[dayIndex];
+    const dayId = generateId();
+    const sort = dayIndex;
+
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort, notes) VALUES (?, ?, ?, ?, ?)'
+    ).bind(
+      dayId,
+      tripId,
+      day.date as string,
+      sort,
+      typeof day.notes === 'string' ? day.notes : null
+    ).run();
+
+    // Create items for this day
+    if (Array.isArray(day.items)) {
+      for (let itemIndex = 0; itemIndex < day.items.length; itemIndex++) {
+        const item = day.items[itemIndex];
+        if (!item || typeof item !== 'object') continue;
+
+        const itemId = generateId();
+
+        // Skip photo URLs (don't import photos from other users' R2 buckets)
+        await c.env.DB.prepare(
+          `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, note, cost, cost_category, sort)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          itemId,
+          tripId,
+          dayId,
+          typeof item.title === 'string' ? item.title : '',
+          typeof item.area === 'string' ? item.area : null,
+          typeof item.timeStart === 'string' ? item.timeStart : null,
+          typeof item.timeEnd === 'string' ? item.timeEnd : null,
+          typeof item.note === 'string' ? item.note : null,
+          typeof item.cost === 'number' ? item.cost : null,
+          typeof item.costCategory === 'string' ? item.costCategory : null,
+          itemIndex
+        ).run();
+      }
+    }
+  }
+
+  return c.json({ tripId }, 201);
+});
+
 // ============ Cover Images (R2) ============
 
 // Upload cover image
