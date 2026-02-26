@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import type { Trip, Day, Item, TripTheme, CostCategory } from '../types'
+import type { Trip, Day, Item, TripTheme, CostCategory, ItemTemplate } from '../types'
 import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
@@ -30,6 +30,7 @@ function DraggableItem({
   editingItem,
   onStartEdit,
   onDelete,
+  onSaveAsTemplate,
   editItemTime,
   setEditItemTime,
   editItemTitle,
@@ -61,6 +62,7 @@ function DraggableItem({
   editingItem: Item | null
   onStartEdit: (item: Item) => void
   onDelete: (id: string) => void
+  onSaveAsTemplate: (item: Item) => void
   editItemTime: string
   setEditItemTime: (v: string) => void
   editItemTitle: string
@@ -298,6 +300,13 @@ function DraggableItem({
                   {uploadingPhoto ? '...' : '写真追加'}
                 </button>
               )}
+              <button
+                className="btn-text btn-small"
+                onClick={() => onSaveAsTemplate(item)}
+                title="テンプレートとして保存"
+              >
+                保存
+              </button>
               <button className="btn-text btn-small btn-danger" onClick={() => onDelete(item.id)}>
                 削除
               </button>
@@ -605,6 +614,10 @@ export function TripEditPage() {
   const [templateUses, setTemplateUses] = useState(0)
   const [savingTemplate, setSavingTemplate] = useState(false)
 
+  // Item template state
+  const [itemTemplates, setItemTemplates] = useState<ItemTemplate[]>([])
+  const [showTemplateSelector, setShowTemplateSelector] = useState<string | null>(null) // dayId where selector is shown
+
   // Reminder modal state
   const [showReminderModal, setShowReminderModal] = useState(false)
 
@@ -660,10 +673,24 @@ export function TripEditPage() {
     }
   }, [])
 
+  // Fetch item templates
+  const fetchItemTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/item-templates')
+      if (res.ok) {
+        const data = await res.json() as { templates: ItemTemplate[] }
+        setItemTemplates(data.templates || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch item templates:', err)
+    }
+  }, [])
+
   useEffect(() => {
     if (id) {
       fetchTrip(id)
       fetchMembers(id)
+      fetchItemTemplates()
       // Fetch template status
       fetch(`/api/trips/${id}/template`)
         .then(res => res.ok ? res.json() as Promise<{ isTemplate?: boolean; templateUses?: number }> : null)
@@ -675,7 +702,7 @@ export function TripEditPage() {
         })
         .catch(err => console.error('Failed to fetch template status:', err))
     }
-  }, [id, fetchTrip, fetchMembers])
+  }, [id, fetchTrip, fetchMembers, fetchItemTemplates])
 
   // Polling for collaborative editing - check for updates every 5 seconds
   useEffect(() => {
@@ -1034,6 +1061,88 @@ export function TripEditPage() {
       await refreshTrip()
     } catch (err) {
       console.error('Failed to delete item:', err)
+    }
+  }
+
+  // Save item as template
+  async function saveItemAsTemplate(item: Item) {
+    try {
+      const res = await fetch('/api/item-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: item.title,
+          area: item.area,
+          timeStart: item.timeStart,
+          timeEnd: item.timeEnd,
+          mapUrl: item.mapUrl,
+          note: item.note,
+          cost: item.cost,
+          costCategory: item.costCategory,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        throw new Error(data.error || 'テンプレートの保存に失敗しました')
+      }
+      showSuccess('テンプレートとして保存しました')
+      await fetchItemTemplates()
+    } catch (err) {
+      console.error('Failed to save item as template:', err)
+      showError(err instanceof Error ? err.message : 'テンプレートの保存に失敗しました')
+    }
+  }
+
+  // Create item from template
+  async function createItemFromTemplate(dayId: string, template: ItemTemplate) {
+    if (!trip) return
+
+    setCreatingItem(true)
+    try {
+      // Auto-generate map URL if not provided
+      const mapUrl = template.mapUrl || generateMapUrl(template.title, template.area || undefined)
+
+      const res = await fetch(`/api/trips/${trip.id}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayId,
+          title: template.title,
+          timeStart: template.timeStart || undefined,
+          area: template.area || undefined,
+          note: template.note || undefined,
+          cost: template.cost || undefined,
+          costCategory: template.costCategory || undefined,
+          mapUrl,
+        }),
+      })
+      const data = await res.json() as { item?: Item; error?: string }
+      if (!res.ok) {
+        throw new Error(data.error || '予定の追加に失敗しました')
+      }
+      setShowTemplateSelector(null)
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to create item from template:', err)
+      showError(err instanceof Error ? err.message : '予定の追加に失敗しました')
+    } finally {
+      setCreatingItem(false)
+    }
+  }
+
+  // Delete item template
+  async function deleteItemTemplate(templateId: string) {
+    if (!confirm('このテンプレートを削除しますか？')) return
+
+    try {
+      const res = await fetch(`/api/item-templates/${templateId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        throw new Error('テンプレートの削除に失敗しました')
+      }
+      await fetchItemTemplates()
+    } catch (err) {
+      console.error('Failed to delete item template:', err)
+      showError(err instanceof Error ? err.message : 'テンプレートの削除に失敗しました')
     }
   }
 
@@ -1529,6 +1638,7 @@ export function TripEditPage() {
                       editingItem={editingItem}
                       onStartEdit={startEditItem}
                       onDelete={deleteItem}
+                      onSaveAsTemplate={saveItemAsTemplate}
                       editItemTime={editItemTime}
                       setEditItemTime={setEditItemTime}
                       editItemTitle={editItemTitle}
@@ -1634,12 +1744,70 @@ export function TripEditPage() {
                     </div>
                   </form>
                 ) : (
-                  <button
-                    className="btn-text add-item-btn no-print"
-                    onClick={() => setShowItemFormForDay(day.id)}
-                  >
-                    + 予定を追加
-                  </button>
+                  <div className="add-item-section no-print">
+                    <div className="add-item-buttons">
+                      <button
+                        className="btn-text add-item-btn"
+                        onClick={() => setShowItemFormForDay(day.id)}
+                      >
+                        + 予定を追加
+                      </button>
+                      {itemTemplates.length > 0 && (
+                        <div className="template-selector">
+                          <button
+                            className="btn-text add-item-btn"
+                            onClick={() => setShowTemplateSelector(showTemplateSelector === day.id ? null : day.id)}
+                          >
+                            テンプレートから
+                          </button>
+                          {showTemplateSelector === day.id && (
+                            <div className="template-dropdown">
+                              <div className="template-dropdown-header">
+                                <span className="template-dropdown-title">テンプレート選択</span>
+                                <button
+                                  className="template-dropdown-close"
+                                  onClick={() => setShowTemplateSelector(null)}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                              <ul className="template-list">
+                                {itemTemplates.map((template) => (
+                                  <li key={template.id} className="template-list-item">
+                                    <div className="template-list-item-actions">
+                                      <div
+                                        className="template-list-item-content"
+                                        onClick={() => createItemFromTemplate(day.id, template)}
+                                      >
+                                        <div className="template-item-title">{template.title}</div>
+                                        <div className="template-item-meta">
+                                          {template.timeStart && <span>{template.timeStart}</span>}
+                                          {template.area && <span>{template.area}</span>}
+                                          {template.cost != null && template.cost > 0 && (
+                                            <span>{formatCost(template.cost)}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <button
+                                        className="template-delete-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          deleteItemTemplate(template.id)
+                                        }}
+                                        title="削除"
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
 
                 {/* その他 section */}

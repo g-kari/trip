@@ -83,6 +83,20 @@ export type Item = {
   photoUploadedAt: string | null
 }
 
+// Item template for quick item creation
+export type ItemTemplate = {
+  id: string
+  title: string
+  area: string | null
+  timeStart: string | null
+  timeEnd: string | null
+  mapUrl: string | null
+  note: string | null
+  cost: number | null
+  costCategory: CostCategory | null
+  createdAt: string
+}
+
 export type TripFeedback = {
   id: string
   userId: string | null

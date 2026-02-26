@@ -4696,6 +4696,94 @@ app.put('/api/trips/:tripId/packing/reorder', async (c) => {
   return c.json({ success: true });
 });
 
+// ============ Item Templates ============
+
+// Get user's item templates
+app.get('/api/item-templates', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, title, area, time_start as timeStart, time_end as timeEnd,
+            map_url as mapUrl, note, cost, cost_category as costCategory,
+            created_at as createdAt
+     FROM item_templates
+     WHERE user_id = ?
+     ORDER BY created_at DESC`
+  ).bind(user.id).all();
+
+  return c.json({ templates: results });
+});
+
+// Create an item template
+app.post('/api/item-templates', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{
+    title: string;
+    area?: string;
+    timeStart?: string;
+    timeEnd?: string;
+    mapUrl?: string;
+    note?: string;
+    cost?: number;
+    costCategory?: string;
+  }>();
+
+  if (!body.title?.trim()) {
+    return c.json({ error: 'タイトルは必須です' }, 400);
+  }
+
+  const id = generateId();
+
+  await c.env.DB.prepare(
+    `INSERT INTO item_templates (id, user_id, title, area, time_start, time_end, map_url, note, cost, cost_category)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id, user.id, body.title.trim(),
+    body.area ?? null, body.timeStart ?? null, body.timeEnd ?? null,
+    body.mapUrl ?? null, body.note ?? null, body.cost ?? null, body.costCategory ?? null
+  ).run();
+
+  const template = await c.env.DB.prepare(
+    `SELECT id, title, area, time_start as timeStart, time_end as timeEnd,
+            map_url as mapUrl, note, cost, cost_category as costCategory,
+            created_at as createdAt
+     FROM item_templates WHERE id = ?`
+  ).bind(id).first();
+
+  return c.json({ template }, 201);
+});
+
+// Delete an item template
+app.delete('/api/item-templates/:id', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const templateId = c.req.param('id');
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM item_templates WHERE id = ? AND user_id = ?'
+  ).bind(templateId, user.id).first();
+
+  if (!existing) {
+    return c.json({ error: 'テンプレートが見つかりません' }, 404);
+  }
+
+  await c.env.DB.prepare(
+    'DELETE FROM item_templates WHERE id = ?'
+  ).bind(templateId).run();
+
+  return c.json({ ok: true });
+});
+
 // SPA routes - serve index.html for client-side routing
 const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite'];
 
