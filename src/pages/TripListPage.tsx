@@ -176,6 +176,7 @@ export function TripListPage() {
   // Duplicate trip
   const duplicateTrip = useCallback(async (tripId: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!confirm('この旅程を複製しますか？')) return
     setDuplicatingId(tripId)
     try {
       const res = await fetch(`/api/trips/${tripId}/duplicate`, { method: 'POST' })

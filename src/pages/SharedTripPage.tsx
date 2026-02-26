@@ -481,6 +481,7 @@ export function SharedTripPage() {
 
   async function duplicateTrip() {
     if (!trip) return
+    if (!confirm('この旅程を複製しますか？')) return
 
     try {
       const res = await fetch(`/api/trips/${trip.id}/duplicate`, { method: 'POST' })

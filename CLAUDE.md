@@ -83,16 +83,6 @@ npm run lint       # Run ESLint
 
 ## Workflow Rules
 
-### Pre-commit Review (REQUIRED)
-
-Before creating any git commit, you MUST run codex to review the changes:
-
-```bash
-codex review --uncommitted "Check for bugs, security issues, and code quality"
-```
-
-Only proceed with the commit if codex reports no critical issues. If issues are found, fix them first.
-
 ### Automated Task Processing (課題リスト自動処理)
 
 This project uses an automated task processing workflow. When starting a new session:
