@@ -319,7 +319,7 @@ app.post('/api/auth/logout', async (c) => {
 app.get('/api/trips', async (c) => {
   const user = c.get('user');
 
-  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt FROM trips';
+  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, created_at as createdAt FROM trips';
   const params: string[] = [];
 
   if (user) {
@@ -347,7 +347,7 @@ app.get('/api/trips/:id', async (c) => {
   const user = c.get('user');
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
   ).bind(id).first<{
     id: string;
     title: string;
@@ -355,6 +355,7 @@ app.get('/api/trips/:id', async (c) => {
     endDate: string | null;
     theme: string | null;
     coverImageUrl: string | null;
+    budget: number | null;
     userId: string | null;
     createdAt: string;
     updatedAt: string;
@@ -376,13 +377,13 @@ app.get('/api/trips/:id', async (c) => {
 
   const { results: items } = await c.env.DB.prepare(
     `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
-     map_url as mapUrl, note, cost, sort, photo_url as photoUrl,
+     map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
      photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt
      FROM items WHERE trip_id = ? ORDER BY sort ASC`
   ).bind(id).all<{
     id: string; dayId: string; title: string; area: string | null;
     timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
-    note: string | null; cost: number | null; sort: number; photoUrl: string | null;
+    note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
     photoUploadedBy: string | null; photoUploadedAt: string | null;
   }>();
 
@@ -464,7 +465,7 @@ app.get('/api/trips/:id', async (c) => {
 // Create trip
 app.post('/api/trips', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<{ title: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string }>();
+  const body = await c.req.json<{ title: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string; budget?: number }>();
 
   if (!body.title?.trim()) {
     return c.json({ error: 'Title is required' }, 400);
@@ -474,11 +475,11 @@ app.post('/api/trips', async (c) => {
   const theme = body.theme === 'photo' ? 'photo' : 'quiet';
 
   await c.env.DB.prepare(
-    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).bind(id, body.title.trim(), body.startDate ?? null, body.endDate ?? null, theme, body.coverImageUrl ?? null, user?.id ?? null).run();
+    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, body.title.trim(), body.startDate ?? null, body.endDate ?? null, theme, body.coverImageUrl ?? null, body.budget ?? null, user?.id ?? null).run();
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, created_at as createdAt FROM trips WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ trip }, 201);
@@ -488,7 +489,7 @@ app.post('/api/trips', async (c) => {
 app.put('/api/trips/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
-  const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string }>();
+  const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string; budget?: number | null }>();
 
   const existing = await c.env.DB.prepare(
     'SELECT id, user_id as userId FROM trips WHERE id = ?'
@@ -508,6 +509,9 @@ app.put('/api/trips/:id', async (c) => {
     ? (body.theme === 'photo' ? 'photo' : 'quiet')
     : null;
 
+  // Handle budget - allow explicit null to clear it
+  const budgetValue = body.budget === null ? null : (body.budget ?? undefined);
+
   await c.env.DB.prepare(
     `UPDATE trips SET
       title = COALESCE(?, title),
@@ -515,12 +519,22 @@ app.put('/api/trips/:id', async (c) => {
       end_date = COALESCE(?, end_date),
       theme = COALESCE(?, theme),
       cover_image_url = COALESCE(?, cover_image_url),
+      budget = CASE WHEN ?1 = 1 THEN ?2 ELSE COALESCE(?2, budget) END,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?`
-  ).bind(body.title ?? null, body.startDate ?? null, body.endDate ?? null, theme, body.coverImageUrl ?? null, id).run();
+  ).bind(
+    body.title ?? null,
+    body.startDate ?? null,
+    body.endDate ?? null,
+    theme,
+    body.coverImageUrl ?? null,
+    body.budget === null ? 1 : 0,
+    budgetValue === undefined ? null : budgetValue,
+    id
+  ).run();
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ trip });
@@ -561,7 +575,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
 
   // Get the original trip
   const original = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, user_id as userId FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId FROM trips WHERE id = ?'
   ).bind(id).first<{
     id: string;
     title: string;
@@ -569,6 +583,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     endDate: string | null;
     theme: string | null;
     coverImageUrl: string | null;
+    budget: number | null;
     userId: string | null;
   }>();
 
@@ -593,8 +608,8 @@ app.post('/api/trips/:id/duplicate', async (c) => {
   const newTitle = `${original.title} (コピー)`;
 
   await c.env.DB.prepare(
-    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).bind(newTripId, newTitle, original.startDate, original.endDate, original.theme, original.coverImageUrl, user.id).run();
+    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(newTripId, newTitle, original.startDate, original.endDate, original.theme, original.coverImageUrl, original.budget, user.id).run();
 
   // Copy days
   const { results: days } = await c.env.DB.prepare(
@@ -614,7 +629,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
 
   // Copy items
   const { results: items } = await c.env.DB.prepare(
-    'SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+    'SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
   ).bind(id).all<{
     id: string;
     day_id: string;
@@ -625,6 +640,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     map_url: string | null;
     note: string | null;
     cost: number | null;
+    cost_category: string | null;
     sort: number;
   }>();
 
@@ -635,8 +651,8 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     const newItemId = generateId();
 
     await c.env.DB.prepare(
-      'INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(newItemId, newTripId, newDayId, item.title, item.area, item.time_start, item.time_end, item.map_url, item.note, item.cost, item.sort).run();
+      'INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(newItemId, newTripId, newDayId, item.title, item.area, item.time_start, item.time_end, item.map_url, item.note, item.cost, item.cost_category, item.sort).run();
   }
 
   // Fetch the new trip
@@ -766,6 +782,7 @@ app.post('/api/trips/:tripId/items', async (c) => {
     mapUrl?: string;
     note?: string;
     cost?: number;
+    costCategory?: string;
     sort?: number;
   }>();
 
@@ -787,16 +804,16 @@ app.post('/api/trips/:tripId/items', async (c) => {
   const sort = body.sort ?? Date.now();
 
   await c.env.DB.prepare(
-    `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, sort)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id, tripId, body.dayId, body.title.trim(),
     body.area ?? null, body.timeStart ?? null, body.timeEnd ?? null,
-    body.mapUrl ?? null, body.note ?? null, body.cost ?? null, sort
+    body.mapUrl ?? null, body.note ?? null, body.cost ?? null, body.costCategory ?? null, sort
   ).run();
 
   const item = await c.env.DB.prepare(
-    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, sort FROM items WHERE id = ?'
+    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, cost_category as costCategory, sort FROM items WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ item }, 201);
@@ -815,6 +832,7 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     mapUrl?: string;
     note?: string;
     cost?: number;
+    costCategory?: string | null;
     sort?: number;
   }>();
 
@@ -831,6 +849,9 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     return c.json({ error: 'Item not found' }, 404);
   }
 
+  // Handle costCategory - allow explicit null to clear it
+  const costCategoryValue = body.costCategory === null ? null : (body.costCategory ?? undefined);
+
   await c.env.DB.prepare(
     `UPDATE items SET
       day_id = COALESCE(?, day_id),
@@ -841,17 +862,21 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
       map_url = COALESCE(?, map_url),
       note = COALESCE(?, note),
       cost = COALESCE(?, cost),
+      cost_category = CASE WHEN ?1 = 1 THEN ?2 ELSE COALESCE(?2, cost_category) END,
       sort = COALESCE(?, sort),
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?`
   ).bind(
     body.dayId ?? null, body.title ?? null, body.area ?? null,
     body.timeStart ?? null, body.timeEnd ?? null, body.mapUrl ?? null,
-    body.note ?? null, body.cost ?? null, body.sort ?? null, itemId
+    body.note ?? null, body.cost ?? null,
+    body.costCategory === null ? 1 : 0,
+    costCategoryValue === undefined ? null : costCategoryValue,
+    body.sort ?? null, itemId
   ).run();
 
   const item = await c.env.DB.prepare(
-    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, sort FROM items WHERE id = ?'
+    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, cost_category as costCategory, sort FROM items WHERE id = ?'
   ).bind(itemId).first();
 
   return c.json({ item });
@@ -986,7 +1011,7 @@ app.get('/api/shared/:token', async (c) => {
   }
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, user_id as userId FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId FROM trips WHERE id = ?'
   ).bind(share.trip_id).first<{
     id: string;
     title: string;
@@ -994,6 +1019,7 @@ app.get('/api/shared/:token', async (c) => {
     endDate: string | null;
     theme: string | null;
     coverImageUrl: string | null;
+    budget: number | null;
     userId: string | null;
   }>();
 
@@ -1009,13 +1035,13 @@ app.get('/api/shared/:token', async (c) => {
 
   const { results: items } = await c.env.DB.prepare(
     `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
-     map_url as mapUrl, note, cost, sort, photo_url as photoUrl,
+     map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
      photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt
      FROM items WHERE trip_id = ? ORDER BY sort ASC`
   ).bind(share.trip_id).all<{
     id: string; dayId: string; title: string; area: string | null;
     timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
-    note: string | null; cost: number | null; sort: number; photoUrl: string | null;
+    note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
     photoUploadedBy: string | null; photoUploadedAt: string | null;
   }>();
 

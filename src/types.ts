@@ -1,6 +1,31 @@
 // Theme types
 export type TripTheme = 'quiet' | 'photo'
 
+// Cost categories for budget management
+export const COST_CATEGORIES = [
+  '交通費',
+  '宿泊費',
+  '食費',
+  '観光・アクティビティ',
+  'お土産',
+  'その他',
+] as const
+
+export type CostCategory = typeof COST_CATEGORIES[number]
+
+// Budget summary for trip
+export type BudgetSummary = {
+  totalBudget: number | null
+  totalSpent: number
+  remaining: number | null
+  isOverBudget: boolean
+  byCategory: {
+    category: CostCategory
+    amount: number
+    percentage: number
+  }[]
+}
+
 // API response types
 export type Trip = {
   id: string
@@ -9,6 +34,7 @@ export type Trip = {
   endDate: string | null
   theme: TripTheme
   coverImageUrl: string | null
+  budget: number | null
   createdAt: string
   days?: Day[]
   items?: Item[]
@@ -40,6 +66,7 @@ export type Item = {
   mapUrl: string | null
   note: string | null
   cost: number | null
+  costCategory: CostCategory | null
   sort: number
   photoUrl: string | null
   photoUploadedBy: string | null

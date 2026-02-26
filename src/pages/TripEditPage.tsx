@@ -17,7 +17,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Trip, Day, Item, TripTheme } from '../types'
+import type { Trip, Day, Item, TripTheme, CostCategory } from '../types'
+import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
 
@@ -36,6 +37,8 @@ function SortableItem({
   setEditItemArea,
   editItemCost,
   setEditItemCost,
+  editItemCostCategory,
+  setEditItemCostCategory,
   editItemNote,
   setEditItemNote,
   editItemMapUrl,
@@ -58,6 +61,8 @@ function SortableItem({
   setEditItemArea: (v: string) => void
   editItemCost: string
   setEditItemCost: (v: string) => void
+  editItemCostCategory: CostCategory | ''
+  setEditItemCostCategory: (v: CostCategory | '') => void
   editItemNote: string
   setEditItemNote: (v: string) => void
   editItemMapUrl: string
@@ -157,6 +162,18 @@ function SortableItem({
               placeholder="費用"
             />
           </div>
+          <div className="form-row">
+            <select
+              value={editItemCostCategory}
+              onChange={(e) => setEditItemCostCategory(e.target.value as CostCategory | '')}
+              className="input"
+            >
+              <option value="">カテゴリを選択</option>
+              {COST_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
           <input
             type="text"
             value={editItemNote}
@@ -195,7 +212,7 @@ function SortableItem({
             <div className="timeline-meta">
               {item.area && <span>{item.area}</span>}
               {item.cost != null && item.cost > 0 && (
-                <span>{formatCost(item.cost)}</span>
+                <span>{formatCost(item.cost)}{item.costCategory && ` (${item.costCategory})`}</span>
               )}
               {item.mapUrl && (
                 <a
@@ -497,6 +514,7 @@ export function TripEditPage() {
   const [editTripStartDate, setEditTripStartDate] = useState('')
   const [editTripEndDate, setEditTripEndDate] = useState('')
   const [editTripTheme, setEditTripTheme] = useState<TripTheme>('quiet')
+  const [editTripBudget, setEditTripBudget] = useState('')
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
@@ -512,6 +530,7 @@ export function TripEditPage() {
   const [newItemArea, setNewItemArea] = useState('')
   const [newItemNote, setNewItemNote] = useState('')
   const [newItemCost, setNewItemCost] = useState('')
+  const [newItemCostCategory, setNewItemCostCategory] = useState<CostCategory | ''>('')
   const [newItemMapUrl, setNewItemMapUrl] = useState('')
   const [creatingItem, setCreatingItem] = useState(false)
 
@@ -522,6 +541,7 @@ export function TripEditPage() {
   const [editItemArea, setEditItemArea] = useState('')
   const [editItemNote, setEditItemNote] = useState('')
   const [editItemCost, setEditItemCost] = useState('')
+  const [editItemCostCategory, setEditItemCostCategory] = useState<CostCategory | ''>('')
   const [editItemMapUrl, setEditItemMapUrl] = useState('')
   const [savingItem, setSavingItem] = useState(false)
 
@@ -556,6 +576,7 @@ export function TripEditPage() {
         setEditTripStartDate(data.trip.startDate || '')
         setEditTripEndDate(data.trip.endDate || '')
         setEditTripTheme(data.trip.theme || 'quiet')
+        setEditTripBudget(data.trip.budget?.toString() || '')
         initialLoadComplete.current = true
       }
     } catch (err) {
@@ -611,7 +632,7 @@ export function TripEditPage() {
   }
 
   // Auto-save trip function
-  const saveTrip = useCallback(async (title: string, startDate: string, endDate: string, theme: TripTheme) => {
+  const saveTrip = useCallback(async (title: string, startDate: string, endDate: string, theme: TripTheme, budget: string) => {
     if (!trip || !title.trim()) return
 
     setSaving(true)
@@ -624,6 +645,7 @@ export function TripEditPage() {
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           theme,
+          budget: budget ? parseInt(budget, 10) : null,
         }),
       })
       setLastSaved(new Date())
@@ -634,6 +656,7 @@ export function TripEditPage() {
         startDate: startDate || null,
         endDate: endDate || null,
         theme,
+        budget: budget ? parseInt(budget, 10) : null,
       } : null)
     } catch (err) {
       console.error('Failed to save trip:', err)
@@ -655,13 +678,14 @@ export function TripEditPage() {
       editTripTitle === trip.title &&
       editTripStartDate === (trip.startDate || '') &&
       editTripEndDate === (trip.endDate || '') &&
-      editTripTheme === (trip.theme || 'quiet')
+      editTripTheme === (trip.theme || 'quiet') &&
+      editTripBudget === (trip.budget?.toString() || '')
     ) {
       return
     }
 
-    debouncedSaveTrip(editTripTitle, editTripStartDate, editTripEndDate, editTripTheme)
-  }, [editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, debouncedSaveTrip, trip])
+    debouncedSaveTrip(editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, editTripBudget)
+  }, [editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, editTripBudget, debouncedSaveTrip, trip])
 
   // Delete trip
   async function deleteTrip() {
@@ -754,6 +778,7 @@ export function TripEditPage() {
           area: newItemArea || undefined,
           note: newItemNote || undefined,
           cost: newItemCost ? parseInt(newItemCost, 10) : undefined,
+          costCategory: newItemCostCategory || undefined,
           mapUrl,
         }),
       })
@@ -764,6 +789,7 @@ export function TripEditPage() {
         setNewItemArea('')
         setNewItemNote('')
         setNewItemCost('')
+        setNewItemCostCategory('')
         setNewItemMapUrl('')
         setShowItemFormForDay(null)
         await refreshTrip()
@@ -783,6 +809,7 @@ export function TripEditPage() {
     setEditItemArea(item.area || '')
     setEditItemNote(item.note || '')
     setEditItemCost(item.cost?.toString() || '')
+    setEditItemCostCategory(item.costCategory || '')
     setEditItemMapUrl(item.mapUrl || '')
   }
 
@@ -805,6 +832,7 @@ export function TripEditPage() {
           area: editItemArea || undefined,
           note: editItemNote || undefined,
           cost: editItemCost ? parseInt(editItemCost, 10) : undefined,
+          costCategory: editItemCostCategory || null,
           mapUrl,
         }),
       })
@@ -1036,6 +1064,18 @@ export function TripEditPage() {
               写真映え
             </button>
           </div>
+          {/* Budget input */}
+          <div className="budget-input-section">
+            <input
+              type="number"
+              value={editTripBudget}
+              onChange={(e) => setEditTripBudget(e.target.value)}
+              className="input"
+              placeholder="予算（円）"
+              min="0"
+              step="1000"
+            />
+          </div>
           {/* Cover image */}
           <div className="cover-section">
             {trip.coverImageUrl ? (
@@ -1177,6 +1217,8 @@ export function TripEditPage() {
                           setEditItemArea={setEditItemArea}
                           editItemCost={editItemCost}
                           setEditItemCost={setEditItemCost}
+                          editItemCostCategory={editItemCostCategory}
+                          setEditItemCostCategory={setEditItemCostCategory}
                           editItemNote={editItemNote}
                           setEditItemNote={setEditItemNote}
                           editItemMapUrl={editItemMapUrl}
@@ -1240,22 +1282,32 @@ export function TripEditPage() {
                         onChange={(e) => setNewItemCost(e.target.value)}
                         className="input input-small"
                       />
-                      <div className="form-actions">
-                        <button
-                          type="button"
-                          className="btn-text"
-                          onClick={() => setShowItemFormForDay(null)}
-                        >
-                          キャンセル
-                        </button>
-                        <button
-                          type="submit"
-                          className="btn-filled"
-                          disabled={creatingItem || !newItemTitle.trim()}
-                        >
-                          {creatingItem ? '追加中...' : '追加'}
-                        </button>
-                      </div>
+                      <select
+                        value={newItemCostCategory}
+                        onChange={(e) => setNewItemCostCategory(e.target.value as CostCategory | '')}
+                        className="input"
+                      >
+                        <option value="">カテゴリ</option>
+                        {COST_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="btn-text"
+                        onClick={() => setShowItemFormForDay(null)}
+                      >
+                        キャンセル
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn-filled"
+                        disabled={creatingItem || !newItemTitle.trim()}
+                      >
+                        {creatingItem ? '追加中...' : '追加'}
+                      </button>
                     </div>
                   </form>
                 ) : (

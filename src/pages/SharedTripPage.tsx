@@ -1,11 +1,77 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import type { Trip, Item, TripFeedback, FeedbackStats } from '../types'
+import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
+import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayDate } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
+
+// Budget summary component
+function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
+  const formatCostLocal = (cost: number) => `¥${cost.toLocaleString()}`
+
+  return (
+    <div className="budget-summary-card">
+      <h3 className="budget-summary-title">予算サマリー</h3>
+
+      {/* Budget overview */}
+      <div className="budget-overview">
+        <div className="budget-row">
+          <span className="budget-label">合計費用</span>
+          <span className="budget-value">{formatCostLocal(summary.totalSpent)}</span>
+        </div>
+        {summary.totalBudget !== null && (
+          <>
+            <div className="budget-row">
+              <span className="budget-label">予算</span>
+              <span className="budget-value">{formatCostLocal(summary.totalBudget)}</span>
+            </div>
+            <div className="budget-row">
+              <span className="budget-label">残り</span>
+              <span className={`budget-value ${summary.isOverBudget ? 'budget-over' : 'budget-under'}`}>
+                {summary.remaining !== null && (summary.remaining >= 0 ? formatCostLocal(summary.remaining) : `-${formatCostLocal(Math.abs(summary.remaining))}`)}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="budget-progress-container">
+              <div
+                className={`budget-progress-bar ${summary.isOverBudget ? 'over' : ''}`}
+                style={{ width: `${Math.min((summary.totalSpent / summary.totalBudget) * 100, 100)}%` }}
+              />
+            </div>
+            {summary.isOverBudget && (
+              <div className="budget-warning">
+                予算を超過しています
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Category breakdown */}
+      {summary.byCategory.length > 0 && (
+        <div className="budget-categories">
+          <h4 className="budget-categories-title">カテゴリ別内訳</h4>
+          {summary.byCategory.map((cat) => (
+            <div key={cat.category} className="budget-category-row">
+              <span className="budget-category-name">{cat.category}</span>
+              <div className="budget-category-bar-container">
+                <div
+                  className="budget-category-bar"
+                  style={{ width: `${cat.percentage}%` }}
+                />
+              </div>
+              <span className="budget-category-amount">{formatCostLocal(cat.amount)}</span>
+              <span className="budget-category-percent">{cat.percentage}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Star rating component
 function StarRating({ rating, onRate, readonly = false }: {
@@ -374,6 +440,45 @@ export function SharedTripPage() {
   // Calculate total cost
   const totalCost = items.reduce((sum, item) => sum + (item.cost || 0), 0)
 
+  // Calculate budget summary
+  function getBudgetSummary(): BudgetSummary | null {
+    if (!trip) return null
+
+    const totalSpent = items.reduce((sum, item) => sum + (item.cost || 0), 0)
+    const totalBudget = trip.budget
+
+    // Calculate category breakdown
+    const categoryTotals = new Map<CostCategory, number>()
+    for (const cat of COST_CATEGORIES) {
+      categoryTotals.set(cat, 0)
+    }
+
+    for (const item of items) {
+      if (item.cost && item.cost > 0) {
+        const category = (item.costCategory || 'その他') as CostCategory
+        categoryTotals.set(category, (categoryTotals.get(category) || 0) + item.cost)
+      }
+    }
+
+    const byCategory = COST_CATEGORIES
+      .map((category) => ({
+        category,
+        amount: categoryTotals.get(category) || 0,
+        percentage: totalSpent > 0 ? Math.round(((categoryTotals.get(category) || 0) / totalSpent) * 100) : 0,
+      }))
+      .filter((c) => c.amount > 0)
+
+    return {
+      totalBudget,
+      totalSpent,
+      remaining: totalBudget ? totalBudget - totalSpent : null,
+      isOverBudget: totalBudget ? totalSpent > totalBudget : false,
+      byCategory,
+    }
+  }
+
+  const budgetSummary = getBudgetSummary()
+
   async function duplicateTrip() {
     if (!trip) return
 
@@ -684,7 +789,12 @@ export function SharedTripPage() {
           )
         })}
 
-        {totalCost > 0 && (
+        {/* Budget Summary */}
+        {budgetSummary && (budgetSummary.totalSpent > 0 || budgetSummary.totalBudget) && (
+          <BudgetSummaryCard summary={budgetSummary} />
+        )}
+
+        {totalCost > 0 && !trip?.budget && (
           <div className="total-cost">
             <span className="total-cost-label">合計</span>
             <span className="total-cost-value">{formatCost(totalCost)}</span>
