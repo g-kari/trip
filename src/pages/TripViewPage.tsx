@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast'
 import { useAuth } from '../hooks/useAuth'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
+import { QRCode } from '../components/QRCode'
 import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
@@ -974,6 +975,10 @@ export function TripViewPage() {
               >
                 {window.location.origin}/s/{shareToken}
               </a>
+            </div>
+            <div className="share-qr-section">
+              <p className="share-section-title">QRコードをスキャン</p>
+              <QRCode value={`${window.location.origin}/s/${shareToken}`} size={150} />
             </div>
             <p className="share-section-title">SNSで共有</p>
             <ShareButtons
