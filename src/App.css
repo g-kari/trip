@@ -648,6 +648,46 @@
   margin-top: var(--space-2);
 }
 
+/* Export dropdown */
+.export-dropdown-container {
+  position: relative;
+}
+
+.export-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: var(--space-1);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  min-width: 140px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.export-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.export-dropdown-item:hover {
+  background-color: var(--color-bg);
+}
+
+.export-dropdown-item + .export-dropdown-item {
+  border-top: 1px solid var(--color-border-light);
+}
+
 /* Edit trip form */
 .edit-trip-form {
   display: flex;

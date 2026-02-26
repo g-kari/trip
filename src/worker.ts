@@ -1778,6 +1778,189 @@ app.get('/api/shared/:token/calendar.ics', async (c) => {
   }
 });
 
+// ============ Data Export (JSON/CSV) ============
+
+// Helper function to build export data
+async function buildExportData(
+  db: D1Database,
+  tripId: string
+): Promise<{
+  trip: {
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    budget: number | null;
+  };
+  days: Array<{
+    date: string;
+    notes: string | null;
+    items: Array<{
+      title: string;
+      area: string | null;
+      timeStart: string | null;
+      timeEnd: string | null;
+      note: string | null;
+      cost: number | null;
+      costCategory: string | null;
+    }>;
+  }>;
+  exportedAt: string;
+} | null> {
+  const trip = await db
+    .prepare(
+      'SELECT id, title, start_date as startDate, end_date as endDate, theme, budget FROM trips WHERE id = ?'
+    )
+    .bind(tripId)
+    .first<{
+      id: string;
+      title: string;
+      startDate: string | null;
+      endDate: string | null;
+      theme: string | null;
+      budget: number | null;
+    }>();
+
+  if (!trip) {
+    return null;
+  }
+
+  const { results: days } = await db
+    .prepare('SELECT id, date, sort, notes FROM days WHERE trip_id = ? ORDER BY sort ASC')
+    .bind(tripId)
+    .all<{ id: string; date: string; sort: number; notes: string | null }>();
+
+  const { results: items } = await db
+    .prepare(
+      `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+       note, cost, cost_category as costCategory, sort FROM items WHERE trip_id = ? ORDER BY sort ASC`
+    )
+    .bind(tripId)
+    .all<{
+      id: string;
+      dayId: string;
+      title: string;
+      area: string | null;
+      timeStart: string | null;
+      timeEnd: string | null;
+      note: string | null;
+      cost: number | null;
+      costCategory: string | null;
+      sort: number;
+    }>();
+
+  // Group items by day
+  const dayItems = new Map<string, typeof items>();
+  for (const item of items) {
+    const existing = dayItems.get(item.dayId) || [];
+    existing.push(item);
+    dayItems.set(item.dayId, existing);
+  }
+
+  return {
+    trip: {
+      title: trip.title,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      theme: trip.theme,
+      budget: trip.budget,
+    },
+    days: days.map((day) => ({
+      date: day.date,
+      notes: day.notes,
+      items: (dayItems.get(day.id) || []).map((item) => ({
+        title: item.title,
+        area: item.area,
+        timeStart: item.timeStart,
+        timeEnd: item.timeEnd,
+        note: item.note,
+        cost: item.cost,
+        costCategory: item.costCategory,
+      })),
+    })),
+    exportedAt: new Date().toISOString(),
+  };
+}
+
+// Helper function to convert export data to CSV
+function convertToCSV(data: NonNullable<Awaited<ReturnType<typeof buildExportData>>>): string {
+  // UTF-8 BOM for Excel compatibility
+  const BOM = '\uFEFF';
+
+  // CSV header
+  const header = ['日付', 'タイトル', 'エリア', '開始時刻', '終了時刻', 'メモ', '費用', 'カテゴリ'];
+
+  const rows: string[][] = [];
+
+  for (const day of data.days) {
+    for (const item of day.items) {
+      rows.push([
+        day.date || '',
+        item.title || '',
+        item.area || '',
+        item.timeStart || '',
+        item.timeEnd || '',
+        item.note || '',
+        item.cost !== null ? String(item.cost) : '',
+        item.costCategory || '',
+      ]);
+    }
+  }
+
+  // Escape CSV values
+  const escapeCSV = (value: string): string => {
+    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  const csvLines = [
+    header.map(escapeCSV).join(','),
+    ...rows.map((row) => row.map(escapeCSV).join(',')),
+  ];
+
+  return BOM + csvLines.join('\r\n');
+}
+
+// Export trip data (JSON or CSV) - owner only
+app.get('/api/trips/:tripId/export', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+  const format = c.req.query('format') || 'json';
+
+  // Check ownership - owner only
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const data = await buildExportData(c.env.DB, tripId);
+  if (!data) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  if (format === 'csv') {
+    const csv = convertToCSV(data);
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(data.trip.title)}.csv"`,
+        'Cache-Control': 'private, max-age=0',
+      },
+    });
+  }
+
+  // Default to JSON
+  return new Response(JSON.stringify(data, null, 2), {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${encodeURIComponent(data.trip.title)}.json"`,
+      'Cache-Control': 'private, max-age=0',
+    },
+  });
+});
+
 // ============ Cover Images (R2) ============
 
 // Upload cover image

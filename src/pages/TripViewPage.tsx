@@ -132,6 +132,22 @@ export function TripViewPage() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
   const [deletingFeedbackId, setDeletingFeedbackId] = useState<string | null>(null)
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false)
+  // Export dropdown state
+  const [showExportDropdown, setShowExportDropdown] = useState(false)
+  const exportDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false)
+      }
+    }
+    if (showExportDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showExportDropdown])
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -268,6 +284,12 @@ export function TripViewPage() {
       console.error('Failed to duplicate trip:', err)
       showError('複製に失敗しました')
     }
+  }
+
+  function exportData(format: 'json' | 'csv') {
+    if (!trip) return
+    setShowExportDropdown(false)
+    window.open(`/api/trips/${trip.id}/export?format=${format}`, '_blank')
   }
 
   function getItemsForDay(dayId: string): Item[] {
@@ -614,6 +636,32 @@ export function TripViewPage() {
           <button className="btn-text" onClick={printTrip}>印刷</button>
           <button className="btn-text" onClick={downloadPdf}>PDF</button>
           <button className="btn-text" onClick={exportCalendar}>カレンダー</button>
+          {isOwner && (
+            <div className="export-dropdown-container" ref={exportDropdownRef}>
+              <button
+                className="btn-text"
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+              >
+                エクスポート
+              </button>
+              {showExportDropdown && (
+                <div className="export-dropdown">
+                  <button
+                    className="export-dropdown-item"
+                    onClick={() => exportData('json')}
+                  >
+                    JSON形式
+                  </button>
+                  <button
+                    className="export-dropdown-item"
+                    onClick={() => exportData('csv')}
+                  >
+                    CSV形式（Excel）
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {user && (
             <button className="btn-text" onClick={duplicateTrip}>複製</button>
           )}
