@@ -585,6 +585,7 @@ app.delete('/api/profile', async (c) => {
 app.get('/api/trips/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
+  const shareToken = c.req.query('token');
 
   const trip = await c.env.DB.prepare(
     'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
@@ -605,11 +606,32 @@ app.get('/api/trips/:id', async (c) => {
     return c.json({ error: 'Trip not found' }, 404);
   }
 
-  // Check ownership - allow if:
-  // 1. Trip has no owner (legacy)
-  // 2. User is the owner
-  // 3. User is not logged in and trip has no owner
+  // Check ownership
   const isOwner = !trip.userId || (user && trip.userId === user.id);
+
+  // Check if user is a collaborator
+  let isCollaborator = false;
+  if (user && trip.userId && trip.userId !== user.id) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(id, user.id).first();
+    isCollaborator = !!collab;
+  }
+
+  // Check if valid share token provided
+  let hasValidShareToken = false;
+  if (shareToken) {
+    const tokenRecord = await c.env.DB.prepare(
+      'SELECT id FROM share_tokens WHERE trip_id = ? AND token = ? AND is_active = 1'
+    ).bind(id, shareToken).first();
+    hasValidShareToken = !!tokenRecord;
+  }
+
+  // Authorization: must be owner, collaborator, or have valid share token
+  // Legacy trips (no owner) are accessible to anyone
+  if (trip.userId && !isOwner && !isCollaborator && !hasValidShareToken) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
 
   const { results: days } = await c.env.DB.prepare(
     'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
