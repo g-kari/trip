@@ -6000,3 +6000,82 @@
   color: #22c55e;
   text-align: center;
 }
+
+/* ========================================
+   PWA Offline Indicator
+   ======================================== */
+
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-small);
+  animation: slide-down 0.3s ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.offline-indicator.offline {
+  background: #fef3c7;
+  color: #92400e;
+  border-bottom: 1px solid #fcd34d;
+}
+
+.offline-indicator.online {
+  background: #d1fae5;
+  color: #065f46;
+  border-bottom: 1px solid #6ee7b7;
+}
+
+.offline-indicator-icon {
+  font-weight: 600;
+  font-size: var(--font-size-caption);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.offline-indicator.offline .offline-indicator-icon {
+  background: #f59e0b;
+  color: white;
+}
+
+.offline-indicator.online .offline-indicator-icon {
+  background: #10b981;
+  color: white;
+}
+
+.offline-indicator-text {
+  flex: 1;
+}
+
+.offline-indicator-close {
+  background: none;
+  border: none;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.offline-indicator-close:hover {
+  opacity: 1;
+}

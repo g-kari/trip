@@ -20,6 +20,7 @@ import { TemplatesPage } from './pages/TemplatesPage'
 import { StatsPage } from './pages/StatsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { InviteAcceptPage } from './pages/InviteAcceptPage'
+import { OfflineIndicator } from './components/OfflineIndicator'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
         <ToastProvider>
           <AuthProvider>
             <BrowserRouter>
+            <OfflineIndicator />
             <Routes>
               {/* 認証不要のページ */}
               <Route path="/" element={<HomePage />} />
