@@ -4,6 +4,7 @@ import type { Trip, Item } from '../types'
 import { formatDateRange, formatCost, formatDayDate } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 
 export function SharedTripPage() {
   const { token } = useParams<{ token: string }>()
@@ -260,10 +261,9 @@ export function SharedTripPage() {
           <span className="header-logo">旅程</span>
         </header>
         <main className="main">
-          <div className="hero">
-            <div className="skeleton-title" style={{ width: '200px', height: '24px', background: 'var(--color-border-light)', borderRadius: '4px' }} />
-            <div className="skeleton-date" style={{ width: '140px', height: '16px', background: 'var(--color-border-light)', borderRadius: '4px', marginTop: '8px' }} />
-          </div>
+          <SkeletonHero />
+          <SkeletonDaySection itemCount={3} />
+          <SkeletonDaySection itemCount={2} />
         </main>
       </div>
     )

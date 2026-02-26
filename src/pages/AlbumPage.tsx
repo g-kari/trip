@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } fr
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Trip, Item } from '../types'
 import { formatDayLabel } from '../utils'
+import { Skeleton, SkeletonAlbumGrid } from '../components/Skeleton'
 
 interface AlbumPhoto {
   url: string
@@ -205,8 +206,27 @@ export function AlbumPage() {
 
   if (loading) {
     return (
-      <div className="empty-state">
-        <p className="empty-state-text">読み込み中...</p>
+      <div className="album-page">
+        <div className="album-header">
+          <div>
+            <Skeleton variant="title" width="180px" height="22px" />
+            <Skeleton variant="text" width="80px" height="14px" style={{ marginTop: '6px' }} />
+          </div>
+        </div>
+        <div className="skeleton-album-section">
+          <div className="skeleton-album-section-header">
+            <Skeleton variant="text" width="60px" height="14px" />
+            <Skeleton variant="text" width="80px" height="12px" />
+          </div>
+          <SkeletonAlbumGrid count={4} />
+        </div>
+        <div className="skeleton-album-section">
+          <div className="skeleton-album-section-header">
+            <Skeleton variant="text" width="60px" height="14px" />
+            <Skeleton variant="text" width="80px" height="12px" />
+          </div>
+          <SkeletonAlbumGrid count={2} />
+        </div>
       </div>
     )
   }

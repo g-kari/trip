@@ -4,6 +4,7 @@ import type { Trip, TripTheme } from '../types'
 import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { SkeletonTripCard } from '../components/Skeleton'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 
@@ -193,8 +194,13 @@ export function TripListPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="empty-state">
-        <p className="empty-state-text">読み込み中...</p>
+      <div className="trip-list-section">
+        <div className="section-header">
+          <span className="section-title">マイ旅程</span>
+        </div>
+        <SkeletonTripCard />
+        <SkeletonTripCard />
+        <SkeletonTripCard />
       </div>
     )
   }

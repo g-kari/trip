@@ -4,6 +4,7 @@ import type { Trip, Item, DayPhoto } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useToast } from '../hooks/useToast'
 import { useAuth } from '../hooks/useAuth'
+import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 
 export function TripViewPage() {
   const { id } = useParams<{ id: string }>()
@@ -304,9 +305,11 @@ export function TripViewPage() {
 
   if (loading) {
     return (
-      <div className="empty-state">
-        <p className="empty-state-text">読み込み中...</p>
-      </div>
+      <>
+        <SkeletonHero />
+        <SkeletonDaySection itemCount={3} />
+        <SkeletonDaySection itemCount={2} />
+      </>
     )
   }
 
