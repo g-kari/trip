@@ -326,8 +326,9 @@ app.get('/api/trips', async (c) => {
   const dateFrom = url.searchParams.get('dateFrom') || '';
   const dateTo = url.searchParams.get('dateTo') || '';
   const sort = url.searchParams.get('sort') || 'created_desc';
+  const archived = url.searchParams.get('archived') || '0'; // '0' = active, '1' = archived, 'all' = all
 
-  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, created_at as createdAt FROM trips';
+  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, is_archived as isArchived, created_at as createdAt FROM trips';
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
@@ -338,6 +339,14 @@ app.get('/api/trips', async (c) => {
   } else {
     conditions.push('user_id IS NULL');
   }
+
+  // Archive filter
+  if (archived === '0') {
+    conditions.push('(is_archived = 0 OR is_archived IS NULL)');
+  } else if (archived === '1') {
+    conditions.push('is_archived = 1');
+  }
+  // 'all' shows everything, no filter needed
 
   // Title search (partial match, case-insensitive)
   if (q) {
@@ -611,6 +620,34 @@ app.delete('/api/trips/:id', async (c) => {
   await c.env.DB.prepare('DELETE FROM trips WHERE id = ?').bind(id).run();
 
   return c.json({ ok: true });
+});
+
+// Toggle archive status
+app.put('/api/trips/:id/archive', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id, user_id as userId, is_archived as isArchived FROM trips WHERE id = ?'
+  ).bind(id).first<{ id: string; userId: string | null; isArchived: number | null }>();
+
+  if (!existing) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Check ownership
+  if (existing.userId && (!user || existing.userId !== user.id)) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  // Toggle archive status
+  const newArchiveStatus = existing.isArchived ? 0 : 1;
+
+  await c.env.DB.prepare(
+    `UPDATE trips SET is_archived = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
+  ).bind(newArchiveStatus, id).run();
+
+  return c.json({ isArchived: newArchiveStatus === 1 });
 });
 
 // Duplicate trip

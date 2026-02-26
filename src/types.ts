@@ -35,6 +35,7 @@ export type Trip = {
   theme: TripTheme
   coverImageUrl: string | null
   budget: number | null
+  isArchived: boolean
   createdAt: string
   days?: Day[]
   items?: Item[]

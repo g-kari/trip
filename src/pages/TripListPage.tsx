@@ -9,6 +9,7 @@ import { SkeletonTripCard } from '../components/Skeleton'
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
 type ThemeFilter = '' | 'quiet' | 'photo'
+type ArchiveTab = 'active' | 'archived'
 
 export function TripListPage() {
   const navigate = useNavigate()
@@ -23,6 +24,12 @@ export function TripListPage() {
   const [newTripEndDate, setNewTripEndDate] = useState('')
   const [newTripTheme, setNewTripTheme] = useState<TripTheme>('quiet')
   const [creating, setCreating] = useState(false)
+
+  // Archive tab state
+  const [archiveTab, setArchiveTab] = useState<ArchiveTab>(
+    (searchParams.get('archived') === '1' ? 'archived' : 'active') as ArchiveTab
+  )
+  const [archivingId, setArchivingId] = useState<string | null>(null)
 
   // Search and filter state (synced with URL)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -71,9 +78,10 @@ export function TripListPage() {
     if (filterStartDate) params.set('dateFrom', filterStartDate)
     if (filterEndDate) params.set('dateTo', filterEndDate)
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
+    params.set('archived', archiveTab === 'archived' ? '1' : '0')
     const queryString = params.toString()
     return queryString ? `/api/trips?${queryString}` : '/api/trips'
-  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder])
+  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder, archiveTab])
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -109,8 +117,9 @@ export function TripListPage() {
     if (filterStartDate) params.set('dateFrom', filterStartDate)
     if (filterEndDate) params.set('dateTo', filterEndDate)
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
+    if (archiveTab === 'archived') params.set('archived', '1')
     setSearchParams(params, { replace: true })
-  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder, setSearchParams])
+  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
 
   // Debounced search to avoid too many API calls
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -138,6 +147,26 @@ export function TripListPage() {
     setFilterEndDate('')
     setSortOrder('created_desc')
   }, [])
+
+  // Toggle archive status
+  const toggleArchive = useCallback(async (tripId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setArchivingId(tripId)
+    try {
+      const res = await fetch(`/api/trips/${tripId}/archive`, { method: 'PUT' })
+      if (!res.ok) {
+        showError('アーカイブの変更に失敗しました')
+        return
+      }
+      // Remove the trip from current list (it will now be in the other tab)
+      setTrips(prev => prev.filter(t => t.id !== tripId))
+    } catch (err) {
+      console.error('Failed to toggle archive:', err)
+      showError('アーカイブの変更に失敗しました')
+    } finally {
+      setArchivingId(null)
+    }
+  }, [showError])
 
   async function createTrip(e: React.FormEvent) {
     e.preventDefault()
@@ -310,6 +339,32 @@ export function TripListPage() {
           </button>
         </div>
       </div>
+
+      {/* Archive tabs */}
+      {user && (
+        <div className="archive-tabs">
+          <button
+            type="button"
+            className={`archive-tab ${archiveTab === 'active' ? 'active' : ''}`}
+            onClick={() => {
+              setArchiveTab('active')
+              setLoading(true)
+            }}
+          >
+            アクティブ
+          </button>
+          <button
+            type="button"
+            className={`archive-tab ${archiveTab === 'archived' ? 'active' : ''}`}
+            onClick={() => {
+              setArchiveTab('archived')
+              setLoading(true)
+            }}
+          >
+            アーカイブ済み
+          </button>
+        </div>
+      )}
 
       {showAiForm && (
         <form className="create-form ai-form" onSubmit={generateTrip}>
@@ -639,8 +694,14 @@ export function TripListPage() {
         <div className="empty-state">
           <div className="empty-state-icon">—</div>
           <p className="empty-state-text">
-            まだ旅程がありません。<br />
-            あたらしい旅程をつくりましょう。
+            {archiveTab === 'archived' ? (
+              'アーカイブ済みの旅程はありません'
+            ) : (
+              <>
+                まだ旅程がありません。<br />
+                あたらしい旅程をつくりましょう。
+              </>
+            )}
           </p>
         </div>
       ) : trips.length === 0 && hasActiveFilters ? (
@@ -660,7 +721,7 @@ export function TripListPage() {
         trips.map((trip) => (
           <div
             key={trip.id}
-            className="trip-card"
+            className={`trip-card ${trip.isArchived ? 'trip-card-archived' : ''}`}
             onClick={() => navigate(`/trips/${trip.id}`)}
             style={{ cursor: 'pointer' }}
           >
@@ -678,6 +739,20 @@ export function TripListPage() {
                   ? formatDateRange(trip.startDate, trip.endDate)
                   : trip.startDate || trip.endDate}
               </div>
+            )}
+            {user && (
+              <button
+                type="button"
+                className="btn-text btn-small archive-btn"
+                onClick={(e) => toggleArchive(trip.id, e)}
+                disabled={archivingId === trip.id}
+              >
+                {archivingId === trip.id
+                  ? '処理中...'
+                  : trip.isArchived
+                    ? 'アーカイブ解除'
+                    : 'アーカイブ'}
+              </button>
             )}
           </div>
         ))
