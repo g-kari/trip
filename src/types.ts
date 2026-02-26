@@ -1,3 +1,11 @@
+// User type
+export type User = {
+  id: string
+  name: string | null
+  email: string | null
+  avatarUrl: string | null
+}
+
 // Theme types
 export type TripTheme = 'quiet' | 'photo'
 
