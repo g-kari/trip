@@ -57,6 +57,25 @@
   color: var(--color-text-muted);
 }
 
+/* Update available banner */
+.offline-indicator.update {
+  border-color: var(--color-accent);
+}
+
+.offline-indicator-update-btn {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border: none;
+  border-radius: var(--radius-s);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+}
+
+.offline-indicator-update-btn:hover {
+  background: var(--color-accent-hover);
+}
+
 /* Mobile adjustments */
 @media (max-width: 480px) {
   .offline-indicator {
