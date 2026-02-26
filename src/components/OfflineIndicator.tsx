@@ -32,13 +32,8 @@ export function OfflineIndicator() {
 
   return (
     <div className={`offline-indicator ${isOnline ? 'online' : 'offline'}`}>
-      <span className="offline-indicator-icon">
-        {isOnline ? 'OK' : 'X'}
-      </span>
       <span className="offline-indicator-text">
-        {isOnline
-          ? 'オンラインに復帰しました'
-          : 'オフラインモード - キャッシュされたデータを表示中'}
+        {isOnline ? 'オンライン' : 'オフライン'}
       </span>
       {isOnline && (
         <button

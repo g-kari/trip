@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 
@@ -272,6 +272,16 @@ export function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Feedback */}
+      <div className="profile-section">
+        <h2 className="profile-section-title">サポート</h2>
+        <div className="profile-actions">
+          <Link to="/feedback" className="btn-outline profile-action-btn">
+            ご意見一覧を見る
+          </Link>
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="profile-section">

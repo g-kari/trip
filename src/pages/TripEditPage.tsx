@@ -4,6 +4,7 @@ import type { Trip, Day, Item, TripTheme, CostCategory } from '../types'
 import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
+import { useToast } from '../hooks/useToast'
 import { DatePicker } from '../components/DatePicker'
 import { TimePicker } from '../components/TimePicker'
 import { ReminderSettings } from '../components/ReminderSettings'
@@ -526,6 +527,7 @@ function DayNotesSection({
 export function TripEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { showError } = useToast()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -941,7 +943,7 @@ export function TripEditPage() {
       // Auto-generate map URL if not provided
       const mapUrl = editItemMapUrl || generateMapUrl(editItemTitle.trim(), editItemArea || undefined)
 
-      await fetch(`/api/trips/${trip.id}/items/${editingItem.id}`, {
+      const res = await fetch(`/api/trips/${trip.id}/items/${editingItem.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -954,10 +956,15 @@ export function TripEditPage() {
           mapUrl,
         }),
       })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        throw new Error(data.error || '更新に失敗しました')
+      }
       setEditingItem(null)
       await refreshTrip()
     } catch (err) {
       console.error('Failed to update item:', err)
+      showError(err instanceof Error ? err.message : '予定の更新に失敗しました')
     } finally {
       setSavingItem(false)
     }

@@ -1186,8 +1186,9 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     return c.json({ error: 'Item not found' }, 404);
   }
 
-  // Handle costCategory - allow explicit null to clear it
-  const costCategoryValue = body.costCategory === null ? null : (body.costCategory ?? undefined);
+  // Handle costCategory - allow explicit null to clear it, or keep existing if undefined
+  const shouldClearCostCategory = body.costCategory === null;
+  const costCategoryValue = shouldClearCostCategory ? null : (body.costCategory ?? null);
 
   await c.env.DB.prepare(
     `UPDATE items SET
@@ -1199,7 +1200,7 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
       map_url = COALESCE(?, map_url),
       note = COALESCE(?, note),
       cost = COALESCE(?, cost),
-      cost_category = CASE WHEN ?1 = 1 THEN ?2 ELSE COALESCE(?2, cost_category) END,
+      cost_category = CASE WHEN ? = 1 THEN ? ELSE COALESCE(?, cost_category) END,
       sort = COALESCE(?, sort),
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?`
@@ -1207,8 +1208,7 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     body.dayId ?? null, body.title ?? null, body.area ?? null,
     body.timeStart ?? null, body.timeEnd ?? null, body.mapUrl ?? null,
     body.note ?? null, body.cost ?? null,
-    body.costCategory === null ? 1 : 0,
-    costCategoryValue === undefined ? null : costCategoryValue,
+    shouldClearCostCategory ? 1 : 0, costCategoryValue, costCategoryValue,
     body.sort ?? null, itemId
   ).run();
 

@@ -21,6 +21,9 @@ export function Layout() {
               <Link to="/stats" className="header-nav-link">
                 統計
               </Link>
+              <Link to="/feedback" className="header-nav-link">
+                ご意見
+              </Link>
             </nav>
           )}
 
@@ -52,6 +55,7 @@ export function Layout() {
 
       <footer className="footer no-print">
         <span className="footer-text">旅程</span>
+        <Link to="/feedback" className="footer-link">ご意見</Link>
       </footer>
     </div>
   )

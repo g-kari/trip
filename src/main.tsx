@@ -15,6 +15,7 @@ import { TripEditPage } from './pages/TripEditPage'
 import { SharedTripPage } from './pages/SharedTripPage'
 import { LoginPage } from './pages/LoginPage'
 import { ContactPage } from './pages/ContactPage'
+import { FeedbackListPage } from './pages/FeedbackListPage'
 import { AlbumPage } from './pages/AlbumPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { StatsPage } from './pages/StatsPage'
@@ -47,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/templates" element={<TemplatesPage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/feedback" element={<FeedbackListPage />} />
               </Route>
             </Routes>
             </BrowserRouter>
