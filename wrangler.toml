@@ -26,13 +26,10 @@ binding = "COVERS"
 [ai]
 binding = "AI"
 
-# Observability - logs and tracing
+# Observability - logs (tracing will be enabled automatically in future)
 [observability]
 enabled = true
 head_sampling_rate = 1  # 100% of requests (adjust for production if needed)
-
-[observability.tracing]
-enabled = true
 
 # Environment variables (secrets should be set via `wrangler secret put`)
 [vars]
