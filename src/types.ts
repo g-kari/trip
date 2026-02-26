@@ -88,3 +88,26 @@ export type FeedbackStats = {
   count: number
   averageRating: number
 }
+
+// Trip comment types
+export type TripComment = {
+  id: string
+  tripId: string
+  itemId: string | null
+  userId: string
+  parentId: string | null
+  content: string
+  isPinned: boolean
+  createdAt: string
+  updatedAt: string
+  // Populated from user table
+  userName: string | null
+  userAvatarUrl: string | null
+  // Nested replies (only for top-level comments)
+  replies?: TripComment[]
+}
+
+export type CommentStats = {
+  total: number
+  pinned: number
+}

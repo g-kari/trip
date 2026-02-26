@@ -9,6 +9,7 @@ import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
+import { CommentSection } from '../components/CommentSection'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -936,6 +937,9 @@ export function TripViewPage() {
           </p>
         )}
       </section>
+
+      {/* Comment Section */}
+      <CommentSection tripId={trip.id} isOwner={isOwner} />
 
       <button
         className="btn-text back-btn no-print"
