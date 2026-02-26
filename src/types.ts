@@ -46,3 +46,17 @@ export type Item = {
   photoUploadedByName: string | null
   photoUploadedAt: string | null
 }
+
+export type TripFeedback = {
+  id: string
+  userId: string | null
+  name: string
+  rating: number
+  comment: string | null
+  createdAt: string
+}
+
+export type FeedbackStats = {
+  count: number
+  averageRating: number
+}

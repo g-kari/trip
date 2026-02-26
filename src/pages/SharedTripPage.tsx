@@ -1,10 +1,44 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import type { Trip, Item } from '../types'
+import type { Trip, Item, TripFeedback, FeedbackStats } from '../types'
 import { formatDateRange, formatCost, formatDayDate } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
+
+// Star rating component
+function StarRating({ rating, onRate, readonly = false }: {
+  rating: number
+  onRate?: (rating: number) => void
+  readonly?: boolean
+}) {
+  const [hoverRating, setHoverRating] = useState(0)
+
+  return (
+    <div className="star-rating" onMouseLeave={() => setHoverRating(0)}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          className={`star-btn ${readonly ? 'readonly' : ''}`}
+          onClick={() => !readonly && onRate?.(star)}
+          onMouseEnter={() => !readonly && setHoverRating(star)}
+          disabled={readonly}
+        >
+          <span className={`star ${(hoverRating || rating) >= star ? 'filled' : ''}`}>
+            {(hoverRating || rating) >= star ? '\u2605' : '\u2606'}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Format date for feedback
+function formatFeedbackDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
+}
 
 export function SharedTripPage() {
   const { token } = useParams<{ token: string }>()
@@ -21,6 +55,15 @@ export function SharedTripPage() {
   const [deletingItemPhoto, setDeletingItemPhoto] = useState<string | null>(null)
   const [deletingDayPhoto, setDeletingDayPhoto] = useState<string | null>(null)
   const itemPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  // Feedback state
+  const [feedbackList, setFeedbackList] = useState<TripFeedback[]>([])
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats>({ count: 0, averageRating: 0 })
+  const [feedbackName, setFeedbackName] = useState('')
+  const [feedbackRating, setFeedbackRating] = useState(0)
+  const [feedbackComment, setFeedbackComment] = useState('')
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
+  const [deletingFeedbackId, setDeletingFeedbackId] = useState<string | null>(null)
+  const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false)
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -76,6 +119,29 @@ export function SharedTripPage() {
     }
     fetchTrip()
   }, [token])
+
+  // Fetch feedback
+  useEffect(() => {
+    async function fetchFeedback() {
+      if (!token) return
+      try {
+        const res = await fetch(`/api/shared/${token}/feedback`)
+        if (res.ok) {
+          const data = await res.json() as { feedback: TripFeedback[]; stats: FeedbackStats }
+          setFeedbackList(data.feedback)
+          setFeedbackStats(data.stats)
+          // Check if current user has already submitted
+          if (user) {
+            const userFeedback = data.feedback.find(fb => fb.userId === user.id)
+            setHasSubmittedFeedback(!!userFeedback)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    fetchFeedback()
+  }, [token, user])
 
   // Upload photo for item
   async function uploadItemPhoto(itemId: string, file: File) {
@@ -331,6 +397,108 @@ export function SharedTripPage() {
     }
   }
 
+  // Submit feedback
+  async function submitFeedback(e: React.FormEvent) {
+    e.preventDefault()
+    if (!token || feedbackRating === 0) {
+      showError('評価を選択してください')
+      return
+    }
+    if (!user && !feedbackName.trim()) {
+      showError('お名前を入力してください')
+      return
+    }
+
+    setSubmittingFeedback(true)
+    try {
+      const res = await fetch(`/api/shared/${token}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: user ? undefined : feedbackName.trim(),
+          rating: feedbackRating,
+          comment: feedbackComment.trim() || undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        if (res.status === 409) {
+          showError('既にフィードバックを投稿しています')
+          setHasSubmittedFeedback(true)
+          return
+        }
+        showError(data.error || 'フィードバックの送信に失敗しました')
+        return
+      }
+
+      const data = await res.json() as { feedback: TripFeedback }
+      setFeedbackList([data.feedback, ...feedbackList])
+      setFeedbackStats({
+        count: feedbackStats.count + 1,
+        averageRating: Math.round(((feedbackStats.averageRating * feedbackStats.count) + feedbackRating) / (feedbackStats.count + 1) * 10) / 10,
+      })
+      setFeedbackName('')
+      setFeedbackRating(0)
+      setFeedbackComment('')
+      setHasSubmittedFeedback(true)
+      showSuccess('フィードバックを送信しました')
+    } catch (err) {
+      console.error('Failed to submit feedback:', err)
+      showError('フィードバックの送信に失敗しました')
+    } finally {
+      setSubmittingFeedback(false)
+    }
+  }
+
+  // Delete feedback
+  async function deleteFeedback(feedbackId: string) {
+    if (!confirm('このフィードバックを削除しますか？')) return
+
+    setDeletingFeedbackId(feedbackId)
+    try {
+      const res = await fetch(`/api/feedback/${feedbackId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        showError(data.error || 'フィードバックの削除に失敗しました')
+        return
+      }
+
+      const deletedFeedback = feedbackList.find(fb => fb.id === feedbackId)
+      const newList = feedbackList.filter(fb => fb.id !== feedbackId)
+      setFeedbackList(newList)
+
+      // Recalculate stats
+      if (deletedFeedback && feedbackStats.count > 1) {
+        const newTotal = (feedbackStats.averageRating * feedbackStats.count) - deletedFeedback.rating
+        setFeedbackStats({
+          count: feedbackStats.count - 1,
+          averageRating: Math.round((newTotal / (feedbackStats.count - 1)) * 10) / 10,
+        })
+      } else {
+        setFeedbackStats({ count: 0, averageRating: 0 })
+      }
+
+      if (deletedFeedback?.userId === user?.id) {
+        setHasSubmittedFeedback(false)
+      }
+
+      showSuccess('フィードバックを削除しました')
+    } catch (err) {
+      console.error('Failed to delete feedback:', err)
+      showError('フィードバックの削除に失敗しました')
+    } finally {
+      setDeletingFeedbackId(null)
+    }
+  }
+
+  // Check if user can delete feedback
+  function canDeleteFeedback(feedback: TripFeedback): boolean {
+    if (!user) return false
+    // User can delete their own feedback or trip owner can delete any
+    return feedback.userId === user.id || tripOwnerId === user.id
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -514,6 +682,105 @@ export function SharedTripPage() {
             <span className="total-cost-value">{formatCost(totalCost)}</span>
           </div>
         )}
+
+        {/* Feedback Section */}
+        <section className="feedback-section no-print">
+          <div className="feedback-header">
+            <h2 className="feedback-title">フィードバック</h2>
+            {feedbackStats.count > 0 && (
+              <div className="feedback-summary">
+                <StarRating rating={Math.round(feedbackStats.averageRating)} readonly />
+                <span className="feedback-average">{feedbackStats.averageRating}</span>
+                <span className="feedback-count">({feedbackStats.count}件)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Feedback Form */}
+          {!hasSubmittedFeedback && (
+            <form className="feedback-form" onSubmit={submitFeedback}>
+              <div className="feedback-form-rating">
+                <label className="feedback-form-label">評価</label>
+                <StarRating rating={feedbackRating} onRate={setFeedbackRating} />
+              </div>
+
+              {!user && (
+                <div className="feedback-form-field">
+                  <label className="feedback-form-label">お名前</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="お名前（必須）"
+                    value={feedbackName}
+                    onChange={(e) => setFeedbackName(e.target.value)}
+                    maxLength={50}
+                  />
+                </div>
+              )}
+
+              <div className="feedback-form-field">
+                <label className="feedback-form-label">コメント（任意）</label>
+                <textarea
+                  className="input textarea"
+                  placeholder="旅程の感想を書いてください..."
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn-filled"
+                disabled={submittingFeedback || feedbackRating === 0}
+              >
+                {submittingFeedback ? '送信中...' : 'フィードバックを送信'}
+              </button>
+            </form>
+          )}
+
+          {hasSubmittedFeedback && (
+            <p className="feedback-submitted-message">
+              フィードバックを送信済みです
+            </p>
+          )}
+
+          {/* Feedback List */}
+          {feedbackList.length > 0 && (
+            <div className="feedback-list">
+              {feedbackList.map((feedback) => (
+                <div key={feedback.id} className="feedback-card">
+                  <div className="feedback-card-header">
+                    <span className="feedback-card-name">{feedback.name}</span>
+                    <StarRating rating={feedback.rating} readonly />
+                    <span className="feedback-card-date">
+                      {formatFeedbackDate(feedback.createdAt)}
+                    </span>
+                    {canDeleteFeedback(feedback) && (
+                      <button
+                        className="btn-text btn-small btn-danger"
+                        onClick={() => deleteFeedback(feedback.id)}
+                        disabled={deletingFeedbackId === feedback.id}
+                      >
+                        {deletingFeedbackId === feedback.id ? '...' : '削除'}
+                      </button>
+                    )}
+                  </div>
+                  {feedback.comment && (
+                    <p className="feedback-card-comment">{feedback.comment}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {feedbackList.length === 0 && !hasSubmittedFeedback && (
+            <p className="feedback-empty">
+              まだフィードバックがありません。最初のフィードバックを投稿してみてください。
+            </p>
+          )}
+        </section>
       </main>
 
       <footer className="footer">
