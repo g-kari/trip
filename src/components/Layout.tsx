@@ -1,15 +1,9 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from './ThemeToggle'
 
 export function Layout() {
-  const { user, loading, logout } = useAuth()
-  const navigate = useNavigate()
-
-  async function handleLogout() {
-    await logout()
-    navigate('/login')
-  }
+  const { user, loading } = useAuth()
 
   return (
     <div className="app">
@@ -35,15 +29,12 @@ export function Layout() {
             {!loading && (
               <div className="user-menu">
                 {user ? (
-                  <>
+                  <Link to="/profile" className="user-profile-link">
                     {user.avatarUrl && (
                       <img src={user.avatarUrl} alt="" className="user-avatar" />
                     )}
                     <span className="user-name">{user.name || user.email}</span>
-                    <button className="btn-text btn-small" onClick={handleLogout}>
-                      ログアウト
-                    </button>
-                  </>
+                  </Link>
                 ) : (
                   <Link to="/login" className="btn-text">
                     ログイン

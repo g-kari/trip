@@ -489,6 +489,98 @@ app.get('/api/stats', async (c) => {
   });
 });
 
+// ============ Profile ============
+
+// Get user profile
+app.get('/api/profile', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Get stats
+  const totalTripsResult = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM trips WHERE user_id = ?'
+  ).bind(user.id).first<{ count: number }>();
+  const totalTrips = totalTripsResult?.count ?? 0;
+
+  const archivedTripsResult = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 1'
+  ).bind(user.id).first<{ count: number }>();
+  const archivedTrips = archivedTripsResult?.count ?? 0;
+
+  return c.json({
+    profile: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      provider: user.provider,
+      createdAt: user.createdAt,
+    },
+    stats: {
+      totalTrips,
+      archivedTrips,
+    },
+  });
+});
+
+// Update user profile (display name)
+app.put('/api/profile', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{ name?: string }>();
+
+  if (body.name !== undefined) {
+    const trimmedName = body.name.trim();
+    if (trimmedName.length === 0) {
+      return c.json({ error: '表示名を入力してください' }, 400);
+    }
+    if (trimmedName.length > 50) {
+      return c.json({ error: '表示名は50文字以内で入力してください' }, 400);
+    }
+
+    await c.env.DB.prepare(
+      `UPDATE users SET name = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
+    ).bind(trimmedName, user.id).run();
+  }
+
+  // Fetch updated user
+  const updatedUser = await c.env.DB.prepare(
+    `SELECT id, name, email, avatar_url as avatarUrl FROM users WHERE id = ?`
+  ).bind(user.id).first<{ id: string; name: string | null; email: string | null; avatarUrl: string | null }>();
+
+  return c.json({
+    profile: updatedUser,
+  });
+});
+
+// Delete user account
+app.delete('/api/profile', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Delete all user's data (cascade will handle trips, days, items, etc.)
+  // First delete sessions
+  await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
+
+  // Delete trips (cascades to days, items, share_tokens, feedback)
+  await c.env.DB.prepare('DELETE FROM trips WHERE user_id = ?').bind(user.id).run();
+
+  // Delete user
+  await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user.id).run();
+
+  return c.json({ ok: true });
+});
+
 // Get single trip with days and items
 app.get('/api/trips/:id', async (c) => {
   const id = c.req.param('id');

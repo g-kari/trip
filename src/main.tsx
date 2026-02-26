@@ -18,6 +18,7 @@ import { ContactPage } from './pages/ContactPage'
 import { AlbumPage } from './pages/AlbumPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { StatsPage } from './pages/StatsPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -41,6 +42,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/trips/:id/album" element={<AlbumPage />} />
                 <Route path="/templates" element={<TemplatesPage />} />
                 <Route path="/stats" element={<StatsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Routes>
             </BrowserRouter>
