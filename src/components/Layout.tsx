@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { ThemeToggle } from './ThemeToggle'
 
 export function Layout() {
   const { user, loading, logout } = useAuth()
@@ -18,25 +19,28 @@ export function Layout() {
             旅程
           </Link>
 
-          {!loading && (
-            <div className="user-menu">
-              {user ? (
-                <>
-                  {user.avatarUrl && (
-                    <img src={user.avatarUrl} alt="" className="user-avatar" />
-                  )}
-                  <span className="user-name">{user.name || user.email}</span>
-                  <button className="btn-text btn-small" onClick={handleLogout}>
-                    ログアウト
-                  </button>
-                </>
-              ) : (
-                <Link to="/login" className="btn-text">
-                  ログイン
-                </Link>
-              )}
-            </div>
-          )}
+          <div className="header-right">
+            <ThemeToggle />
+            {!loading && (
+              <div className="user-menu">
+                {user ? (
+                  <>
+                    {user.avatarUrl && (
+                      <img src={user.avatarUrl} alt="" className="user-avatar" />
+                    )}
+                    <span className="user-name">{user.name || user.email}</span>
+                    <button className="btn-text btn-small" onClick={handleLogout}>
+                      ログアウト
+                    </button>
+                  </>
+                ) : (
+                  <Link to="/login" className="btn-text">
+                    ログイン
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import './App.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ColorModeProvider } from './components/ColorModeProvider'
 import { ToastProvider } from './components/Toast'
 import { AuthProvider } from './components/AuthProvider'
 import { Layout } from './components/Layout'
@@ -20,9 +21,10 @@ import { TemplatesPage } from './pages/TemplatesPage'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <ToastProvider>
-        <AuthProvider>
-          <BrowserRouter>
+      <ColorModeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <BrowserRouter>
             <Routes>
               {/* 認証不要のページ */}
               <Route path="/" element={<HomePage />} />
@@ -39,9 +41,10 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/templates" element={<TemplatesPage />} />
               </Route>
             </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </ToastProvider>
+            </BrowserRouter>
+          </AuthProvider>
+        </ToastProvider>
+      </ColorModeProvider>
     </ErrorBoundary>
   </StrictMode>,
 )
