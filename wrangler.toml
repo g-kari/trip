@@ -26,6 +26,14 @@ binding = "COVERS"
 [ai]
 binding = "AI"
 
+# Observability - logs and tracing
+[observability]
+enabled = true
+head_sampling_rate = 1  # 100% of requests (adjust for production if needed)
+
+[observability.tracing]
+enabled = true
+
 # Environment variables (secrets should be set via `wrangler secret put`)
 [vars]
 # GOOGLE_CLIENT_ID = "set via wrangler secret put"
