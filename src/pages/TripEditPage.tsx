@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { Trip, Day, Item, TripTheme, CostCategory, ItemTemplate } from '../types'
-import { COST_CATEGORIES } from '../types'
+import { COST_CATEGORIES, SUGGESTED_TAGS } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
 import { useToast } from '../hooks/useToast'
@@ -12,7 +12,9 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon } from '../components/Icons'
+import { EmbedCodeModal } from '../components/EmbedCodeModal'
+import { MarkdownText } from '../components/MarkdownText'
 import type { TripMember } from '../types'
 
 // Active editor type for collaborative editing
@@ -273,7 +275,9 @@ function DraggableItem({
               )}
             </div>
             {item.note && (
-              <p className="timeline-note">{item.note}</p>
+              <p className="timeline-note">
+                <MarkdownText text={item.note} />
+              </p>
             )}
             {/* Item photo (memory) */}
             {item.photoUrl && (
@@ -626,6 +630,16 @@ export function TripEditPage() {
   // Collaborator modal state
   const [showCollaboratorModal, setShowCollaboratorModal] = useState(false)
 
+  // Embed modal state
+  const [showEmbedModal, setShowEmbedModal] = useState(false)
+
+  // Tag state
+  const [tags, setTags] = useState<string[]>([])
+  const [newTag, setNewTag] = useState('')
+  const [addingTag, setAddingTag] = useState(false)
+  const [showTagInput, setShowTagInput] = useState(false)
+  const [userTags, setUserTags] = useState<string[]>([])
+
   // Active editors (collaborative editing)
   const [activeEditors, setActiveEditors] = useState<ActiveEditor[]>([])
   const [currentUserRole, setCurrentUserRole] = useState<string>('owner')
@@ -688,11 +702,89 @@ export function TripEditPage() {
     }
   }, [])
 
+  // Fetch tags for the trip
+  const fetchTags = useCallback(async (tripId: string) => {
+    try {
+      const res = await fetch(`/api/trips/${tripId}/tags`)
+      if (res.ok) {
+        const data = await res.json() as { tags: string[]; suggestedTags: string[] }
+        setTags(data.tags || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch tags:', err)
+    }
+  }, [])
+
+  // Fetch user's previously used tags
+  const fetchUserTags = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tags')
+      if (res.ok) {
+        const data = await res.json() as { tags: string[] }
+        setUserTags(data.tags || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch user tags:', err)
+    }
+  }, [])
+
+  // Add a tag to the trip
+  async function addTag(tag: string) {
+    if (!id || !tag.trim()) return
+
+    setAddingTag(true)
+    try {
+      const res = await fetch(`/api/trips/${id}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: tag.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        showError(data.error || 'タグの追加に失敗しました')
+        return
+      }
+      const data = await res.json() as { tags: string[] }
+      setTags(data.tags)
+      setNewTag('')
+      setShowTagInput(false)
+      // Refresh user tags list
+      fetchUserTags()
+    } catch (err) {
+      console.error('Failed to add tag:', err)
+      showError('タグの追加に失敗しました')
+    } finally {
+      setAddingTag(false)
+    }
+  }
+
+  // Remove a tag from the trip
+  async function removeTag(tag: string) {
+    if (!id) return
+
+    try {
+      const res = await fetch(`/api/trips/${id}/tags/${encodeURIComponent(tag)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        showError('タグの削除に失敗しました')
+        return
+      }
+      const data = await res.json() as { tags: string[] }
+      setTags(data.tags)
+    } catch (err) {
+      console.error('Failed to remove tag:', err)
+      showError('タグの削除に失敗しました')
+    }
+  }
+
   useEffect(() => {
     if (id) {
       fetchTrip(id)
       fetchMembers(id)
       fetchItemTemplates()
+      fetchTags(id)
+      fetchUserTags()
       // Fetch template status
       fetch(`/api/trips/${id}/template`)
         .then(res => res.ok ? res.json() as Promise<{ isTemplate?: boolean; templateUses?: number }> : null)
@@ -704,7 +796,7 @@ export function TripEditPage() {
         })
         .catch(err => console.error('Failed to fetch template status:', err))
     }
-  }, [id, fetchTrip, fetchMembers, fetchItemTemplates])
+  }, [id, fetchTrip, fetchMembers, fetchItemTemplates, fetchTags, fetchUserTags])
 
   // Polling for collaborative editing - check for updates every 5 seconds
   useEffect(() => {
@@ -1533,6 +1625,92 @@ export function TripEditPage() {
               </span>
             )}
           </div>
+          {/* Tags section */}
+          <div className="trip-tags-section">
+            <div className="trip-tags-list">
+              {tags.map((tag) => (
+                <span key={tag} className="trip-tag">
+                  {tag}
+                  <button
+                    type="button"
+                    className="trip-tag-remove"
+                    onClick={() => removeTag(tag)}
+                    title="削除"
+                  >
+                    x
+                  </button>
+                </span>
+              ))}
+              {showTagInput ? (
+                <div className="trip-tag-input-wrapper">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addTag(newTag)
+                      } else if (e.key === 'Escape') {
+                        setShowTagInput(false)
+                        setNewTag('')
+                      }
+                    }}
+                    className="trip-tag-input"
+                    placeholder="タグを入力"
+                    maxLength={20}
+                    autoFocus
+                    disabled={addingTag}
+                  />
+                  <button
+                    type="button"
+                    className="btn-text btn-small"
+                    onClick={() => addTag(newTag)}
+                    disabled={addingTag || !newTag.trim()}
+                  >
+                    追加
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-text btn-small"
+                    onClick={() => {
+                      setShowTagInput(false)
+                      setNewTag('')
+                    }}
+                  >
+                    x
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="trip-tag-add-btn"
+                  onClick={() => setShowTagInput(true)}
+                >
+                  + タグ
+                </button>
+              )}
+            </div>
+            {/* Suggested tags */}
+            {showTagInput && (
+              <div className="trip-tag-suggestions">
+                {[...SUGGESTED_TAGS, ...userTags.filter(t => !SUGGESTED_TAGS.includes(t as typeof SUGGESTED_TAGS[number]))]
+                  .filter(t => !tags.includes(t))
+                  .slice(0, 12)
+                  .map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      className="trip-tag-suggestion"
+                      onClick={() => addTag(suggestion)}
+                      disabled={addingTag}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
           {/* Auto-save indicator */}
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)', textAlign: 'center' }}>
             {saving ? '保存中...' : lastSaved ? `保存済み ${lastSaved.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}` : ''}
@@ -1552,6 +1730,9 @@ export function TripEditPage() {
           </button>
           <button className="btn-icon" onClick={() => setShowReminderModal(true)} title="リマインダー">
             <BellIcon size={16} />
+          </button>
+          <button className="btn-icon" onClick={() => setShowEmbedModal(true)} title="埋め込み">
+            <CodeIcon size={16} />
           </button>
           {currentUserRole === 'owner' && (
             <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
@@ -2001,6 +2182,14 @@ export function TripEditPage() {
         <CollaboratorManager
           tripId={trip.id}
           onClose={() => setShowCollaboratorModal(false)}
+        />
+      )}
+
+      {showEmbedModal && (
+        <EmbedCodeModal
+          tripId={trip.id}
+          tripTitle={trip.title}
+          onClose={() => setShowEmbedModal(false)}
         />
       )}
     </>

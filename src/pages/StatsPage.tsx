@@ -8,10 +8,12 @@ import type { CostCategory } from '../types'
 type Stats = {
   totalTrips: number
   totalDays: number
+  totalItems: number
   totalCost: number
   costByCategory: { category: string; amount: number }[]
   tripsByTheme: { theme: string; count: number }[]
   tripsByMonth: { month: string; count: number }[]
+  visitedAreas: string[]
   averageCostPerTrip: number
   averageDaysPerTrip: number
 }
@@ -40,6 +42,19 @@ function getCategoryColor(category: string): string {
     'その他': 'var(--stats-color-other)',
   }
   return colors[category] || 'var(--color-text-faint)'
+}
+
+// Get icon/emoji for category (simple text-based)
+function getCategoryIcon(category: string): string {
+  const icons: Record<string, string> = {
+    '交通費': '電車',
+    '宿泊費': '宿',
+    '食費': '食',
+    '観光・アクティビティ': '観光',
+    'お土産': '土産',
+    'その他': '他',
+  }
+  return icons[category] || '他'
 }
 
 export function StatsPage() {
@@ -108,7 +123,6 @@ export function StatsPage() {
     )
   }
 
-  const maxCategoryCost = Math.max(...stats.costByCategory.map(c => c.amount), 1)
   const maxMonthlyTrips = Math.max(...stats.tripsByMonth.map(m => m.count), 1)
 
   // Fill in missing categories with 0
@@ -120,65 +134,132 @@ export function StatsPage() {
     }
   })
 
+  // Calculate percentage for each category
+  const categoryWithPercentage = allCategoryStats.map(c => ({
+    ...c,
+    percentage: stats.totalCost > 0 ? (c.amount / stats.totalCost) * 100 : 0,
+  }))
+
   return (
     <div className="stats-section">
       <div className="section-header">
         <span className="section-title">統計</span>
       </div>
 
-      {/* Summary Cards */}
-      <div className="stats-summary">
-        <div className="stats-card">
-          <span className="stats-card-label">旅程数</span>
-          <span className="stats-card-value">{stats.totalTrips}</span>
-          <span className="stats-card-unit">回</span>
+      {/* Hero Summary - Total Expense */}
+      <div className="stats-hero">
+        <div className="stats-hero-label">総費用</div>
+        <div className="stats-hero-value">
+          <span className="stats-hero-yen">¥</span>
+          <span className="stats-hero-amount">{formatCurrency(stats.totalCost)}</span>
         </div>
-        <div className="stats-card">
-          <span className="stats-card-label">総日数</span>
-          <span className="stats-card-value">{stats.totalDays}</span>
-          <span className="stats-card-unit">日</span>
-        </div>
-        <div className="stats-card">
-          <span className="stats-card-label">総費用</span>
-          <span className="stats-card-value">{formatCurrency(stats.totalCost)}</span>
-          <span className="stats-card-unit">円</span>
+        <div className="stats-hero-sub">
+          {stats.totalTrips}回の旅程 / {stats.totalDays}日間
         </div>
       </div>
 
-      {/* Average Cards */}
-      <div className="stats-averages">
-        <div className="stats-average-item">
-          <span className="stats-average-label">旅程あたり平均費用</span>
-          <span className="stats-average-value">{formatCurrency(stats.averageCostPerTrip)} 円</span>
+      {/* Key Metrics Grid */}
+      <div className="stats-metrics">
+        <div className="stats-metric-card">
+          <div className="stats-metric-icon">旅</div>
+          <div className="stats-metric-content">
+            <span className="stats-metric-value">{stats.totalTrips}</span>
+            <span className="stats-metric-label">旅程数</span>
+          </div>
         </div>
-        <div className="stats-average-item">
-          <span className="stats-average-label">旅程あたり平均日数</span>
-          <span className="stats-average-value">{stats.averageDaysPerTrip} 日</span>
+        <div className="stats-metric-card">
+          <div className="stats-metric-icon">日</div>
+          <div className="stats-metric-content">
+            <span className="stats-metric-value">{stats.totalDays}</span>
+            <span className="stats-metric-label">総日数</span>
+          </div>
+        </div>
+        <div className="stats-metric-card">
+          <div className="stats-metric-icon">地</div>
+          <div className="stats-metric-content">
+            <span className="stats-metric-value">{stats.visitedAreas.length}</span>
+            <span className="stats-metric-label">訪問エリア</span>
+          </div>
+        </div>
+        <div className="stats-metric-card">
+          <div className="stats-metric-icon">項</div>
+          <div className="stats-metric-content">
+            <span className="stats-metric-value">{stats.totalItems}</span>
+            <span className="stats-metric-label">総予定数</span>
+          </div>
         </div>
       </div>
 
-      {/* Cost by Category */}
+      {/* Cost by Category with Progress Bars */}
       <div className="stats-chart-section">
         <h3 className="stats-chart-title">カテゴリ別費用</h3>
-        {stats.costByCategory.length === 0 ? (
+        {stats.totalCost === 0 ? (
           <p className="stats-empty">まだ費用が登録されていません</p>
         ) : (
-          <div className="stats-bar-chart">
-            {allCategoryStats.map(({ category, amount }) => (
-              <div key={category} className="stats-bar-row">
-                <span className="stats-bar-label">{category}</span>
-                <div className="stats-bar-wrapper">
+          <div className="stats-category-breakdown">
+            {categoryWithPercentage.map(({ category, amount, percentage }) => (
+              <div key={category} className="stats-category-item">
+                <div className="stats-category-header">
+                  <div className="stats-category-left">
+                    <span
+                      className="stats-category-icon"
+                      style={{ backgroundColor: getCategoryColor(category) }}
+                    >
+                      {getCategoryIcon(category)}
+                    </span>
+                    <span className="stats-category-name">{category}</span>
+                  </div>
+                  <div className="stats-category-right">
+                    <span className="stats-category-amount">¥{formatCurrency(amount)}</span>
+                    <span className="stats-category-percent">{percentage.toFixed(1)}%</span>
+                  </div>
+                </div>
+                <div className="stats-progress-bar">
                   <div
-                    className="stats-bar"
+                    className="stats-progress-fill"
                     style={{
-                      width: `${(amount / maxCategoryCost) * 100}%`,
+                      width: `${percentage}%`,
                       backgroundColor: getCategoryColor(category),
                     }}
                   />
                 </div>
-                <span className="stats-bar-value">{formatCurrency(amount)}</span>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Average Stats */}
+      <div className="stats-averages-section">
+        <h3 className="stats-chart-title">平均値</h3>
+        <div className="stats-average-grid">
+          <div className="stats-average-card">
+            <div className="stats-average-value">¥{formatCurrency(stats.averageCostPerTrip)}</div>
+            <div className="stats-average-label">旅程あたり平均費用</div>
+          </div>
+          <div className="stats-average-card">
+            <div className="stats-average-value">{stats.averageDaysPerTrip}日</div>
+            <div className="stats-average-label">旅程あたり平均日数</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Visited Areas */}
+      <div className="stats-chart-section">
+        <h3 className="stats-chart-title">訪問エリア</h3>
+        {stats.visitedAreas.length === 0 ? (
+          <p className="stats-empty">まだエリアが登録されていません</p>
+        ) : (
+          <div className="stats-areas">
+            <div className="stats-areas-count">
+              <span className="stats-areas-number">{stats.visitedAreas.length}</span>
+              <span className="stats-areas-label">エリア</span>
+            </div>
+            <div className="stats-areas-list">
+              {stats.visitedAreas.map((area) => (
+                <span key={area} className="stats-area-tag">{area}</span>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -189,13 +270,11 @@ export function StatsPage() {
         {stats.tripsByTheme.length === 0 ? (
           <p className="stats-empty">まだ旅程がありません</p>
         ) : (
-          <div className="stats-theme-list">
+          <div className="stats-theme-grid">
             {stats.tripsByTheme.map(({ theme, count }) => (
-              <div key={theme} className="stats-theme-item">
-                <span className={`stats-theme-badge stats-theme-${theme}`}>
-                  {getThemeLabel(theme)}
-                </span>
-                <span className="stats-theme-count">{count} 回</span>
+              <div key={theme} className={`stats-theme-card stats-theme-card-${theme}`}>
+                <div className="stats-theme-card-count">{count}</div>
+                <div className="stats-theme-card-label">{getThemeLabel(theme)}</div>
               </div>
             ))}
           </div>

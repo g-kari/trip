@@ -21,6 +21,7 @@ import { TemplatesPage } from './pages/TemplatesPage'
 import { StatsPage } from './pages/StatsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { InviteAcceptPage } from './pages/InviteAcceptPage'
+import { EmbedPage } from './pages/EmbedPage'
 import { OfflineIndicator } from './components/OfflineIndicator'
 
 const queryClient = new QueryClient({
@@ -48,6 +49,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/s/:token" element={<SharedTripPage />} />
               <Route path="/invite/:token" element={<InviteAcceptPage />} />
+              <Route path="/embed/:id" element={<EmbedPage />} />
 
               {/* メインレイアウト配下のページ */}
               <Route element={<Layout />}>

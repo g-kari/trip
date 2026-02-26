@@ -8,6 +8,7 @@ import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
+import { MarkdownText } from '../components/MarkdownText'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -679,7 +680,9 @@ export function SharedTripPage() {
                         )}
                       </div>
                       {item.note && (
-                        <p className="timeline-note">{item.note}</p>
+                        <p className="timeline-note">
+                          <MarkdownText text={item.note} />
+                        </p>
                       )}
                       {item.photoUrl && (
                         <div className="item-photo">

@@ -39,10 +39,14 @@ export function TripListPage() {
   const [filterStartDate, setFilterStartDate] = useState(searchParams.get('dateFrom') || '')
   const [filterEndDate, setFilterEndDate] = useState(searchParams.get('dateTo') || '')
   const [filterTheme, setFilterTheme] = useState<ThemeFilter>((searchParams.get('theme') as ThemeFilter) || '')
+  const [filterTag, setFilterTag] = useState(searchParams.get('tag') || '')
   const [sortOrder, setSortOrder] = useState<SortOption>((searchParams.get('sort') as SortOption) || 'created_desc')
   const [showFilters, setShowFilters] = useState(
-    !!(searchParams.get('dateFrom') || searchParams.get('dateTo') || searchParams.get('theme') || searchParams.get('sort'))
+    !!(searchParams.get('dateFrom') || searchParams.get('dateTo') || searchParams.get('theme') || searchParams.get('sort') || searchParams.get('tag'))
   )
+
+  // Available tags state
+  const [availableTags, setAvailableTags] = useState<string[]>([])
 
   // AI generation state
   const [showAiForm, setShowAiForm] = useState(false)
@@ -82,13 +86,14 @@ export function TripListPage() {
     const params = new URLSearchParams()
     if (searchQuery.trim()) params.set('q', searchQuery.trim())
     if (filterTheme) params.set('theme', filterTheme)
+    if (filterTag) params.set('tag', filterTag)
     if (filterStartDate) params.set('dateFrom', filterStartDate)
     if (filterEndDate) params.set('dateTo', filterEndDate)
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
     params.set('archived', archiveTab === 'archived' ? '1' : '0')
     const queryString = params.toString()
     return queryString ? `/api/trips?${queryString}` : '/api/trips'
-  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder, archiveTab])
+  }, [searchQuery, filterTheme, filterTag, filterStartDate, filterEndDate, sortOrder, archiveTab])
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -107,26 +112,41 @@ export function TripListPage() {
     }
   }, [showError, buildApiUrl])
 
+  // Fetch available tags for filtering
+  const fetchAvailableTags = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tags')
+      if (res.ok) {
+        const data = await res.json() as { tags: string[]; suggestedTags: string[] }
+        setAvailableTags(data.tags || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch tags:', err)
+    }
+  }, [])
+
   useEffect(() => {
     if (!authLoading) {
       fetchTrips()
       if (user) {
         fetchAiUsage()
+        fetchAvailableTags()
       }
     }
-  }, [authLoading, user, fetchTrips, fetchAiUsage])
+  }, [authLoading, user, fetchTrips, fetchAiUsage, fetchAvailableTags])
 
   // Update URL params when filters change
   useEffect(() => {
     const params = new URLSearchParams()
     if (searchQuery.trim()) params.set('q', searchQuery.trim())
     if (filterTheme) params.set('theme', filterTheme)
+    if (filterTag) params.set('tag', filterTag)
     if (filterStartDate) params.set('dateFrom', filterStartDate)
     if (filterEndDate) params.set('dateTo', filterEndDate)
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
     if (archiveTab === 'archived') params.set('archived', '1')
     setSearchParams(params, { replace: true })
-  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
+  }, [searchQuery, filterTheme, filterTag, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
 
   // Debounced search to avoid too many API calls
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -143,13 +163,14 @@ export function TripListPage() {
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    return !!(searchQuery.trim() || filterTheme || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
-  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder])
+    return !!(searchQuery.trim() || filterTheme || filterTag || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
+  }, [searchQuery, filterTheme, filterTag, filterStartDate, filterEndDate, sortOrder])
 
   // Clear all filters
   const clearFilters = useCallback(() => {
     setSearchQuery('')
     setFilterTheme('')
+    setFilterTag('')
     setFilterStartDate('')
     setFilterEndDate('')
     setSortOrder('created_desc')
@@ -738,6 +759,31 @@ export function TripListPage() {
                 </button>
               </div>
             </div>
+            {/* Tag filter */}
+            {availableTags.length > 0 && (
+              <div className="filter-row">
+                <label className="filter-label">タグ</label>
+                <div className="filter-tags">
+                  <button
+                    type="button"
+                    className={`filter-tag-btn ${filterTag === '' ? 'active' : ''}`}
+                    onClick={() => setFilterTag('')}
+                  >
+                    すべて
+                  </button>
+                  {availableTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className={`filter-tag-btn ${filterTag === tag ? 'active' : ''}`}
+                      onClick={() => setFilterTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Date range filter */}
             <div className="filter-row">
               <label className="filter-label">期間</label>
@@ -796,6 +842,12 @@ export function TripListPage() {
               <span className="filter-tag">
                 {filterTheme === 'quiet' ? 'しずか' : '写真映え'}
                 <button type="button" onClick={() => setFilterTheme('')} className="filter-tag-remove">x</button>
+              </span>
+            )}
+            {filterTag && (
+              <span className="filter-tag">
+                {filterTag}
+                <button type="button" onClick={() => setFilterTag('')} className="filter-tag-remove">x</button>
               </span>
             )}
             {(filterStartDate || filterEndDate) && (
@@ -872,6 +924,24 @@ export function TripListPage() {
                 {trip.startDate && trip.endDate
                   ? formatDateRange(trip.startDate, trip.endDate)
                   : trip.startDate || trip.endDate}
+              </div>
+            )}
+            {trip.tags && trip.tags.length > 0 && (
+              <div className="trip-card-tags">
+                {trip.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="trip-card-tag"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setFilterTag(tag)
+                      setShowFilters(true)
+                    }}
+                    title={`「${tag}」で絞り込み`}
+                  >
+                    {tag}
+                  </span>
+                ))}
               </div>
             )}
             {user && (

@@ -47,7 +47,11 @@ export type Trip = {
   createdAt: string
   days?: Day[]
   items?: Item[]
+  tags?: string[]
 }
+
+// Suggested tags for trip categorization
+export const SUGGESTED_TAGS = ['国内', '海外', '日帰り', '週末', '長期', '家族', '友人', '一人旅', 'ビジネス'] as const
 
 export type DayPhoto = {
   id: string

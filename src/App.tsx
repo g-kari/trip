@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import { MarkdownText } from './components/MarkdownText'
 
 // API response types
 type Trip = {
@@ -727,7 +728,9 @@ function App() {
                                     )}
                                   </div>
                                   {item.note && (
-                                    <p className="timeline-note">{item.note}</p>
+                                    <p className="timeline-note">
+                                      <MarkdownText text={item.note} />
+                                    </p>
                                   )}
                                   {!isSharedView && (
                                     <div className="item-actions no-print">

@@ -13,6 +13,7 @@ import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
+import { MarkdownText } from '../components/MarkdownText'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -740,7 +741,9 @@ export function TripViewPage() {
                           )}
                         </div>
                         {item.note && (
-                          <p className="timeline-note">{item.note}</p>
+                          <p className="timeline-note">
+                            <MarkdownText text={item.note} />
+                          </p>
                         )}
                         {item.photoUrl && (
                           <div className="item-photo">

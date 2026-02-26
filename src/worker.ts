@@ -325,6 +325,7 @@ app.get('/api/trips', async (c) => {
   const dateTo = url.searchParams.get('dateTo') || '';
   const sort = url.searchParams.get('sort') || 'created_desc';
   const archived = url.searchParams.get('archived') || '0'; // '0' = active, '1' = archived, 'all' = all
+  const tag = url.searchParams.get('tag') || ''; // Tag filter
 
   let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, is_archived as isArchived, pinned, created_at as createdAt FROM trips';
   const conditions: string[] = [];
@@ -356,6 +357,12 @@ app.get('/api/trips', async (c) => {
   if (theme === 'quiet' || theme === 'photo') {
     conditions.push('theme = ?');
     params.push(theme);
+  }
+
+  // Tag filter
+  if (tag) {
+    conditions.push('id IN (SELECT trip_id FROM trip_tags WHERE tag = ?)');
+    params.push(tag);
   }
 
   // Date range filter (using start_date for dateFrom, end_date for dateTo)
@@ -394,7 +401,44 @@ app.get('/api/trips', async (c) => {
     ? c.env.DB.prepare(query).bind(...params)
     : c.env.DB.prepare(query);
 
-  const { results } = await stmt.all();
+  const { results } = await stmt.all<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    budget: number | null;
+    isArchived: number | null;
+    pinned: number | null;
+    createdAt: string;
+  }>();
+
+  // Fetch tags for all trips
+  if (results.length > 0) {
+    const tripIds = results.map(r => r.id);
+    const placeholders = tripIds.map(() => '?').join(',');
+    const { results: allTags } = await c.env.DB.prepare(
+      `SELECT trip_id as tripId, tag FROM trip_tags WHERE trip_id IN (${placeholders})`
+    ).bind(...tripIds).all<{ tripId: string; tag: string }>();
+
+    // Group tags by trip_id
+    const tagsByTrip = new Map<string, string[]>();
+    for (const t of allTags) {
+      const existing = tagsByTrip.get(t.tripId) || [];
+      existing.push(t.tag);
+      tagsByTrip.set(t.tripId, existing);
+    }
+
+    // Add tags to each trip
+    const tripsWithTags = results.map(trip => ({
+      ...trip,
+      tags: tagsByTrip.get(trip.id) || [],
+    }));
+
+    return c.json({ trips: tripsWithTags });
+  }
+
   return c.json({ trips: results });
 });
 
@@ -471,6 +515,24 @@ app.get('/api/stats', async (c) => {
     count: r.count,
   }));
 
+  // Get unique visited areas
+  const { results: areasResults } = await c.env.DB.prepare(
+    `SELECT DISTINCT i.area
+     FROM items i
+     INNER JOIN trips t ON i.trip_id = t.id
+     WHERE t.user_id = ? AND i.area IS NOT NULL AND i.area != ''
+     ORDER BY i.area`
+  ).bind(user.id).all<{ area: string }>();
+  const visitedAreas = areasResults.map((r) => r.area);
+
+  // Get total items count
+  const totalItemsResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM items i
+     INNER JOIN trips t ON i.trip_id = t.id
+     WHERE t.user_id = ?`
+  ).bind(user.id).first<{ count: number }>();
+  const totalItems = totalItemsResult?.count ?? 0;
+
   // Calculate averages
   const averageCostPerTrip = totalTrips > 0 ? Math.round(totalCost / totalTrips) : 0;
   const averageDaysPerTrip = totalTrips > 0 ? Math.round((totalDays / totalTrips) * 10) / 10 : 0;
@@ -478,10 +540,12 @@ app.get('/api/stats', async (c) => {
   return c.json({
     totalTrips,
     totalDays,
+    totalItems,
     totalCost,
     costByCategory,
     tripsByTheme,
     tripsByMonth,
+    visitedAreas,
     averageCostPerTrip,
     averageDaysPerTrip,
   });
@@ -715,8 +779,14 @@ app.get('/api/trips/:id', async (c) => {
     };
   });
 
+  // Get tags for this trip
+  const { results: tripTags } = await c.env.DB.prepare(
+    'SELECT tag FROM trip_tags WHERE trip_id = ?'
+  ).bind(id).all<{ tag: string }>();
+  const tags = tripTags.map(t => t.tag);
+
   return c.json({
-    trip: { ...trip, days: daysWithParsedPhotos, items: itemsWithUploaderNames },
+    trip: { ...trip, days: daysWithParsedPhotos, items: itemsWithUploaderNames, tags },
     isOwner,
   });
 });
@@ -4784,8 +4854,175 @@ app.delete('/api/item-templates/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// ============ Trip Tags ============
+
+// Predefined suggested tags
+const SUGGESTED_TAGS = ['国内', '海外', '日帰り', '週末', '長期', '家族', '友人', '一人旅', 'ビジネス'];
+
+// Get all unique tags used by the user (for suggestions)
+app.get('/api/tags', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ tags: [], suggestedTags: SUGGESTED_TAGS });
+  }
+
+  // Get all unique tags from user's trips
+  const { results } = await c.env.DB.prepare(
+    `SELECT DISTINCT tt.tag FROM trip_tags tt
+     INNER JOIN trips t ON tt.trip_id = t.id
+     WHERE t.user_id = ?
+     ORDER BY tt.tag`
+  ).bind(user.id).all<{ tag: string }>();
+
+  const userTags = results.map(r => r.tag);
+
+  return c.json({ tags: userTags, suggestedTags: SUGGESTED_TAGS });
+});
+
+// Get tags for a specific trip
+app.get('/api/trips/:tripId/tags', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  // Check trip exists and user has access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅程が見つかりません' }, 404);
+  }
+
+  // Check ownership or collaborator access
+  if (trip.userId && (!user || trip.userId !== user.id)) {
+    // Check if user is a collaborator
+    if (user) {
+      const collab = await c.env.DB.prepare(
+        'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      ).bind(tripId, user.id).first();
+      if (!collab) {
+        return c.json({ error: 'アクセスが拒否されました' }, 403);
+      }
+    } else {
+      return c.json({ error: 'アクセスが拒否されました' }, 403);
+    }
+  }
+
+  const { results } = await c.env.DB.prepare(
+    'SELECT tag FROM trip_tags WHERE trip_id = ?'
+  ).bind(tripId).all<{ tag: string }>();
+
+  return c.json({ tags: results.map(r => r.tag), suggestedTags: SUGGESTED_TAGS });
+});
+
+// Add a tag to a trip
+app.post('/api/trips/:tripId/tags', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+  const body = await c.req.json<{ tag: string }>();
+
+  if (!body.tag?.trim()) {
+    return c.json({ error: 'タグは必須です' }, 400);
+  }
+
+  const tag = body.tag.trim();
+
+  // Validate tag length
+  if (tag.length > 20) {
+    return c.json({ error: 'タグは20文字以内にしてください' }, 400);
+  }
+
+  // Check trip exists and user has access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅程が見つかりません' }, 404);
+  }
+
+  // Check ownership or editor collaborator access
+  if (trip.userId && (!user || trip.userId !== user.id)) {
+    // Check if user is an editor collaborator
+    if (user) {
+      const collab = await c.env.DB.prepare(
+        'SELECT id, role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      ).bind(tripId, user.id).first<{ id: string; role: string }>();
+      if (!collab || collab.role !== 'editor') {
+        return c.json({ error: 'アクセスが拒否されました' }, 403);
+      }
+    } else {
+      return c.json({ error: 'アクセスが拒否されました' }, 403);
+    }
+  }
+
+  // Check if tag already exists for this trip
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM trip_tags WHERE trip_id = ? AND tag = ?'
+  ).bind(tripId, tag).first();
+
+  if (existing) {
+    return c.json({ error: 'このタグは既に追加されています' }, 400);
+  }
+
+  const id = generateId();
+  await c.env.DB.prepare(
+    'INSERT INTO trip_tags (id, trip_id, tag) VALUES (?, ?, ?)'
+  ).bind(id, tripId, tag).run();
+
+  // Return updated list of tags
+  const { results } = await c.env.DB.prepare(
+    'SELECT tag FROM trip_tags WHERE trip_id = ?'
+  ).bind(tripId).all<{ tag: string }>();
+
+  return c.json({ tags: results.map(r => r.tag) }, 201);
+});
+
+// Remove a tag from a trip
+app.delete('/api/trips/:tripId/tags/:tag', async (c) => {
+  const tripId = c.req.param('tripId');
+  const tag = decodeURIComponent(c.req.param('tag'));
+  const user = c.get('user');
+
+  // Check trip exists and user has access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅程が見つかりません' }, 404);
+  }
+
+  // Check ownership or editor collaborator access
+  if (trip.userId && (!user || trip.userId !== user.id)) {
+    // Check if user is an editor collaborator
+    if (user) {
+      const collab = await c.env.DB.prepare(
+        'SELECT id, role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      ).bind(tripId, user.id).first<{ id: string; role: string }>();
+      if (!collab || collab.role !== 'editor') {
+        return c.json({ error: 'アクセスが拒否されました' }, 403);
+      }
+    } else {
+      return c.json({ error: 'アクセスが拒否されました' }, 403);
+    }
+  }
+
+  await c.env.DB.prepare(
+    'DELETE FROM trip_tags WHERE trip_id = ? AND tag = ?'
+  ).bind(tripId, tag).run();
+
+  // Return updated list of tags
+  const { results } = await c.env.DB.prepare(
+    'SELECT tag FROM trip_tags WHERE trip_id = ?'
+  ).bind(tripId).all<{ tag: string }>();
+
+  return c.json({ tags: results.map(r => r.tag) });
+});
+
 // SPA routes - serve index.html for client-side routing
-const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite'];
+const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed'];
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
@@ -4796,7 +5033,8 @@ app.get('*', async (c) => {
     path === '/' ||
     path.match(/^\/trips\/[^/]+$/) ||  // /trips/:id
     path.match(/^\/trips\/[^/]+\/edit$/) ||  // /trips/:id/edit
-    path.match(/^\/invite\/[^/]+$/);  // /invite/:token
+    path.match(/^\/invite\/[^/]+$/) ||  // /invite/:token
+    path.match(/^\/embed\/[^/]+$/);  // /embed/:id
 
   if (isSpaRoute) {
     url.pathname = '/index.html';

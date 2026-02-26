@@ -36,9 +36,12 @@
 @import './components/expense.css';
 @import './components/packing-list.css';
 @import './components/item-templates.css';
+@import './components/tags.css';
+@import './components/markdown.css';
 @import './components/offline.css';
 @import './components/error-boundary.css';
 @import './components/print.css';
+@import './components/embed.css';
 
 /* Pages */
 @import './pages/login.css';
@@ -49,6 +52,7 @@
 @import './pages/feedback.css';
 @import './pages/profile.css';
 @import './pages/invite.css';
+@import './pages/embed.css';
 
 /* Responsive - must be last */
 @import './base/responsive.css';
