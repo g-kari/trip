@@ -2552,3 +2552,123 @@
     margin-left: 0;
   }
 }
+
+/* ========================================
+   Share Buttons
+   ======================================== */
+
+.share-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 40px;
+}
+
+.share-btn:hover {
+  border-color: var(--color-text-muted);
+  background-color: var(--color-bg);
+}
+
+.share-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.share-btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.share-btn-text {
+  white-space: nowrap;
+}
+
+/* Copy button states */
+.share-btn-copy.copied {
+  border-color: #4caf50;
+  color: #4caf50;
+  background-color: #f5fef5;
+}
+
+/* LINE button */
+.share-btn-line {
+  background-color: #00B900;
+  border-color: #00B900;
+  color: #ffffff;
+}
+
+.share-btn-line:hover {
+  background-color: #00a000;
+  border-color: #00a000;
+}
+
+/* X (Twitter) button */
+.share-btn-x {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+.share-btn-x:hover {
+  background-color: #333333;
+  border-color: #333333;
+}
+
+/* Share buttons in hero section */
+.hero-share-section {
+  margin-top: var(--space-4);
+}
+
+.share-section-title {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: var(--space-3);
+}
+
+.hero-with-cover .share-section-title {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Mobile responsive for share buttons */
+@media (max-width: 480px) {
+  .share-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: var(--space-2);
+  }
+
+  .share-btn {
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+  }
+}
+
+@media (pointer: coarse) {
+  .share-btn {
+    min-height: 44px;
+  }
+}

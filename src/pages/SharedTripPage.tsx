@@ -5,6 +5,7 @@ import { formatDateRange, formatCost, formatDayDate } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
+import { ShareButtons } from '../components/ShareButtons'
 
 // Star rating component
 function StarRating({ rating, onRate, readonly = false }: {
@@ -521,6 +522,13 @@ export function SharedTripPage() {
             <button className="btn-text" onClick={duplicateTrip}>
               {user ? '複製' : '複製してログイン'}
             </button>
+          </div>
+          <div className="hero-share-section no-print">
+            <p className="share-section-title">この旅程を共有</p>
+            <ShareButtons
+              url={window.location.href}
+              title={trip.title}
+            />
           </div>
         </section>
 

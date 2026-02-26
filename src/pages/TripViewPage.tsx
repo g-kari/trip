@@ -5,6 +5,7 @@ import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useToast } from '../hooks/useToast'
 import { useAuth } from '../hooks/useAuth'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
+import { ShareButtons } from '../components/ShareButtons'
 
 // Star rating component
 function StarRating({ rating, onRate, readonly = false }: {
@@ -166,13 +167,6 @@ export function TripViewPage() {
       console.error('Failed to delete share link:', err)
       showError('共有リンクの削除に失敗しました')
     }
-  }
-
-  function copyShareLink() {
-    if (!shareToken) return
-    const url = `${window.location.origin}/s/${shareToken}`
-    navigator.clipboard.writeText(url)
-    showSuccess('リンクをコピーしました')
   }
 
   function printTrip() {
@@ -799,12 +793,14 @@ export function TripViewPage() {
                 {window.location.origin}/s/{shareToken}
               </a>
             </div>
-            <div className="modal-actions">
+            <p className="share-section-title">SNSで共有</p>
+            <ShareButtons
+              url={`${window.location.origin}/s/${shareToken}`}
+              title={trip.title}
+            />
+            <div className="modal-actions" style={{ marginTop: 'var(--space-4)' }}>
               <button className="btn-text btn-danger" onClick={deleteShareLink}>
                 リンクを削除
-              </button>
-              <button className="btn-filled" onClick={copyShareLink}>
-                コピー
               </button>
             </div>
             <button className="btn-text modal-close" onClick={() => setShowShareModal(false)}>
