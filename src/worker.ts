@@ -1072,6 +1072,79 @@ app.post('/api/trips/:tripId/days', async (c) => {
   return c.json({ day }, 201);
 });
 
+// Bulk create days
+app.post('/api/trips/:tripId/days/bulk', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+  const body = await c.req.json<{ startDate: string; endDate: string }>();
+
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  if (!body.startDate || !body.endDate) {
+    return c.json({ error: 'startDate and endDate are required' }, 400);
+  }
+
+  const start = new Date(body.startDate);
+  const end = new Date(body.endDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return c.json({ error: 'Invalid date format' }, 400);
+  }
+
+  if (start > end) {
+    return c.json({ error: 'startDate must be before or equal to endDate' }, 400);
+  }
+
+  // Calculate number of days
+  const dayCount = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  if (dayCount > 30) {
+    return c.json({ error: '一度に追加できる日数は30日までです' }, 400);
+  }
+
+  // Get existing days to check for duplicates
+  const existingDays = await c.env.DB.prepare(
+    'SELECT date FROM days WHERE trip_id = ?'
+  ).bind(tripId).all<{ date: string }>();
+  const existingDates = new Set(existingDays.results?.map(d => d.date) || []);
+
+  // Generate list of dates
+  const datesToCreate: string[] = [];
+  const current = new Date(start);
+  while (current <= end) {
+    const dateStr = current.toISOString().split('T')[0];
+    if (!existingDates.has(dateStr)) {
+      datesToCreate.push(dateStr);
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  if (datesToCreate.length === 0) {
+    return c.json({ error: '追加する日程がありません（すべて既存の日程です）', days: [] }, 200);
+  }
+
+  // Create all days
+  const createdDays: Array<{ id: string; date: string; sort: number }> = [];
+  const baseSort = Date.now();
+
+  for (let i = 0; i < datesToCreate.length; i++) {
+    const id = generateId();
+    const sort = baseSort + i;
+    const date = datesToCreate[i];
+
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+    ).bind(id, tripId, date, sort).run();
+
+    createdDays.push({ id, date, sort });
+  }
+
+  return c.json({ days: createdDays, skipped: dayCount - datesToCreate.length }, 201);
+});
+
 // Update day
 app.put('/api/trips/:tripId/days/:dayId', async (c) => {
   const { tripId, dayId } = c.req.param();

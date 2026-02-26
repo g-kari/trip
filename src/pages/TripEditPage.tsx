@@ -528,7 +528,7 @@ function DayNotesSection({
 export function TripEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { showError } = useToast()
+  const { showError, showSuccess } = useToast()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -563,6 +563,9 @@ export function TripEditPage() {
   const [showDayForm, setShowDayForm] = useState(false)
   const [newDayDate, setNewDayDate] = useState('')
   const [creatingDay, setCreatingDay] = useState(false)
+  const [bulkDayMode, setBulkDayMode] = useState(false)
+  const [bulkStartDate, setBulkStartDate] = useState('')
+  const [bulkEndDate, setBulkEndDate] = useState('')
 
   // Item form state
   const [showItemFormForDay, setShowItemFormForDay] = useState<string | null>(null)
@@ -861,6 +864,56 @@ export function TripEditPage() {
       }
     } catch (err) {
       console.error('Failed to create day:', err)
+    } finally {
+      setCreatingDay(false)
+    }
+  }
+
+  // Create multiple days at once
+  async function createBulkDays(e: React.FormEvent) {
+    e.preventDefault()
+    if (!trip || !bulkStartDate || !bulkEndDate) return
+
+    // Validate dates
+    const start = new Date(bulkStartDate)
+    const end = new Date(bulkEndDate)
+    if (start > end) {
+      alert('開始日は終了日以前にしてください')
+      return
+    }
+
+    const dayCount = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    if (dayCount > 30) {
+      alert('一度に追加できる日数は30日までです')
+      return
+    }
+
+    setCreatingDay(true)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/days/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: bulkStartDate, endDate: bulkEndDate }),
+      })
+      const data = (await res.json()) as { days?: Day[]; skipped?: number; error?: string }
+      if (data.error && !data.days) {
+        alert(data.error)
+        return
+      }
+      if (data.days && data.days.length > 0) {
+        const skippedMsg = data.skipped && data.skipped > 0 ? `（${data.skipped}日は既存のためスキップ）` : ''
+        showSuccess(`${data.days.length}日分の日程を追加しました${skippedMsg}`)
+        setBulkStartDate('')
+        setBulkEndDate('')
+        setBulkDayMode(false)
+        setShowDayForm(false)
+        await refreshTrip()
+      } else if (data.skipped && data.skipped > 0) {
+        alert('追加する日程がありません（すべて既存の日程です）')
+      }
+    } catch (err) {
+      console.error('Failed to create bulk days:', err)
+      alert('日程の追加に失敗しました')
     } finally {
       setCreatingDay(false)
     }
@@ -1636,32 +1689,96 @@ export function TripEditPage() {
       {/* Add day form */}
       <div className="add-day-section no-print">
         {showDayForm ? (
-          <form className="inline-form" onSubmit={createDay}>
-            <div className="form-row">
-              <DatePicker
-                value={newDayDate}
-                onChange={setNewDayDate}
-                placeholder="日付を選択"
-                min={editTripStartDate || undefined}
-                max={editTripEndDate || undefined}
-              />
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn-text"
-                  onClick={() => setShowDayForm(false)}
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  className="btn-filled"
-                  disabled={creatingDay || !newDayDate}
-                >
-                  {creatingDay ? '追加中...' : '追加'}
-                </button>
-              </div>
+          <form className="inline-form" onSubmit={bulkDayMode ? createBulkDays : createDay}>
+            <div className="bulk-mode-toggle">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={bulkDayMode}
+                  onChange={(e) => {
+                    setBulkDayMode(e.target.checked)
+                    if (!e.target.checked) {
+                      setBulkStartDate('')
+                      setBulkEndDate('')
+                    } else {
+                      setNewDayDate('')
+                    }
+                  }}
+                />
+                <span>複数日を追加</span>
+              </label>
             </div>
+            {bulkDayMode ? (
+              <div className="form-row bulk-date-row">
+                <div className="date-range-inputs">
+                  <DatePicker
+                    value={bulkStartDate}
+                    onChange={setBulkStartDate}
+                    placeholder="開始日"
+                    min={editTripStartDate || undefined}
+                    max={editTripEndDate || undefined}
+                  />
+                  <span className="date-separator">〜</span>
+                  <DatePicker
+                    value={bulkEndDate}
+                    onChange={setBulkEndDate}
+                    placeholder="終了日"
+                    min={bulkStartDate || editTripStartDate || undefined}
+                    max={editTripEndDate || undefined}
+                  />
+                </div>
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setShowDayForm(false)
+                      setBulkDayMode(false)
+                      setBulkStartDate('')
+                      setBulkEndDate('')
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-filled"
+                    disabled={creatingDay || !bulkStartDate || !bulkEndDate}
+                  >
+                    {creatingDay ? '追加中...' : '一括追加'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="form-row">
+                <DatePicker
+                  value={newDayDate}
+                  onChange={setNewDayDate}
+                  placeholder="日付を選択"
+                  min={editTripStartDate || undefined}
+                  max={editTripEndDate || undefined}
+                />
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn-text"
+                    onClick={() => {
+                      setShowDayForm(false)
+                      setBulkDayMode(false)
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-filled"
+                    disabled={creatingDay || !newDayDate}
+                  >
+                    {creatingDay ? '追加中...' : '追加'}
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
         ) : (
           <div className="add-day-buttons">
