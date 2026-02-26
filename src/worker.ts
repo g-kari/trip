@@ -875,12 +875,22 @@ app.get('/api/shared/:token', async (c) => {
   }
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl FROM trips WHERE id = ?'
-  ).bind(share.trip_id).first();
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, user_id as userId FROM trips WHERE id = ?'
+  ).bind(share.trip_id).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    userId: string | null;
+  }>();
 
   if (!trip) {
     return c.json({ error: 'Trip not found' }, 404);
   }
+
+  const tripOwnerId = trip.userId;
 
   const { results: days } = await c.env.DB.prepare(
     'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
@@ -967,7 +977,10 @@ app.get('/api/shared/:token', async (c) => {
     };
   });
 
-  return c.json({ trip: { ...trip, days: daysWithParsedPhotos, items: itemsWithUploaderNames } });
+  // Remove userId from the response to not expose it, but include tripOwnerId for permission checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { userId: _unusedUserId, ...tripWithoutUserId } = trip;
+  return c.json({ trip: { ...tripWithoutUserId, days: daysWithParsedPhotos, items: itemsWithUploaderNames }, tripOwnerId });
 });
 
 // OGP image for shared trip
@@ -1521,17 +1534,25 @@ app.delete('/api/trips/:tripId/items/:itemId/photo', async (c) => {
   const { tripId, itemId } = c.req.param();
   const user = c.get('user');
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
-  if (!check.ok) {
-    return c.json({ error: check.error }, check.status as 403 | 404);
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
   }
 
   const item = await c.env.DB.prepare(
-    'SELECT id, photo_url as photoUrl FROM items WHERE id = ? AND trip_id = ?'
-  ).bind(itemId, tripId).first<{ id: string; photoUrl: string | null }>();
+    'SELECT id, photo_url as photoUrl, photo_uploaded_by as photoUploadedBy FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; photoUrl: string | null; photoUploadedBy: string | null }>();
 
   if (!item) {
     return c.json({ error: 'Item not found' }, 404);
+  }
+
+  // Check if user is the photo uploader or the trip owner
+  const isUploader = item.photoUploadedBy === user.id;
+  const tripOwnerCheck = await checkTripOwnership(c.env.DB, tripId, user);
+  const isTripOwner = tripOwnerCheck.ok;
+
+  if (!isUploader && !isTripOwner) {
+    return c.json({ error: 'Only the uploader or trip owner can delete this photo' }, 403);
   }
 
   if (item.photoUrl) {
@@ -1545,7 +1566,7 @@ app.delete('/api/trips/:tripId/items/:itemId/photo', async (c) => {
 
   // Clear photo URL in database
   await c.env.DB.prepare(
-    'UPDATE items SET photo_url = NULL, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+    'UPDATE items SET photo_url = NULL, photo_uploaded_by = NULL, photo_uploaded_at = NULL, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
   ).bind(itemId).run();
 
   return c.json({ ok: true });

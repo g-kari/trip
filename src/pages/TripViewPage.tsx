@@ -1,19 +1,23 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import type { Trip, Item } from '../types'
+import type { Trip, Item, DayPhoto } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useToast } from '../hooks/useToast'
+import { useAuth } from '../hooks/useAuth'
 
 export function TripViewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { showError, showSuccess } = useToast()
+  const { user } = useAuth()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [isOwner, setIsOwner] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [deletingItemPhoto, setDeletingItemPhoto] = useState<string | null>(null)
+  const [deletingDayPhoto, setDeletingDayPhoto] = useState<string | null>(null)
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -149,6 +153,88 @@ export function TripViewPage() {
     return (trip?.items || []).reduce((sum, item) => sum + (item.cost || 0), 0)
   }
 
+  // Delete item photo
+  async function deleteItemPhoto(itemId: string) {
+    if (!trip || !user) return
+    if (!confirm('この写真を削除しますか？')) return
+
+    setDeletingItemPhoto(itemId)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/photo`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        if (res.status === 401) {
+          showError('ログインが必要です')
+          return
+        }
+        if (res.status === 403) {
+          showError(data.error || '写真を削除する権限がありません')
+          return
+        }
+        throw new Error('Delete failed')
+      }
+      showSuccess('写真を削除しました')
+      if (id) fetchTrip(id)
+    } catch (err) {
+      console.error('Failed to delete photo:', err)
+      showError('写真の削除に失敗しました')
+    } finally {
+      setDeletingItemPhoto(null)
+    }
+  }
+
+  // Delete day photo
+  async function deleteDayPhoto(dayId: string, photoId: string) {
+    if (!trip || !user) return
+    if (!confirm('この写真を削除しますか？')) return
+
+    setDeletingDayPhoto(photoId)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/days/${dayId}/photos/${photoId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        if (res.status === 401) {
+          showError('ログインが必要です')
+          return
+        }
+        if (res.status === 403) {
+          showError(data.error || '写真を削除する権限がありません')
+          return
+        }
+        throw new Error('Delete failed')
+      }
+      showSuccess('写真を削除しました')
+      if (id) fetchTrip(id)
+    } catch (err) {
+      console.error('Failed to delete photo:', err)
+      showError('写真の削除に失敗しました')
+    } finally {
+      setDeletingDayPhoto(null)
+    }
+  }
+
+  // Check if user can delete item photo (owner can always delete, or uploader can delete their own)
+  function canDeleteItemPhoto(item: Item): boolean {
+    if (!user) return false
+    // Trip owner can delete any photo
+    if (isOwner) return true
+    // Photo uploader can delete their own photo
+    return item.photoUploadedBy === user.id
+  }
+
+  // Check if user can delete day photo
+  function canDeleteDayPhoto(photo: DayPhoto): boolean {
+    if (!user) return false
+    // Trip owner can delete any photo
+    if (isOwner) return true
+    // Photo uploader can delete their own photo
+    return photo.uploadedBy === user.id
+  }
+
   if (loading) {
     return (
       <div className="empty-state">
@@ -259,6 +345,16 @@ export function TripViewPage() {
                         {item.photoUrl && (
                           <div className="item-photo">
                             <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                            {canDeleteItemPhoto(item) && (
+                              <button
+                                className="item-photo-delete no-print"
+                                onClick={() => deleteItemPhoto(item.id)}
+                                disabled={deletingItemPhoto === item.id}
+                                title="写真を削除"
+                              >
+                                {deletingItemPhoto === item.id ? '...' : '×'}
+                              </button>
+                            )}
                             {item.photoUploadedByName && (
                               <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
                             )}
@@ -283,6 +379,16 @@ export function TripViewPage() {
                         {day.photos.map((photo) => (
                           <div key={photo.id} className="day-photo-item">
                             <img src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                            {canDeleteDayPhoto(photo) && !photo.id.startsWith('legacy-') && (
+                              <button
+                                className="day-photo-delete no-print"
+                                onClick={() => deleteDayPhoto(day.id, photo.id)}
+                                disabled={deletingDayPhoto === photo.id}
+                                title="写真を削除"
+                              >
+                                {deletingDayPhoto === photo.id ? '...' : '×'}
+                              </button>
+                            )}
                             {photo.uploadedByName && (
                               <span className="photo-uploader">📷 {photo.uploadedByName}</span>
                             )}

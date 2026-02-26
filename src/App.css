@@ -1436,6 +1436,8 @@
 
 .item-photo {
   margin-top: var(--space-3);
+  position: relative;
+  display: inline-block;
 }
 
 .memory-photo {
@@ -1443,6 +1445,34 @@
   max-height: 200px;
   border-radius: 8px;
   object-fit: cover;
+}
+
+.item-photo-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  color: #b55050;
+}
+
+.item-photo-delete:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #993333;
+}
+
+.item-photo:hover .item-photo-delete {
+  opacity: 1;
 }
 
 /* ========================================
@@ -1521,10 +1551,18 @@
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-border);
   border-radius: 50%;
   font-size: 14px;
+  cursor: pointer;
   opacity: 0;
   transition: opacity 150ms ease;
+  color: #b55050;
+}
+
+.day-photo-delete:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #993333;
 }
 
 .day-photo-item:hover .day-photo-delete {
