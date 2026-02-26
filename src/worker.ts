@@ -400,6 +400,95 @@ app.get('/api/trips', async (c) => {
   return c.json({ trips: results });
 });
 
+// ============ Stats ============
+
+// Get user stats (requires login)
+app.get('/api/stats', async (c) => {
+  const user = c.get('user');
+
+  // Require login
+  if (!user) {
+    return c.json({ error: '統計にはログインが必要です' }, 401);
+  }
+
+  // Get total trips count
+  const totalTripsResult = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM trips WHERE user_id = ?'
+  ).bind(user.id).first<{ count: number }>();
+  const totalTrips = totalTripsResult?.count ?? 0;
+
+  // Get total days count (sum of days per trip)
+  const totalDaysResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM days d
+     INNER JOIN trips t ON d.trip_id = t.id
+     WHERE t.user_id = ?`
+  ).bind(user.id).first<{ count: number }>();
+  const totalDays = totalDaysResult?.count ?? 0;
+
+  // Get total cost (sum of all item costs)
+  const totalCostResult = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(i.cost), 0) as total FROM items i
+     INNER JOIN trips t ON i.trip_id = t.id
+     WHERE t.user_id = ?`
+  ).bind(user.id).first<{ total: number }>();
+  const totalCost = totalCostResult?.total ?? 0;
+
+  // Get cost by category
+  const { results: costByCategoryResults } = await c.env.DB.prepare(
+    `SELECT i.cost_category as category, SUM(i.cost) as amount
+     FROM items i
+     INNER JOIN trips t ON i.trip_id = t.id
+     WHERE t.user_id = ? AND i.cost IS NOT NULL AND i.cost_category IS NOT NULL
+     GROUP BY i.cost_category
+     ORDER BY amount DESC`
+  ).bind(user.id).all<{ category: string; amount: number }>();
+  const costByCategory = costByCategoryResults.map((r) => ({
+    category: r.category,
+    amount: r.amount,
+  }));
+
+  // Get trips by theme
+  const { results: tripsByThemeResults } = await c.env.DB.prepare(
+    `SELECT theme, COUNT(*) as count
+     FROM trips
+     WHERE user_id = ?
+     GROUP BY theme`
+  ).bind(user.id).all<{ theme: string | null; count: number }>();
+  const tripsByTheme = tripsByThemeResults.map((r) => ({
+    theme: r.theme ?? 'quiet',
+    count: r.count,
+  }));
+
+  // Get trips by month (past 12 months)
+  const { results: tripsByMonthResults } = await c.env.DB.prepare(
+    `SELECT strftime('%Y-%m', start_date) as month, COUNT(*) as count
+     FROM trips
+     WHERE user_id = ? AND start_date IS NOT NULL
+       AND start_date >= date('now', '-12 months')
+     GROUP BY strftime('%Y-%m', start_date)
+     ORDER BY month ASC`
+  ).bind(user.id).all<{ month: string; count: number }>();
+  const tripsByMonth = tripsByMonthResults.map((r) => ({
+    month: r.month,
+    count: r.count,
+  }));
+
+  // Calculate averages
+  const averageCostPerTrip = totalTrips > 0 ? Math.round(totalCost / totalTrips) : 0;
+  const averageDaysPerTrip = totalTrips > 0 ? Math.round((totalDays / totalTrips) * 10) / 10 : 0;
+
+  return c.json({
+    totalTrips,
+    totalDays,
+    totalCost,
+    costByCategory,
+    tripsByTheme,
+    tripsByMonth,
+    averageCostPerTrip,
+    averageDaysPerTrip,
+  });
+});
+
 // Get single trip with days and items
 app.get('/api/trips/:id', async (c) => {
   const id = c.req.param('id');

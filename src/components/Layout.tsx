@@ -19,6 +19,17 @@ export function Layout() {
             旅程
           </Link>
 
+          {!loading && user && (
+            <nav className="header-nav">
+              <Link to="/trips" className="header-nav-link">
+                旅程一覧
+              </Link>
+              <Link to="/stats" className="header-nav-link">
+                統計
+              </Link>
+            </nav>
+          )}
+
           <div className="header-right">
             <ThemeToggle />
             {!loading && (
