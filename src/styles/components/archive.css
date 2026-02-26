@@ -79,6 +79,70 @@
   cursor: not-allowed;
 }
 
+/* ========================================
+   Pin/Favorite styles
+   ======================================== */
+
+/* Pin button on trip card */
+.pin-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.pin-btn:hover {
+  color: var(--color-text-muted);
+}
+
+.pin-btn-active {
+  color: var(--color-accent);
+}
+
+.pin-btn-active:hover {
+  color: var(--color-text);
+}
+
+.pin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pinned trip card highlight */
+.trip-card-pinned {
+  border-color: var(--color-border);
+  background-color: var(--color-bg-elevated);
+}
+
+.trip-card-pinned::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-m) var(--radius-m) 0 0;
+}
+
+/* Title row with pin indicator */
+.trip-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.trip-card-pin-indicator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .filter-buttons {

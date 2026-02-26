@@ -5,6 +5,7 @@ import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
+import { PinIcon, PinFilledIcon } from '../components/Icons'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -31,6 +32,7 @@ export function TripListPage() {
   )
   const [archivingId, setArchivingId] = useState<string | null>(null)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  const [pinningId, setPinningId] = useState<string | null>(null)
 
   // Search and filter state (synced with URL)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -170,6 +172,37 @@ export function TripListPage() {
       showError('アーカイブの変更に失敗しました')
     } finally {
       setArchivingId(null)
+    }
+  }, [showError])
+
+  // Toggle pin status
+  const togglePin = useCallback(async (tripId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setPinningId(tripId)
+    try {
+      const res = await fetch(`/api/trips/${tripId}/pin`, { method: 'PATCH' })
+      if (!res.ok) {
+        showError('ピン留めの変更に失敗しました')
+        return
+      }
+      const data = (await res.json()) as { pinned: boolean }
+      // Update the trip in the list and re-sort (pinned trips first)
+      setTrips(prev => {
+        const updated = prev.map(t =>
+          t.id === tripId ? { ...t, pinned: data.pinned } : t
+        )
+        // Sort: pinned first, then by original order
+        return updated.sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1
+          if (!a.pinned && b.pinned) return 1
+          return 0
+        })
+      })
+    } catch (err) {
+      console.error('Failed to toggle pin:', err)
+      showError('ピン留めの変更に失敗しました')
+    } finally {
+      setPinningId(null)
     }
   }, [showError])
 
@@ -815,12 +848,19 @@ export function TripListPage() {
         trips.map((trip) => (
           <div
             key={trip.id}
-            className={`trip-card ${trip.isArchived ? 'trip-card-archived' : ''}`}
+            className={`trip-card ${trip.isArchived ? 'trip-card-archived' : ''} ${trip.pinned ? 'trip-card-pinned' : ''}`}
             onClick={() => navigate(`/trips/${trip.id}`)}
             style={{ cursor: 'pointer' }}
           >
             <div className="trip-card-header">
-              <div className="trip-card-title">{trip.title}</div>
+              <div className="trip-card-title-row">
+                {trip.pinned && (
+                  <span className="trip-card-pin-indicator" title="ピン留め中">
+                    <PinFilledIcon size={14} />
+                  </span>
+                )}
+                <div className="trip-card-title">{trip.title}</div>
+              </div>
               {trip.theme && (
                 <span className={`trip-card-theme trip-card-theme-${trip.theme}`}>
                   {trip.theme === 'quiet' ? 'しずか' : '写真映え'}
@@ -836,6 +876,15 @@ export function TripListPage() {
             )}
             {user && (
               <div className="trip-card-actions">
+                <button
+                  type="button"
+                  className={`btn-icon pin-btn ${trip.pinned ? 'pin-btn-active' : ''}`}
+                  onClick={(e) => togglePin(trip.id, e)}
+                  disabled={pinningId === trip.id}
+                  title={trip.pinned ? 'ピン留め解除' : 'ピン留め'}
+                >
+                  {trip.pinned ? <PinFilledIcon size={16} /> : <PinIcon size={16} />}
+                </button>
                 <button
                   type="button"
                   className="btn-text btn-small duplicate-btn"

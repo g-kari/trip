@@ -326,7 +326,7 @@ app.get('/api/trips', async (c) => {
   const sort = url.searchParams.get('sort') || 'created_desc';
   const archived = url.searchParams.get('archived') || '0'; // '0' = active, '1' = archived, 'all' = all
 
-  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, is_archived as isArchived, created_at as createdAt FROM trips';
+  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, is_archived as isArchived, pinned, created_at as createdAt FROM trips';
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
@@ -373,20 +373,20 @@ app.get('/api/trips', async (c) => {
     query += ' WHERE ' + conditions.join(' AND ');
   }
 
-  // Sort order
+  // Sort order - pinned trips always first
   switch (sort) {
     case 'created_asc':
-      query += ' ORDER BY created_at ASC';
+      query += ' ORDER BY pinned DESC, created_at ASC';
       break;
     case 'start_date_desc':
-      query += ' ORDER BY start_date DESC NULLS LAST';
+      query += ' ORDER BY pinned DESC, start_date DESC NULLS LAST';
       break;
     case 'start_date_asc':
-      query += ' ORDER BY start_date ASC NULLS LAST';
+      query += ' ORDER BY pinned DESC, start_date ASC NULLS LAST';
       break;
     case 'created_desc':
     default:
-      query += ' ORDER BY created_at DESC';
+      query += ' ORDER BY pinned DESC, created_at DESC';
       break;
   }
 
@@ -848,6 +848,34 @@ app.put('/api/trips/:id/archive', async (c) => {
   ).bind(newArchiveStatus, id).run();
 
   return c.json({ isArchived: newArchiveStatus === 1 });
+});
+
+// Toggle pin status
+app.patch('/api/trips/:id/pin', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id, user_id as userId, pinned FROM trips WHERE id = ?'
+  ).bind(id).first<{ id: string; userId: string | null; pinned: number | null }>();
+
+  if (!existing) {
+    return c.json({ error: '旅程が見つかりません' }, 404);
+  }
+
+  // Check ownership
+  if (existing.userId && (!user || existing.userId !== user.id)) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  // Toggle pin status
+  const newPinStatus = existing.pinned ? 0 : 1;
+
+  await c.env.DB.prepare(
+    `UPDATE trips SET pinned = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
+  ).bind(newPinStatus, id).run();
+
+  return c.json({ pinned: newPinStatus === 1 });
 });
 
 // Duplicate trip

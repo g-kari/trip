@@ -43,6 +43,7 @@ export type Trip = {
   coverImageUrl: string | null
   budget: number | null
   isArchived: boolean
+  pinned: boolean
   createdAt: string
   days?: Day[]
   items?: Item[]

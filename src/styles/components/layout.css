@@ -97,6 +97,7 @@
 /* Trip card */
 .trip-card {
   display: block;
+  position: relative;
   padding: var(--space-5);
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-m);
