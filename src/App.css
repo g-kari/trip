@@ -617,6 +617,17 @@
   /* Google branding colors optional */
 }
 
+.login-btn-line {
+  background-color: #00B900;
+  border-color: #00B900;
+  color: #ffffff;
+}
+
+.login-btn-line:hover {
+  background-color: #00a000;
+  border-color: #00a000;
+}
+
 .login-error {
   font-size: 0.8125rem;
   color: #b55050;

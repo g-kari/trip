@@ -11,9 +11,14 @@ import {
 } from './auth/session';
 import {
   getGoogleAuthUrl,
-  exchangeCodeForTokens,
+  exchangeCodeForTokens as exchangeGoogleCodeForTokens,
   getGoogleUserInfo,
 } from './auth/google';
+import {
+  getLineAuthUrl,
+  exchangeCodeForTokens as exchangeLineCodeForTokens,
+  getLineUserInfo,
+} from './auth/line';
 import type { User } from './auth/types';
 import { generateOgpImage } from './ogp';
 
@@ -24,6 +29,8 @@ type Bindings = {
   AI: Ai;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  LINE_CHANNEL_ID: string;
+  LINE_CHANNEL_SECRET: string;
 };
 
 type Vars = {
@@ -113,7 +120,7 @@ app.get('/api/auth/google/callback', async (c) => {
     const redirectUri = `${url.origin}/api/auth/google/callback`;
 
     // Exchange code for tokens
-    const tokens = await exchangeCodeForTokens(
+    const tokens = await exchangeGoogleCodeForTokens(
       code,
       c.env.GOOGLE_CLIENT_ID,
       c.env.GOOGLE_CLIENT_SECRET,
@@ -182,6 +189,110 @@ app.get('/api/auth/google/callback', async (c) => {
     });
   } catch (error) {
     console.error('Google auth error:', error);
+    return c.redirect('/login?error=auth_failed', 302);
+  }
+});
+
+// Start LINE OAuth flow
+app.get('/api/auth/line', (c) => {
+  const url = new URL(c.req.url);
+  const redirectUri = `${url.origin}/api/auth/line/callback`;
+
+  // Generate state for CSRF protection
+  const state = generateToken();
+
+  const authUrl = getLineAuthUrl(
+    c.env.LINE_CHANNEL_ID,
+    redirectUri,
+    state
+  );
+
+  // Set state cookie for verification
+  return c.redirect(authUrl, 302);
+});
+
+// LINE OAuth callback
+app.get('/api/auth/line/callback', async (c) => {
+  const url = new URL(c.req.url);
+  const code = url.searchParams.get('code');
+
+  if (!code) {
+    return c.redirect('/login?error=no_code', 302);
+  }
+
+  try {
+    const redirectUri = `${url.origin}/api/auth/line/callback`;
+
+    // Exchange code for tokens
+    const tokens = await exchangeLineCodeForTokens(
+      code,
+      c.env.LINE_CHANNEL_ID,
+      c.env.LINE_CHANNEL_SECRET,
+      redirectUri
+    );
+
+    // Get user info from LINE
+    const lineUser = await getLineUserInfo(tokens.access_token);
+
+    // Find or create user
+    let user = await c.env.DB.prepare(
+      `SELECT id, provider, provider_id as providerId, email, name,
+              avatar_url as avatarUrl, created_at as createdAt
+       FROM users WHERE provider = ? AND provider_id = ?`
+    )
+      .bind('line', lineUser.userId)
+      .first<User>();
+
+    if (!user) {
+      // Create new user
+      const userId = generateId();
+      await c.env.DB.prepare(
+        `INSERT INTO users (id, provider, provider_id, email, name, avatar_url)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+        .bind(
+          userId,
+          'line',
+          lineUser.userId,
+          null, // LINE does not provide email in basic profile
+          lineUser.displayName,
+          lineUser.pictureUrl || null
+        )
+        .run();
+
+      user = {
+        id: userId,
+        provider: 'line',
+        providerId: lineUser.userId,
+        email: null,
+        name: lineUser.displayName,
+        avatarUrl: lineUser.pictureUrl || null,
+        createdAt: new Date().toISOString(),
+      };
+    } else {
+      // Update user info
+      await c.env.DB.prepare(
+        `UPDATE users SET name = ?, avatar_url = ?,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE id = ?`
+      )
+        .bind(lineUser.displayName, lineUser.pictureUrl || null, user.id)
+        .run();
+    }
+
+    // Create session
+    const session = await createSession(c.env.DB, user.id);
+
+    // Redirect to trips page with session cookie
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: '/trips',
+        'Set-Cookie': createSessionCookie(session.id),
+      },
+    });
+  } catch (error) {
+    console.error('LINE auth error:', error);
     return c.redirect('/login?error=auth_failed', 302);
   }
 });

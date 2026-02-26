@@ -20,3 +20,10 @@ export type GoogleUserInfo = {
   name: string
   picture: string
 }
+
+export type LineUserInfo = {
+  userId: string
+  displayName: string
+  pictureUrl?: string
+  statusMessage?: string
+}
