@@ -16,6 +16,10 @@ database_id = "03cacfd7-1a0f-408b-b892-07a8baa34e8c"
 bucket_name = "trip-covers"
 binding = "COVERS"
 
+# Workers AI
+[ai]
+binding = "AI"
+
 # Environment variables (secrets should be set via `wrangler secret put`)
 [vars]
 # GOOGLE_CLIENT_ID = "set via wrangler secret put"

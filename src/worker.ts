@@ -20,6 +20,7 @@ type Bindings = {
   DB: D1Database;
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   COVERS: R2Bucket;
+  AI: Ai;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
 };
@@ -781,6 +782,235 @@ app.delete('/api/trips/:tripId/cover', async (c) => {
   ).bind(tripId).run();
 
   return c.json({ ok: true });
+});
+
+// ============ AI Trip Generation ============
+
+type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing';
+
+interface GeneratedItem {
+  title: string;
+  timeStart: string;
+  timeEnd?: string;
+  area?: string;
+  note?: string;
+  cost?: number;
+}
+
+interface GeneratedDay {
+  date: string;
+  items: GeneratedItem[];
+}
+
+interface GeneratedTrip {
+  title: string;
+  days: GeneratedDay[];
+}
+
+// AI usage limits
+const AI_DAILY_LIMIT = 5;
+
+// Get AI usage stats for a user
+app.get('/api/ai/usage', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Get usage count for today
+  const today = new Date().toISOString().split('T')[0];
+  const result = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(user.id, today).first<{ count: number }>();
+
+  const usedToday = result?.count || 0;
+  const remaining = Math.max(0, AI_DAILY_LIMIT - usedToday);
+
+  return c.json({
+    usedToday,
+    remaining,
+    limit: AI_DAILY_LIMIT,
+  });
+});
+
+// Generate trip with AI
+app.post('/api/trips/generate', async (c) => {
+  const user = c.get('user');
+
+  // Require login for AI generation
+  if (!user) {
+    return c.json({ error: 'AI旅程生成にはログインが必要です' }, 401);
+  }
+
+  // Check rate limit
+  const today = new Date().toISOString().split('T')[0];
+  const usageResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(user.id, today).first<{ count: number }>();
+
+  const usedToday = usageResult?.count || 0;
+  if (usedToday >= AI_DAILY_LIMIT) {
+    return c.json({
+      error: `本日の利用上限（${AI_DAILY_LIMIT}回）に達しました。明日また利用できます。`,
+      limitReached: true,
+      remaining: 0,
+    }, 429);
+  }
+
+  const body = await c.req.json<{
+    destination: string;
+    startDate: string;
+    endDate: string;
+    style?: TripStyle;
+    budget?: number;
+    notes?: string;
+  }>();
+
+  if (!body.destination?.trim() || !body.startDate || !body.endDate) {
+    return c.json({ error: '目的地と日程は必須です' }, 400);
+  }
+
+  // Calculate number of days
+  const start = new Date(body.startDate);
+  const end = new Date(body.endDate);
+  const dayCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  if (dayCount < 1 || dayCount > 14) {
+    return c.json({ error: '日程は1〜14日間で指定してください' }, 400);
+  }
+
+  const styleLabels: Record<TripStyle, string> = {
+    relaxed: 'のんびり・ゆったり',
+    active: 'アクティブ・観光重視',
+    gourmet: 'グルメ・食べ歩き',
+    sightseeing: '観光名所巡り',
+  };
+
+  const styleLabel = body.style ? styleLabels[body.style] : 'バランスの取れた';
+  const budgetInfo = body.budget ? `予算は約${body.budget.toLocaleString()}円です。` : '';
+  const notesInfo = body.notes ? `その他の要望: ${body.notes}` : '';
+
+  const prompt = `あなたは旅行プランナーです。以下の条件で${body.destination}への旅行プランを作成してください。
+
+条件:
+- 目的地: ${body.destination}
+- 日程: ${body.startDate} から ${body.endDate} (${dayCount}日間)
+- 旅のスタイル: ${styleLabel}
+${budgetInfo}
+${notesInfo}
+
+以下のJSON形式で出力してください。他の説明は不要です:
+{
+  "title": "旅程のタイトル（例: 京都3日間の旅）",
+  "days": [
+    {
+      "date": "YYYY-MM-DD形式の日付",
+      "items": [
+        {
+          "title": "スポット名や活動名",
+          "timeStart": "HH:MM形式の開始時間",
+          "timeEnd": "HH:MM形式の終了時間（省略可）",
+          "area": "エリア名（例: 祇園、嵐山など）",
+          "note": "簡単な説明やおすすめポイント",
+          "cost": 推定費用（数値、円単位）
+        }
+      ]
+    }
+  ]
+}
+
+各日は朝から夜まで3〜5個の予定を入れてください。
+観光スポット、食事、移動などをバランスよく配置してください。
+費用は入場料や食事代の目安を入れてください。`;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (c.env.AI as any).run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 4096,
+    });
+
+    // Extract JSON from response
+    const responseText = typeof response === 'object' && 'response' in response
+      ? (response as { response: string }).response
+      : String(response);
+
+    // Try to parse JSON from the response
+    let generatedTrip: GeneratedTrip;
+    try {
+      // Find JSON in the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      generatedTrip = JSON.parse(jsonMatch[0]);
+    } catch {
+      console.error('Failed to parse AI response:', responseText);
+      return c.json({ error: 'AIの応答を解析できませんでした' }, 500);
+    }
+
+    // Create trip in database
+    const tripId = generateId();
+    const theme = 'quiet';
+
+    await c.env.DB.prepare(
+      'INSERT INTO trips (id, title, start_date, end_date, theme, user_id) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(tripId, generatedTrip.title || `${body.destination}の旅`, body.startDate, body.endDate, theme, user?.id ?? null).run();
+
+    // Create days and items
+    for (let i = 0; i < generatedTrip.days.length; i++) {
+      const day = generatedTrip.days[i];
+      const dayId = generateId();
+      const dayDate = day.date || new Date(start.getTime() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      await c.env.DB.prepare(
+        'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+      ).bind(dayId, tripId, dayDate, i).run();
+
+      // Create items for this day
+      for (let j = 0; j < (day.items || []).length; j++) {
+        const item = day.items[j];
+        const itemId = generateId();
+
+        await c.env.DB.prepare(
+          `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, note, cost, sort)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          itemId, tripId, dayId,
+          item.title || '未定',
+          item.area || null,
+          item.timeStart || null,
+          item.timeEnd || null,
+          item.note || null,
+          item.cost || null,
+          j
+        ).run();
+      }
+    }
+
+    // Record AI usage
+    const usageId = generateId();
+    await c.env.DB.prepare(
+      'INSERT INTO ai_usage (id, user_id) VALUES (?, ?)'
+    ).bind(usageId, user.id).run();
+
+    // Calculate remaining uses
+    const remaining = AI_DAILY_LIMIT - usedToday - 1;
+
+    // Fetch the created trip
+    const trip = await c.env.DB.prepare(
+      'SELECT id, title, start_date as startDate, end_date as endDate, theme, created_at as createdAt FROM trips WHERE id = ?'
+    ).bind(tripId).first();
+
+    return c.json({ trip, tripId, remaining }, 201);
+  } catch (error) {
+    console.error('AI generation error:', error);
+    return c.json({ error: 'AIによる旅程生成に失敗しました' }, 500);
+  }
 });
 
 // SPA routes - serve index.html for client-side routing
