@@ -530,6 +530,108 @@
 }
 
 /* ========================================
+   Login page
+   ======================================== */
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8) var(--space-5);
+  width: 100%;
+  max-width: 320px;
+}
+
+.login-logo {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.1em;
+  color: var(--color-text);
+  margin-bottom: var(--space-8);
+}
+
+.login-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) var(--space-5);
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.login-btn:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg);
+}
+
+.login-btn-google {
+  /* Google branding colors optional */
+}
+
+.login-error {
+  font-size: 0.8125rem;
+  color: #b55050;
+  margin-bottom: var(--space-4);
+}
+
+.login-terms {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  margin-top: var(--space-6);
+  line-height: 1.6;
+}
+
+.login-terms a {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+}
+
+/* ========================================
+   User menu (header)
+   ======================================== */
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--content-width);
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-name {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* ========================================
    Print styles
    ======================================== */
 

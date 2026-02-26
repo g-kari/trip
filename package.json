@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "wrangler dev",
     "dev:web": "vite",
-    "build": "tsc -b && vite build",
-    "deploy": "npm run build && wrangler deploy",
+    "build": "eslint . && tsc -b && vite build",
     "lint": "eslint ."
   },
   "dependencies": {
     "hono": "^4.12.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260219.0",
