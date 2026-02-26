@@ -16,6 +16,7 @@ export function SharedTripPage() {
   const [error, setError] = useState<string | null>(null)
   const [uploadingItemPhoto, setUploadingItemPhoto] = useState<string | null>(null)
   const [uploadingDayPhoto, setUploadingDayPhoto] = useState<string | null>(null)
+  const [uploadingDayPhotoCount, setUploadingDayPhotoCount] = useState<number>(0)
   const [deletingItemPhoto, setDeletingItemPhoto] = useState<string | null>(null)
   const [deletingDayPhoto, setDeletingDayPhoto] = useState<string | null>(null)
   const itemPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
@@ -111,39 +112,67 @@ export function SharedTripPage() {
     }
   }
 
-  // Upload photo for day's "その他" section
-  async function uploadDayPhoto(dayId: string, file: File) {
+  // Upload multiple photos for day's "その他" section
+  async function uploadDayPhotos(dayId: string, files: FileList) {
     if (!trip || !user) return
-    if (!file.type.startsWith('image/')) {
-      showError('画像ファイルを選択してください')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showError('ファイルサイズは5MB以下にしてください')
-      return
+
+    // Validate all files first
+    const validFiles: File[] = []
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        showError(`${file.name}: 画像ファイルを選択してください`)
+        continue
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showError(`${file.name}: ファイルサイズは5MB以下にしてください`)
+        continue
+      }
+      validFiles.push(file)
     }
 
+    if (validFiles.length === 0) return
+
     setUploadingDayPhoto(dayId)
+    setUploadingDayPhotoCount(validFiles.length)
+
     try {
-      const res = await fetch(`/api/trips/${trip.id}/days/${dayId}/photos`, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      })
-      if (!res.ok) {
-        if (res.status === 401) {
-          showError('ログインが必要です')
-          return
+      // Upload all files in parallel
+      const uploadPromises = validFiles.map(async (file) => {
+        const res = await fetch(`/api/trips/${trip.id}/days/${dayId}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        })
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error('ログインが必要です')
+          }
+          throw new Error(`${file.name}のアップロードに失敗しました`)
         }
-        throw new Error('Upload failed')
+        return res
+      })
+
+      const results = await Promise.allSettled(uploadPromises)
+      const succeeded = results.filter(r => r.status === 'fulfilled').length
+      const failed = results.filter(r => r.status === 'rejected').length
+
+      if (failed > 0) {
+        const errors = results
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map(r => r.reason?.message || 'アップロードに失敗しました')
+        showError(errors[0])
       }
-      showSuccess('写真をアップロードしました')
-      await refreshTrip()
+
+      if (succeeded > 0) {
+        showSuccess(`${succeeded}枚の写真をアップロードしました`)
+        await refreshTrip()
+      }
     } catch (err) {
-      console.error('Failed to upload photo:', err)
+      console.error('Failed to upload photos:', err)
       showError('写真のアップロードに失敗しました')
     } finally {
       setUploadingDayPhoto(null)
+      setUploadingDayPhotoCount(0)
     }
   }
 
@@ -451,11 +480,15 @@ export function SharedTripPage() {
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         id={`day-photo-${day.id}`}
                         style={{ display: 'none' }}
                         onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) uploadDayPhoto(day.id, file)
+                          const files = e.target.files
+                          if (files && files.length > 0) {
+                            uploadDayPhotos(day.id, files)
+                            e.target.value = ''
+                          }
                         }}
                       />
                       <button
@@ -463,7 +496,9 @@ export function SharedTripPage() {
                         onClick={() => document.getElementById(`day-photo-${day.id}`)?.click()}
                         disabled={uploadingDayPhoto === day.id}
                       >
-                        {uploadingDayPhoto === day.id ? 'アップロード中...' : '📷 写真を追加'}
+                        {uploadingDayPhoto === day.id
+                          ? `${uploadingDayPhotoCount}枚アップロード中...`
+                          : '📷 写真を追加（複数可）'}
                       </button>
                     </div>
                   )}

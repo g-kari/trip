@@ -274,6 +274,7 @@ function DayNotesSection({
   const [notes, setNotes] = useState(day.notes || '')
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadingPhotoCount, setUploadingPhotoCount] = useState(0)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   // Update local state when day changes
@@ -298,30 +299,60 @@ function DayNotesSection({
     }
   }
 
-  async function uploadPhoto(file: File) {
-    if (!file.type.startsWith('image/')) {
-      alert('画像ファイルを選択してください')
-      return
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('ファイルサイズは5MB以下にしてください')
-      return
+  async function uploadPhotos(files: FileList) {
+    // Validate all files first
+    const validFiles: File[] = []
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        alert(`${file.name}: 画像ファイルを選択してください`)
+        continue
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`${file.name}: ファイルサイズは5MB以下にしてください`)
+        continue
+      }
+      validFiles.push(file)
     }
 
+    if (validFiles.length === 0) return
+
     setUploadingPhoto(true)
+    setUploadingPhotoCount(validFiles.length)
+
     try {
-      const res = await fetch(`/api/trips/${tripId}/days/${day.id}/photos`, {
-        method: 'POST',
-        headers: { 'Content-Type': file.type },
-        body: file,
+      // Upload all files in parallel
+      const uploadPromises = validFiles.map(async (file) => {
+        const res = await fetch(`/api/trips/${tripId}/days/${day.id}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        })
+        if (!res.ok) {
+          throw new Error(`${file.name}のアップロードに失敗しました`)
+        }
+        return res
       })
-      if (!res.ok) throw new Error('Upload failed')
-      onUpdated()
+
+      const results = await Promise.allSettled(uploadPromises)
+      const succeeded = results.filter(r => r.status === 'fulfilled').length
+      const failed = results.filter(r => r.status === 'rejected').length
+
+      if (failed > 0) {
+        const errors = results
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map(r => r.reason?.message || 'アップロードに失敗しました')
+        alert(errors[0])
+      }
+
+      if (succeeded > 0) {
+        onUpdated()
+      }
     } catch (err) {
-      console.error('Failed to upload photo:', err)
+      console.error('Failed to upload photos:', err)
       alert('写真のアップロードに失敗しました')
     } finally {
       setUploadingPhoto(false)
+      setUploadingPhotoCount(0)
     }
   }
 
@@ -414,16 +445,19 @@ function DayNotesSection({
         disabled={uploadingPhoto}
         style={{ marginTop: hasContent ? 'var(--space-2)' : 0 }}
       >
-        {uploadingPhoto ? '...' : '+ 写真を追加'}
+        {uploadingPhoto ? `${uploadingPhotoCount}枚アップロード中...` : '+ 写真を追加（複数可）'}
       </button>
       <input
         ref={photoInputRef}
         type="file"
         accept="image/*"
+        multiple
         style={{ display: 'none' }}
         onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) uploadPhoto(file)
+          const files = e.target.files
+          if (files && files.length > 0) {
+            uploadPhotos(files)
+          }
           e.target.value = ''
         }}
       />

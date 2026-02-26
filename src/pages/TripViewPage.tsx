@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { Trip, Item, DayPhoto } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
@@ -18,6 +18,9 @@ export function TripViewPage() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [deletingItemPhoto, setDeletingItemPhoto] = useState<string | null>(null)
   const [deletingDayPhoto, setDeletingDayPhoto] = useState<string | null>(null)
+  const [uploadingDayPhoto, setUploadingDayPhoto] = useState<string | null>(null)
+  const [uploadingDayPhotoCount, setUploadingDayPhotoCount] = useState<number>(0)
+  const dayPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -217,6 +220,70 @@ export function TripViewPage() {
     }
   }
 
+  // Upload multiple photos for day's "その他" section
+  async function uploadDayPhotos(dayId: string, files: FileList) {
+    if (!trip || !user) return
+
+    // Validate all files first
+    const validFiles: File[] = []
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith('image/')) {
+        showError(`${file.name}: 画像ファイルを選択してください`)
+        continue
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showError(`${file.name}: ファイルサイズは5MB以下にしてください`)
+        continue
+      }
+      validFiles.push(file)
+    }
+
+    if (validFiles.length === 0) return
+
+    setUploadingDayPhoto(dayId)
+    setUploadingDayPhotoCount(validFiles.length)
+
+    try {
+      // Upload all files in parallel
+      const uploadPromises = validFiles.map(async (file) => {
+        const res = await fetch(`/api/trips/${trip.id}/days/${dayId}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        })
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error('ログインが必要です')
+          }
+          throw new Error(`${file.name}のアップロードに失敗しました`)
+        }
+        return res
+      })
+
+      const results = await Promise.allSettled(uploadPromises)
+      const succeeded = results.filter(r => r.status === 'fulfilled').length
+      const failed = results.filter(r => r.status === 'rejected').length
+
+      if (failed > 0) {
+        const errors = results
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map(r => r.reason?.message || 'アップロードに失敗しました')
+        showError(errors[0])
+      }
+
+      if (succeeded > 0) {
+        showSuccess(`${succeeded}枚の写真をアップロードしました`)
+        if (id) fetchTrip(id)
+      }
+    } catch (err) {
+      console.error('Failed to upload photos:', err)
+      showError('写真のアップロードに失敗しました')
+    } finally {
+      setUploadingDayPhoto(null)
+      setUploadingDayPhotoCount(0)
+    }
+  }
+
   // Check if user can delete item photo (owner can always delete, or uploader can delete their own)
   function canDeleteItemPhoto(item: Item): boolean {
     if (!user) return false
@@ -366,7 +433,7 @@ export function TripViewPage() {
                 )}
 
                 {/* その他 section */}
-                {(day.notes || (day.photos && day.photos.length > 0)) && (
+                {(day.notes || (day.photos && day.photos.length > 0) || user) && (
                   <div className="day-notes-section">
                     <div className="day-notes-header">
                       <span className="day-notes-label">その他</span>
@@ -394,6 +461,36 @@ export function TripViewPage() {
                             )}
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {/* Photo upload for logged-in users */}
+                    {user && (
+                      <div className="photo-upload-section no-print" style={{ marginTop: 'var(--space-2)' }}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          style={{ display: 'none' }}
+                          ref={(el) => {
+                            if (el) dayPhotoInputRefs.current.set(day.id, el)
+                          }}
+                          onChange={(e) => {
+                            const files = e.target.files
+                            if (files && files.length > 0) {
+                              uploadDayPhotos(day.id, files)
+                              e.target.value = ''
+                            }
+                          }}
+                        />
+                        <button
+                          className="btn-text btn-small"
+                          onClick={() => dayPhotoInputRefs.current.get(day.id)?.click()}
+                          disabled={uploadingDayPhoto === day.id}
+                        >
+                          {uploadingDayPhoto === day.id
+                            ? `${uploadingDayPhotoCount}枚アップロード中...`
+                            : '📷 写真を追加（複数可）'}
+                        </button>
                       </div>
                     )}
                   </div>
