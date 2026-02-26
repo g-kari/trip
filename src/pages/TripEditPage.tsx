@@ -4,6 +4,8 @@ import type { Trip, Day, Item, TripTheme, CostCategory } from '../types'
 import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
+import { DatePicker } from '../components/DatePicker'
+import { TimePicker } from '../components/TimePicker'
 
 // Draggable item component using HTML5 Drag and Drop API
 function DraggableItem({
@@ -159,11 +161,11 @@ function DraggableItem({
       {editingItem?.id === item.id ? (
         <form className="edit-item-form no-print" onSubmit={onSubmitEdit}>
           <div className="form-row">
-            <input
-              type="time"
+            <TimePicker
               value={editItemTime}
-              onChange={(e) => setEditItemTime(e.target.value)}
-              className="input input-small"
+              onChange={setEditItemTime}
+              placeholder="時刻"
+              className="input-small"
             />
             <input
               type="text"
@@ -1169,18 +1171,18 @@ export function TripEditPage() {
             placeholder="旅程のタイトル"
           />
           <div className="date-inputs">
-            <input
-              type="date"
+            <DatePicker
               value={editTripStartDate}
-              onChange={(e) => setEditTripStartDate(e.target.value)}
-              className="input"
+              onChange={setEditTripStartDate}
+              placeholder="開始日"
+              max={editTripEndDate || undefined}
             />
             <span className="date-separator">〜</span>
-            <input
-              type="date"
+            <DatePicker
               value={editTripEndDate}
-              onChange={(e) => setEditTripEndDate(e.target.value)}
-              className="input"
+              onChange={setEditTripEndDate}
+              placeholder="終了日"
+              min={editTripStartDate || undefined}
             />
           </div>
           {/* Theme selector */}
@@ -1388,12 +1390,11 @@ export function TripEditPage() {
                       autoFocus
                     />
                     <div className="form-row">
-                      <input
-                        type="time"
+                      <TimePicker
                         value={newItemTime}
-                        onChange={(e) => setNewItemTime(e.target.value)}
-                        className="input input-small"
+                        onChange={setNewItemTime}
                         placeholder="時刻"
+                        className="input-small"
                       />
                       <input
                         type="text"
@@ -1486,12 +1487,12 @@ export function TripEditPage() {
         {showDayForm ? (
           <form className="inline-form" onSubmit={createDay}>
             <div className="form-row">
-              <input
-                type="date"
+              <DatePicker
                 value={newDayDate}
-                onChange={(e) => setNewDayDate(e.target.value)}
-                className="input"
-                autoFocus
+                onChange={setNewDayDate}
+                placeholder="日付を選択"
+                min={editTripStartDate || undefined}
+                max={editTripEndDate || undefined}
               />
               <div className="form-actions">
                 <button
