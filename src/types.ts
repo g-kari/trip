@@ -89,25 +89,68 @@ export type FeedbackStats = {
   averageRating: number
 }
 
-// Trip comment types
-export type TripComment = {
+// ============ Expense splitting types ============
+
+// Share type for expense splitting
+export type ShareType = 'equal' | 'percentage' | 'amount'
+
+// Trip member (can be a logged-in user or a guest)
+export type TripMember = {
   id: string
   tripId: string
-  itemId: string | null
-  userId: string
-  parentId: string | null
-  content: string
-  isPinned: boolean
+  userId: string | null  // null for guests
+  name: string
   createdAt: string
-  updatedAt: string
-  // Populated from user table
-  userName: string | null
-  userAvatarUrl: string | null
-  // Nested replies (only for top-level comments)
-  replies?: TripComment[]
 }
 
-export type CommentStats = {
-  total: number
-  pinned: number
+// Payment record - who paid for an item
+export type ExpensePayment = {
+  id: string
+  itemId: string
+  paidBy: string  // trip_members.id
+  paidByName?: string  // populated from trip_members
+  amount: number  // in JPY
+  createdAt: string
+}
+
+// Split record - how an expense is divided among members
+export type ExpenseSplit = {
+  id: string
+  itemId: string
+  memberId: string  // trip_members.id
+  memberName?: string  // populated from trip_members
+  shareType: ShareType
+  shareValue: number | null  // percentage (0-100) or fixed amount
+}
+
+// Item with expense info
+export type ItemWithExpense = Item & {
+  payments?: ExpensePayment[]
+  splits?: ExpenseSplit[]
+}
+
+// Settlement - who owes whom how much
+export type Settlement = {
+  from: string  // member id
+  fromName: string
+  to: string  // member id
+  toName: string
+  amount: number  // in JPY
+}
+
+// Member balance - how much each member paid vs owes
+export type MemberBalance = {
+  memberId: string
+  memberName: string
+  totalPaid: number
+  totalOwed: number
+  balance: number  // positive = is owed money, negative = owes money
+}
+
+// Settlement summary for a trip
+export type SettlementSummary = {
+  members: TripMember[]
+  balances: MemberBalance[]
+  settlements: Settlement[]
+  totalExpenses: number
 }

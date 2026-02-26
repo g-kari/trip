@@ -8,7 +8,6 @@ import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
-import { CommentSection } from '../components/CommentSection'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -906,10 +905,6 @@ export function SharedTripPage() {
           )}
         </section>
 
-        {/* Comment Section */}
-        {trip && token && (
-          <CommentSection tripId={trip.id} token={token} isOwner={tripOwnerId === user?.id} />
-        )}
       </main>
 
       <footer className="footer">

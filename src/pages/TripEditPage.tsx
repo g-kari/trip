@@ -8,7 +8,6 @@ import { DatePicker } from '../components/DatePicker'
 import { TimePicker } from '../components/TimePicker'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { CollaboratorManager } from '../components/CollaboratorManager'
-import { CommentSection } from '../components/CommentSection'
 
 // Active editor type for collaborative editing
 type ActiveEditor = {
@@ -525,7 +524,6 @@ export function TripEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [trip, setTrip] = useState<Trip | null>(null)
-  const [isOwner, setIsOwner] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -617,9 +615,8 @@ export function TripEditPage() {
         setLoading(false)
         return
       }
-      const data = (await res.json()) as { trip: Trip; isOwner?: boolean }
+      const data = (await res.json()) as { trip: Trip }
       setTrip(data.trip)
-      setIsOwner(data.isOwner ?? false)
       // Only set form values on initial load
       if (!initialLoadComplete.current) {
         setEditTripTitle(data.trip.title)
@@ -1633,9 +1630,6 @@ export function TripEditPage() {
           </div>
         )}
       </div>
-
-      {/* Comment Section */}
-      <CommentSection tripId={trip.id} isOwner={isOwner} />
 
       <button
         className="btn-text back-btn no-print"

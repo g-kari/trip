@@ -3475,612 +3475,6 @@ app.post('/api/shared/:token/feedback', async (c) => {
   return c.json({ feedback }, 201);
 });
 
-// ============ Trip Comments ============
-
-// Helper to check if user can comment on a trip
-async function checkCanComment(
-  db: D1Database,
-  tripId: string,
-  user: User | null
-): Promise<{ ok: boolean; error?: string; status?: number; isOwner?: boolean }> {
-  if (!user) {
-    return { ok: false, error: 'コメントにはログインが必要です', status: 401 };
-  }
-
-  const trip = await db
-    .prepare('SELECT id, user_id as userId FROM trips WHERE id = ?')
-    .bind(tripId)
-    .first<{ id: string; userId: string | null }>();
-
-  if (!trip) {
-    return { ok: false, error: 'Trip not found', status: 404 };
-  }
-
-  // Check if user is owner
-  const isOwner = !trip.userId || trip.userId === user.id;
-  if (isOwner) {
-    return { ok: true, isOwner: true };
-  }
-
-  // Check if user is a collaborator
-  const collaborator = await db
-    .prepare('SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?')
-    .bind(tripId, user.id)
-    .first<{ role: string }>();
-
-  if (collaborator) {
-    return { ok: true, isOwner: false };
-  }
-
-  // Check if trip has a share token (public viewers can comment if logged in)
-  const share = await db
-    .prepare('SELECT id FROM share_tokens WHERE trip_id = ?')
-    .bind(tripId)
-    .first();
-
-  if (share) {
-    return { ok: true, isOwner: false };
-  }
-
-  return { ok: false, error: 'Forbidden', status: 403 };
-}
-
-// Get comments for a trip
-app.get('/api/trips/:tripId/comments', async (c) => {
-  const tripId = c.req.param('tripId');
-  const user = c.get('user');
-
-  // Check if user can access the trip
-  const trip = await c.env.DB.prepare(
-    'SELECT id, user_id as userId FROM trips WHERE id = ?'
-  ).bind(tripId).first<{ id: string; userId: string | null }>();
-
-  if (!trip) {
-    return c.json({ error: 'Trip not found' }, 404);
-  }
-
-  // Check access - owner, collaborator, or has share token
-  const isOwner = !trip.userId || (user && trip.userId === user.id);
-  if (!isOwner) {
-    if (user) {
-      const collaborator = await c.env.DB.prepare(
-        'SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
-      ).bind(tripId, user.id).first();
-      if (!collaborator) {
-        // Check for share token
-        const share = await c.env.DB.prepare(
-          'SELECT id FROM share_tokens WHERE trip_id = ?'
-        ).bind(tripId).first();
-        if (!share) {
-          return c.json({ error: 'Forbidden' }, 403);
-        }
-      }
-    } else {
-      // No user - check for share token
-      const share = await c.env.DB.prepare(
-        'SELECT id FROM share_tokens WHERE trip_id = ?'
-      ).bind(tripId).first();
-      if (!share) {
-        return c.json({ error: 'Forbidden' }, 403);
-      }
-    }
-  }
-
-  // Get all comments with user info
-  const { results: comments } = await c.env.DB.prepare(
-    `SELECT c.id, c.trip_id as tripId, c.item_id as itemId, c.user_id as userId,
-            c.parent_id as parentId, c.content, c.is_pinned as isPinned,
-            c.created_at as createdAt, c.updated_at as updatedAt,
-            u.name as userName, u.avatar_url as userAvatarUrl
-     FROM trip_comments c
-     LEFT JOIN users u ON c.user_id = u.id
-     WHERE c.trip_id = ?
-     ORDER BY c.is_pinned DESC, c.created_at ASC`
-  ).bind(tripId).all<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: number;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-  }>();
-
-  // Organize comments into tree structure (top-level and replies)
-  const topLevelComments: Array<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: boolean;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-    replies: Array<{
-      id: string;
-      tripId: string;
-      itemId: string | null;
-      userId: string;
-      parentId: string | null;
-      content: string;
-      isPinned: boolean;
-      createdAt: string;
-      updatedAt: string;
-      userName: string | null;
-      userAvatarUrl: string | null;
-    }>;
-  }> = [];
-  const repliesMap = new Map<string, typeof topLevelComments[0]['replies']>();
-
-  for (const comment of comments) {
-    const formattedComment = {
-      ...comment,
-      isPinned: comment.isPinned === 1,
-    };
-
-    if (comment.parentId) {
-      // This is a reply
-      const replies = repliesMap.get(comment.parentId) || [];
-      replies.push(formattedComment);
-      repliesMap.set(comment.parentId, replies);
-    } else {
-      // This is a top-level comment
-      topLevelComments.push({ ...formattedComment, replies: [] });
-    }
-  }
-
-  // Attach replies to their parent comments
-  for (const comment of topLevelComments) {
-    comment.replies = repliesMap.get(comment.id) || [];
-  }
-
-  // Calculate stats
-  const totalComments = comments.length;
-  const pinnedComments = comments.filter(c => c.isPinned === 1).length;
-
-  return c.json({
-    comments: topLevelComments,
-    stats: {
-      total: totalComments,
-      pinned: pinnedComments,
-    },
-  });
-});
-
-// Create a comment
-app.post('/api/trips/:tripId/comments', async (c) => {
-  const tripId = c.req.param('tripId');
-  const user = c.get('user');
-  const body = await c.req.json<{
-    itemId?: string;
-    parentId?: string;
-    content: string;
-  }>();
-
-  const check = await checkCanComment(c.env.DB, tripId, user);
-  if (!check.ok) {
-    return c.json({ error: check.error }, check.status as 401 | 403 | 404);
-  }
-
-  if (!body.content?.trim()) {
-    return c.json({ error: 'コメント内容を入力してください' }, 400);
-  }
-
-  // Validate content length
-  if (body.content.length > 2000) {
-    return c.json({ error: 'コメントは2000文字以内で入力してください' }, 400);
-  }
-
-  // Validate itemId if provided
-  if (body.itemId) {
-    const item = await c.env.DB.prepare(
-      'SELECT id FROM items WHERE id = ? AND trip_id = ?'
-    ).bind(body.itemId, tripId).first();
-    if (!item) {
-      return c.json({ error: 'アイテムが見つかりません' }, 404);
-    }
-  }
-
-  // Validate parentId if provided (only 1 level of nesting allowed)
-  if (body.parentId) {
-    const parent = await c.env.DB.prepare(
-      'SELECT id, parent_id FROM trip_comments WHERE id = ? AND trip_id = ?'
-    ).bind(body.parentId, tripId).first<{ id: string; parent_id: string | null }>();
-    if (!parent) {
-      return c.json({ error: '返信先のコメントが見つかりません' }, 404);
-    }
-    // Only allow 1 level of nesting
-    if (parent.parent_id) {
-      return c.json({ error: '返信への返信はできません' }, 400);
-    }
-  }
-
-  const id = generateId();
-
-  await c.env.DB.prepare(
-    `INSERT INTO trip_comments (id, trip_id, item_id, user_id, parent_id, content)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(
-    id,
-    tripId,
-    body.itemId ?? null,
-    user!.id,
-    body.parentId ?? null,
-    body.content.trim()
-  ).run();
-
-  // Fetch the created comment with user info
-  const comment = await c.env.DB.prepare(
-    `SELECT c.id, c.trip_id as tripId, c.item_id as itemId, c.user_id as userId,
-            c.parent_id as parentId, c.content, c.is_pinned as isPinned,
-            c.created_at as createdAt, c.updated_at as updatedAt,
-            u.name as userName, u.avatar_url as userAvatarUrl
-     FROM trip_comments c
-     LEFT JOIN users u ON c.user_id = u.id
-     WHERE c.id = ?`
-  ).bind(id).first<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: number;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-  }>();
-
-  return c.json({
-    comment: {
-      ...comment,
-      isPinned: comment?.isPinned === 1,
-      replies: [],
-    },
-  }, 201);
-});
-
-// Update a comment
-app.put('/api/trips/:tripId/comments/:commentId', async (c) => {
-  const { tripId, commentId } = c.req.param();
-  const user = c.get('user');
-  const body = await c.req.json<{ content: string }>();
-
-  if (!user) {
-    return c.json({ error: 'ログインが必要です' }, 401);
-  }
-
-  if (!body.content?.trim()) {
-    return c.json({ error: 'コメント内容を入力してください' }, 400);
-  }
-
-  if (body.content.length > 2000) {
-    return c.json({ error: 'コメントは2000文字以内で入力してください' }, 400);
-  }
-
-  // Get the comment
-  const comment = await c.env.DB.prepare(
-    'SELECT id, user_id as userId FROM trip_comments WHERE id = ? AND trip_id = ?'
-  ).bind(commentId, tripId).first<{ id: string; userId: string }>();
-
-  if (!comment) {
-    return c.json({ error: 'コメントが見つかりません' }, 404);
-  }
-
-  // Only the author can edit their comment
-  if (comment.userId !== user.id) {
-    return c.json({ error: '自分のコメントのみ編集できます' }, 403);
-  }
-
-  await c.env.DB.prepare(
-    `UPDATE trip_comments SET content = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-     WHERE id = ?`
-  ).bind(body.content.trim(), commentId).run();
-
-  // Fetch updated comment
-  const updatedComment = await c.env.DB.prepare(
-    `SELECT c.id, c.trip_id as tripId, c.item_id as itemId, c.user_id as userId,
-            c.parent_id as parentId, c.content, c.is_pinned as isPinned,
-            c.created_at as createdAt, c.updated_at as updatedAt,
-            u.name as userName, u.avatar_url as userAvatarUrl
-     FROM trip_comments c
-     LEFT JOIN users u ON c.user_id = u.id
-     WHERE c.id = ?`
-  ).bind(commentId).first<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: number;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-  }>();
-
-  return c.json({
-    comment: {
-      ...updatedComment,
-      isPinned: updatedComment?.isPinned === 1,
-    },
-  });
-});
-
-// Delete a comment
-app.delete('/api/trips/:tripId/comments/:commentId', async (c) => {
-  const { tripId, commentId } = c.req.param();
-  const user = c.get('user');
-
-  if (!user) {
-    return c.json({ error: 'ログインが必要です' }, 401);
-  }
-
-  // Get the comment
-  const comment = await c.env.DB.prepare(
-    'SELECT id, user_id as userId FROM trip_comments WHERE id = ? AND trip_id = ?'
-  ).bind(commentId, tripId).first<{ id: string; userId: string }>();
-
-  if (!comment) {
-    return c.json({ error: 'コメントが見つかりません' }, 404);
-  }
-
-  // Get the trip to check ownership
-  const trip = await c.env.DB.prepare(
-    'SELECT user_id as userId FROM trips WHERE id = ?'
-  ).bind(tripId).first<{ userId: string | null }>();
-
-  const isOwner = trip && (!trip.userId || trip.userId === user.id);
-  const isAuthor = comment.userId === user.id;
-
-  // Only the author or trip owner can delete
-  if (!isOwner && !isAuthor) {
-    return c.json({ error: 'このコメントを削除する権限がありません' }, 403);
-  }
-
-  // Delete the comment (replies will be cascade deleted)
-  await c.env.DB.prepare('DELETE FROM trip_comments WHERE id = ?').bind(commentId).run();
-
-  return c.json({ ok: true });
-});
-
-// Toggle pin status (owner only)
-app.put('/api/trips/:tripId/comments/:commentId/pin', async (c) => {
-  const { tripId, commentId } = c.req.param();
-  const user = c.get('user');
-
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
-  if (!check.ok) {
-    return c.json({ error: check.error }, check.status as 403 | 404);
-  }
-
-  // Get the comment
-  const comment = await c.env.DB.prepare(
-    'SELECT id, is_pinned as isPinned FROM trip_comments WHERE id = ? AND trip_id = ?'
-  ).bind(commentId, tripId).first<{ id: string; isPinned: number }>();
-
-  if (!comment) {
-    return c.json({ error: 'コメントが見つかりません' }, 404);
-  }
-
-  // Toggle pin status
-  const newPinStatus = comment.isPinned === 1 ? 0 : 1;
-
-  await c.env.DB.prepare(
-    `UPDATE trip_comments SET is_pinned = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
-     WHERE id = ?`
-  ).bind(newPinStatus, commentId).run();
-
-  return c.json({ isPinned: newPinStatus === 1 });
-});
-
-// Get comments for shared trip
-app.get('/api/shared/:token/comments', async (c) => {
-  const token = c.req.param('token');
-
-  const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
-  ).bind(token).first<{ trip_id: string }>();
-
-  if (!share) {
-    return c.json({ error: 'Invalid share link' }, 404);
-  }
-
-  const tripId = share.trip_id;
-
-  // Get all comments with user info
-  const { results: comments } = await c.env.DB.prepare(
-    `SELECT c.id, c.trip_id as tripId, c.item_id as itemId, c.user_id as userId,
-            c.parent_id as parentId, c.content, c.is_pinned as isPinned,
-            c.created_at as createdAt, c.updated_at as updatedAt,
-            u.name as userName, u.avatar_url as userAvatarUrl
-     FROM trip_comments c
-     LEFT JOIN users u ON c.user_id = u.id
-     WHERE c.trip_id = ?
-     ORDER BY c.is_pinned DESC, c.created_at ASC`
-  ).bind(tripId).all<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: number;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-  }>();
-
-  // Organize comments into tree structure
-  const topLevelComments: Array<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: boolean;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-    replies: Array<{
-      id: string;
-      tripId: string;
-      itemId: string | null;
-      userId: string;
-      parentId: string | null;
-      content: string;
-      isPinned: boolean;
-      createdAt: string;
-      updatedAt: string;
-      userName: string | null;
-      userAvatarUrl: string | null;
-    }>;
-  }> = [];
-  const repliesMap = new Map<string, typeof topLevelComments[0]['replies']>();
-
-  for (const comment of comments) {
-    const formattedComment = {
-      ...comment,
-      isPinned: comment.isPinned === 1,
-    };
-
-    if (comment.parentId) {
-      const replies = repliesMap.get(comment.parentId) || [];
-      replies.push(formattedComment);
-      repliesMap.set(comment.parentId, replies);
-    } else {
-      topLevelComments.push({ ...formattedComment, replies: [] });
-    }
-  }
-
-  for (const comment of topLevelComments) {
-    comment.replies = repliesMap.get(comment.id) || [];
-  }
-
-  const totalComments = comments.length;
-  const pinnedComments = comments.filter(c => c.isPinned === 1).length;
-
-  return c.json({
-    comments: topLevelComments,
-    stats: {
-      total: totalComments,
-      pinned: pinnedComments,
-    },
-  });
-});
-
-// Post comment for shared trip
-app.post('/api/shared/:token/comments', async (c) => {
-  const token = c.req.param('token');
-  const user = c.get('user');
-  const body = await c.req.json<{
-    itemId?: string;
-    parentId?: string;
-    content: string;
-  }>();
-
-  if (!user) {
-    return c.json({ error: 'コメントにはログインが必要です' }, 401);
-  }
-
-  const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
-  ).bind(token).first<{ trip_id: string }>();
-
-  if (!share) {
-    return c.json({ error: 'Invalid share link' }, 404);
-  }
-
-  const tripId = share.trip_id;
-
-  if (!body.content?.trim()) {
-    return c.json({ error: 'コメント内容を入力してください' }, 400);
-  }
-
-  if (body.content.length > 2000) {
-    return c.json({ error: 'コメントは2000文字以内で入力してください' }, 400);
-  }
-
-  // Validate itemId if provided
-  if (body.itemId) {
-    const item = await c.env.DB.prepare(
-      'SELECT id FROM items WHERE id = ? AND trip_id = ?'
-    ).bind(body.itemId, tripId).first();
-    if (!item) {
-      return c.json({ error: 'アイテムが見つかりません' }, 404);
-    }
-  }
-
-  // Validate parentId if provided
-  if (body.parentId) {
-    const parent = await c.env.DB.prepare(
-      'SELECT id, parent_id FROM trip_comments WHERE id = ? AND trip_id = ?'
-    ).bind(body.parentId, tripId).first<{ id: string; parent_id: string | null }>();
-    if (!parent) {
-      return c.json({ error: '返信先のコメントが見つかりません' }, 404);
-    }
-    if (parent.parent_id) {
-      return c.json({ error: '返信への返信はできません' }, 400);
-    }
-  }
-
-  const id = generateId();
-
-  await c.env.DB.prepare(
-    `INSERT INTO trip_comments (id, trip_id, item_id, user_id, parent_id, content)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(
-    id,
-    tripId,
-    body.itemId ?? null,
-    user.id,
-    body.parentId ?? null,
-    body.content.trim()
-  ).run();
-
-  const comment = await c.env.DB.prepare(
-    `SELECT c.id, c.trip_id as tripId, c.item_id as itemId, c.user_id as userId,
-            c.parent_id as parentId, c.content, c.is_pinned as isPinned,
-            c.created_at as createdAt, c.updated_at as updatedAt,
-            u.name as userName, u.avatar_url as userAvatarUrl
-     FROM trip_comments c
-     LEFT JOIN users u ON c.user_id = u.id
-     WHERE c.id = ?`
-  ).bind(id).first<{
-    id: string;
-    tripId: string;
-    itemId: string | null;
-    userId: string;
-    parentId: string | null;
-    content: string;
-    isPinned: number;
-    createdAt: string;
-    updatedAt: string;
-    userName: string | null;
-    userAvatarUrl: string | null;
-  }>();
-
-  return c.json({
-    comment: {
-      ...comment,
-      isPinned: comment?.isPinned === 1,
-      replies: [],
-    },
-  }, 201);
-});
-
 // ============ AI Trip Generation ============
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing';
@@ -4535,6 +3929,481 @@ app.get('/s/:token', async (c) => {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, max-age=3600',
     },
+  });
+});
+
+// ============ Trip Members & Expense Splitting ============
+
+// Get trip members
+app.get('/api/trips/:tripId/members', async (c) => {
+  const { tripId } = c.req.param();
+  const user = c.get('user');
+
+  // Check if user has access to this trip
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  // Allow access if owner or collaborator
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  const { results: members } = await c.env.DB.prepare(
+    `SELECT id, trip_id as tripId, user_id as userId, name, created_at as createdAt
+     FROM trip_members WHERE trip_id = ? ORDER BY created_at ASC`
+  ).bind(tripId).all<{
+    id: string;
+    tripId: string;
+    userId: string | null;
+    name: string;
+    createdAt: string;
+  }>();
+
+  return c.json({ members });
+});
+
+// Add trip member
+app.post('/api/trips/:tripId/members', async (c) => {
+  const { tripId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{ name: string; userId?: string }>();
+
+  // Check ownership
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  if (!body.name?.trim()) {
+    return c.json({ error: 'メンバー名を入力してください' }, 400);
+  }
+
+  if (body.name.length > 50) {
+    return c.json({ error: 'メンバー名は50文字以内で入力してください' }, 400);
+  }
+
+  // Check if userId already exists for this trip
+  if (body.userId) {
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, body.userId).first();
+    if (existing) {
+      return c.json({ error: 'このユーザーは既にメンバーに追加されています' }, 400);
+    }
+  }
+
+  const id = generateId();
+
+  await c.env.DB.prepare(
+    'INSERT INTO trip_members (id, trip_id, user_id, name) VALUES (?, ?, ?, ?)'
+  ).bind(id, tripId, body.userId ?? null, body.name.trim()).run();
+
+  const member = await c.env.DB.prepare(
+    `SELECT id, trip_id as tripId, user_id as userId, name, created_at as createdAt
+     FROM trip_members WHERE id = ?`
+  ).bind(id).first();
+
+  return c.json({ member }, 201);
+});
+
+// Delete trip member
+app.delete('/api/trips/:tripId/members/:memberId', async (c) => {
+  const { tripId, memberId } = c.req.param();
+  const user = c.get('user');
+
+  // Check ownership
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Check if member exists
+  const member = await c.env.DB.prepare(
+    'SELECT id FROM trip_members WHERE id = ? AND trip_id = ?'
+  ).bind(memberId, tripId).first();
+
+  if (!member) {
+    return c.json({ error: 'メンバーが見つかりません' }, 404);
+  }
+
+  // Delete member (cascade will delete payments and splits)
+  await c.env.DB.prepare('DELETE FROM trip_members WHERE id = ?').bind(memberId).run();
+
+  return c.json({ ok: true });
+});
+
+// Update payment info for an item
+app.put('/api/trips/:tripId/items/:itemId/payment', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{
+    payments?: { paidBy: string; amount: number }[];
+    splits?: { memberId: string; shareType: 'equal' | 'percentage' | 'amount'; shareValue?: number }[];
+  }>();
+
+  // Check ownership or collaboration
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id, role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first<{ id: string; role: string }>();
+    hasAccess = collab?.role === 'editor';
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Check if item exists
+  const item = await c.env.DB.prepare(
+    'SELECT id FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first();
+
+  if (!item) {
+    return c.json({ error: 'アイテムが見つかりません' }, 404);
+  }
+
+  // Update payments
+  if (body.payments !== undefined) {
+    // Delete existing payments
+    await c.env.DB.prepare('DELETE FROM expense_payments WHERE item_id = ?').bind(itemId).run();
+
+    // Insert new payments
+    for (const payment of body.payments) {
+      if (payment.amount <= 0) continue;
+      const paymentId = generateId();
+      await c.env.DB.prepare(
+        'INSERT INTO expense_payments (id, item_id, paid_by, amount) VALUES (?, ?, ?, ?)'
+      ).bind(paymentId, itemId, payment.paidBy, payment.amount).run();
+    }
+  }
+
+  // Update splits
+  if (body.splits !== undefined) {
+    // Delete existing splits
+    await c.env.DB.prepare('DELETE FROM expense_splits WHERE item_id = ?').bind(itemId).run();
+
+    // Insert new splits
+    for (const split of body.splits) {
+      const splitId = generateId();
+      await c.env.DB.prepare(
+        'INSERT INTO expense_splits (id, item_id, member_id, share_type, share_value) VALUES (?, ?, ?, ?, ?)'
+      ).bind(splitId, itemId, split.memberId, split.shareType, split.shareValue ?? null).run();
+    }
+  }
+
+  return c.json({ ok: true });
+});
+
+// Get expense info for an item
+app.get('/api/trips/:tripId/items/:itemId/expense', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Get payments with member names
+  const { results: payments } = await c.env.DB.prepare(
+    `SELECT p.id, p.item_id as itemId, p.paid_by as paidBy, p.amount, p.created_at as createdAt,
+            m.name as paidByName
+     FROM expense_payments p
+     LEFT JOIN trip_members m ON p.paid_by = m.id
+     WHERE p.item_id = ?`
+  ).bind(itemId).all<{
+    id: string;
+    itemId: string;
+    paidBy: string;
+    amount: number;
+    createdAt: string;
+    paidByName: string | null;
+  }>();
+
+  // Get splits with member names
+  const { results: splits } = await c.env.DB.prepare(
+    `SELECT s.id, s.item_id as itemId, s.member_id as memberId, s.share_type as shareType, s.share_value as shareValue,
+            m.name as memberName
+     FROM expense_splits s
+     LEFT JOIN trip_members m ON s.member_id = m.id
+     WHERE s.item_id = ?`
+  ).bind(itemId).all<{
+    id: string;
+    itemId: string;
+    memberId: string;
+    shareType: string;
+    shareValue: number | null;
+    memberName: string | null;
+  }>();
+
+  return c.json({ payments, splits });
+});
+
+// Get settlement summary for a trip
+app.get('/api/trips/:tripId/settlement', async (c) => {
+  const { tripId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  // Also allow access via share token
+  if (!hasAccess) {
+    const shareToken = c.req.query('token');
+    if (shareToken) {
+      const share = await c.env.DB.prepare(
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ?'
+      ).bind(shareToken, tripId).first();
+      hasAccess = !!share;
+    }
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Get all members
+  const { results: members } = await c.env.DB.prepare(
+    `SELECT id, trip_id as tripId, user_id as userId, name, created_at as createdAt
+     FROM trip_members WHERE trip_id = ? ORDER BY created_at ASC`
+  ).bind(tripId).all<{
+    id: string;
+    tripId: string;
+    userId: string | null;
+    name: string;
+    createdAt: string;
+  }>();
+
+  if (members.length === 0) {
+    return c.json({
+      members: [],
+      balances: [],
+      settlements: [],
+      totalExpenses: 0,
+    });
+  }
+
+  // Get all payments for this trip
+  const { results: allPayments } = await c.env.DB.prepare(
+    `SELECT p.id, p.item_id as itemId, p.paid_by as paidBy, p.amount,
+            i.cost, i.title
+     FROM expense_payments p
+     INNER JOIN items i ON p.item_id = i.id
+     WHERE i.trip_id = ?`
+  ).bind(tripId).all<{
+    id: string;
+    itemId: string;
+    paidBy: string;
+    amount: number;
+    cost: number | null;
+    title: string;
+  }>();
+
+  // Get all splits for this trip
+  const { results: allSplits } = await c.env.DB.prepare(
+    `SELECT s.id, s.item_id as itemId, s.member_id as memberId, s.share_type as shareType, s.share_value as shareValue,
+            i.cost
+     FROM expense_splits s
+     INNER JOIN items i ON s.item_id = i.id
+     WHERE i.trip_id = ?`
+  ).bind(tripId).all<{
+    id: string;
+    itemId: string;
+    memberId: string;
+    shareType: string;
+    shareValue: number | null;
+    cost: number | null;
+  }>();
+
+  // Calculate total paid by each member
+  const totalPaidByMember = new Map<string, number>();
+  for (const payment of allPayments) {
+    const current = totalPaidByMember.get(payment.paidBy) || 0;
+    totalPaidByMember.set(payment.paidBy, current + payment.amount);
+  }
+
+  // Calculate total expenses
+  const totalExpenses = allPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  // Group splits by item
+  const splitsByItem = new Map<string, typeof allSplits>();
+  for (const split of allSplits) {
+    const existing = splitsByItem.get(split.itemId) || [];
+    existing.push(split);
+    splitsByItem.set(split.itemId, existing);
+  }
+
+  // Calculate what each member owes
+  const totalOwedByMember = new Map<string, number>();
+
+  // Get unique items that have payments
+  const itemsWithPayments = new Set(allPayments.map(p => p.itemId));
+
+  for (const itemId of itemsWithPayments) {
+    // Get total for this item from payments
+    const itemPayments = allPayments.filter(p => p.itemId === itemId);
+    const itemTotal = itemPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Get splits for this item
+    const itemSplits = splitsByItem.get(itemId) || [];
+
+    if (itemSplits.length === 0) {
+      // No splits defined - split equally among all members
+      const sharePerMember = itemTotal / members.length;
+      for (const member of members) {
+        const current = totalOwedByMember.get(member.id) || 0;
+        totalOwedByMember.set(member.id, current + sharePerMember);
+      }
+    } else {
+      // Calculate based on split settings
+      const equalSplits = itemSplits.filter(s => s.shareType === 'equal');
+      const percentageSplits = itemSplits.filter(s => s.shareType === 'percentage');
+      const amountSplits = itemSplits.filter(s => s.shareType === 'amount');
+
+      // Fixed amounts first
+      let remainingAmount = itemTotal;
+      for (const split of amountSplits) {
+        const amount = split.shareValue || 0;
+        const current = totalOwedByMember.get(split.memberId) || 0;
+        totalOwedByMember.set(split.memberId, current + amount);
+        remainingAmount -= amount;
+      }
+
+      // Percentage splits
+      for (const split of percentageSplits) {
+        const percentage = split.shareValue || 0;
+        const amount = (itemTotal * percentage) / 100;
+        const current = totalOwedByMember.get(split.memberId) || 0;
+        totalOwedByMember.set(split.memberId, current + amount);
+        remainingAmount -= amount;
+      }
+
+      // Equal splits get the remaining amount
+      if (equalSplits.length > 0 && remainingAmount > 0) {
+        const sharePerMember = remainingAmount / equalSplits.length;
+        for (const split of equalSplits) {
+          const current = totalOwedByMember.get(split.memberId) || 0;
+          totalOwedByMember.set(split.memberId, current + sharePerMember);
+        }
+      }
+    }
+  }
+
+  // Calculate balances
+  const balances = members.map(member => {
+    const totalPaid = totalPaidByMember.get(member.id) || 0;
+    const totalOwed = totalOwedByMember.get(member.id) || 0;
+    return {
+      memberId: member.id,
+      memberName: member.name,
+      totalPaid: Math.round(totalPaid),
+      totalOwed: Math.round(totalOwed),
+      balance: Math.round(totalPaid - totalOwed), // positive = is owed money
+    };
+  });
+
+  // Calculate optimal settlements (minimize number of transactions)
+  const settlements: { from: string; fromName: string; to: string; toName: string; amount: number }[] = [];
+
+  // Separate debtors (negative balance) and creditors (positive balance)
+  const debtors = balances.filter(b => b.balance < 0).map(b => ({ ...b }));
+  const creditors = balances.filter(b => b.balance > 0).map(b => ({ ...b }));
+
+  // Sort by amount (descending for both)
+  debtors.sort((a, b) => a.balance - b.balance);
+  creditors.sort((a, b) => b.balance - a.balance);
+
+  // Match debtors with creditors
+  let debtorIndex = 0;
+  let creditorIndex = 0;
+
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+    const debtor = debtors[debtorIndex];
+    const creditor = creditors[creditorIndex];
+
+    const debtAmount = Math.abs(debtor.balance);
+    const creditAmount = creditor.balance;
+
+    const settlementAmount = Math.min(debtAmount, creditAmount);
+
+    if (settlementAmount > 0) {
+      settlements.push({
+        from: debtor.memberId,
+        fromName: debtor.memberName,
+        to: creditor.memberId,
+        toName: creditor.memberName,
+        amount: settlementAmount,
+      });
+    }
+
+    debtor.balance += settlementAmount;
+    creditor.balance -= settlementAmount;
+
+    if (Math.abs(debtor.balance) < 1) {
+      debtorIndex++;
+    }
+    if (creditor.balance < 1) {
+      creditorIndex++;
+    }
+  }
+
+  return c.json({
+    members,
+    balances,
+    settlements,
+    totalExpenses: Math.round(totalExpenses),
   });
 });
 
