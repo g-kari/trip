@@ -1736,7 +1736,12 @@ app.post('/api/trips/:tripId/collaborators', async (c) => {
     }, 201);
   }
 
-  // Check if invite already exists
+  // Delete any expired invites for this email first (to allow re-inviting)
+  await c.env.DB.prepare(
+    'DELETE FROM collaborator_invites WHERE trip_id = ? AND email = ? AND expires_at <= strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')'
+  ).bind(tripId, email).run();
+
+  // Check if a valid (non-expired) invite already exists
   const existingInvite = await c.env.DB.prepare(
     'SELECT id FROM collaborator_invites WHERE trip_id = ? AND email = ? AND expires_at > strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')'
   ).bind(tripId, email).first();
@@ -1797,6 +1802,14 @@ app.post('/api/collaborator-invites/:token/accept', async (c) => {
   // Check if expired
   if (new Date(invite.expiresAt) < new Date()) {
     return c.json({ error: '招待リンクの有効期限が切れています' }, 400);
+  }
+
+  // Verify that the logged-in user's email matches the invited email
+  if (user.email?.toLowerCase() !== invite.email.toLowerCase()) {
+    return c.json({
+      error: 'この招待は別のメールアドレス宛てです。招待されたメールアドレスでログインしてください。',
+      invitedEmail: invite.email.replace(/(.{2}).*(@.*)/, '$1***$2'), // mask email for privacy
+    }, 403);
   }
 
   // Check if already a collaborator
