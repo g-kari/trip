@@ -1,6 +1,7 @@
 name = "trip"
 main = "src/worker.ts"
 compatibility_date = "2026-02-19"
+compatibility_flags = ["nodejs_compat"]
 
 # Serve the Vite build output as static assets.
 [assets]

@@ -1,22 +1,27 @@
 import satori from 'satori';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
-// @ts-expect-error wasm import
+// @ts-expect-error wasm import - static import for Cloudflare Workers
 import resvgWasm from '@resvg/resvg-wasm/index_bg.wasm';
 
 let wasmInitialized = false;
 
 async function initResvg() {
   if (!wasmInitialized) {
-    await initWasm(resvgWasm);
+    // Cloudflare Workers require WASM to be passed as a pre-compiled WebAssembly.Module
+    // The static import above is processed by wrangler's esbuild to create the module
+    await initWasm(resvgWasm as unknown as WebAssembly.Module);
     wasmInitialized = true;
   }
 }
 
-// Noto Sans JP font
+// Noto Sans JP font (400 weight)
 async function loadFont(): Promise<ArrayBuffer> {
   const response = await fetch(
-    'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75s.woff'
+    'https://fonts.gstatic.com/s/notosansjp/v56/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75s.ttf'
   );
+  if (!response.ok) {
+    throw new Error(`Failed to load font: ${response.status} ${response.statusText}`);
+  }
   return response.arrayBuffer();
 }
 

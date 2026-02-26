@@ -15,6 +15,7 @@ import {
   getGoogleUserInfo,
 } from './auth/google';
 import type { User } from './auth/types';
+import { generateOgpImage } from './ogp';
 
 type Bindings = {
   DB: D1Database;
@@ -994,9 +995,6 @@ app.get('/api/shared/:token/ogp.png', async (c) => {
   if (!trip) {
     return c.json({ error: 'Trip not found' }, 404);
   }
-
-  // Import OGP generator dynamically
-  const { generateOgpImage } = await import('./ogp');
 
   // Format date range
   let dateRange: string | undefined;
