@@ -808,52 +808,90 @@ interface GeneratedTrip {
 }
 
 // AI usage limits
-const AI_DAILY_LIMIT = 5;
+const AI_DAILY_LIMIT_USER = 5;  // Per user per day
+const AI_DAILY_LIMIT_IP = 10;   // Per IP per day (to catch abuse)
+
+// Helper to get client IP
+function getClientIp(c: { req: { header: (name: string) => string | undefined } }): string {
+  // Cloudflare provides the real IP in CF-Connecting-IP header
+  return c.req.header('CF-Connecting-IP') ||
+         c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() ||
+         'unknown';
+}
 
 // Get AI usage stats for a user
 app.get('/api/ai/usage', async (c) => {
   const user = c.get('user');
-  if (!user) {
-    return c.json({ error: 'ログインが必要です' }, 401);
+  const ip = getClientIp(c);
+  const today = new Date().toISOString().split('T')[0];
+
+  let userUsedToday = 0;
+  let userRemaining = AI_DAILY_LIMIT_USER;
+
+  if (user) {
+    const userResult = await c.env.DB.prepare(
+      `SELECT COUNT(*) as count FROM ai_usage
+       WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
+    ).bind(user.id, today).first<{ count: number }>();
+    userUsedToday = userResult?.count || 0;
+    userRemaining = Math.max(0, AI_DAILY_LIMIT_USER - userUsedToday);
   }
 
-  // Get usage count for today
-  const today = new Date().toISOString().split('T')[0];
-  const result = await c.env.DB.prepare(
+  // Also check IP usage
+  const ipResult = await c.env.DB.prepare(
     `SELECT COUNT(*) as count FROM ai_usage
-     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(user.id, today).first<{ count: number }>();
+     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(ip, today).first<{ count: number }>();
+  const ipUsedToday = ipResult?.count || 0;
+  const ipRemaining = Math.max(0, AI_DAILY_LIMIT_IP - ipUsedToday);
 
-  const usedToday = result?.count || 0;
-  const remaining = Math.max(0, AI_DAILY_LIMIT - usedToday);
+  // Return the more restrictive limit
+  const remaining = user ? Math.min(userRemaining, ipRemaining) : ipRemaining;
 
   return c.json({
-    usedToday,
+    usedToday: user ? userUsedToday : ipUsedToday,
     remaining,
-    limit: AI_DAILY_LIMIT,
+    limit: user ? AI_DAILY_LIMIT_USER : AI_DAILY_LIMIT_IP,
   });
 });
 
 // Generate trip with AI
 app.post('/api/trips/generate', async (c) => {
   const user = c.get('user');
+  const ip = getClientIp(c);
 
   // Require login for AI generation
   if (!user) {
     return c.json({ error: 'AI旅程生成にはログインが必要です' }, 401);
   }
 
-  // Check rate limit
   const today = new Date().toISOString().split('T')[0];
-  const usageResult = await c.env.DB.prepare(
+
+  // Check user rate limit
+  const userUsageResult = await c.env.DB.prepare(
     `SELECT COUNT(*) as count FROM ai_usage
      WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
   ).bind(user.id, today).first<{ count: number }>();
 
-  const usedToday = usageResult?.count || 0;
-  if (usedToday >= AI_DAILY_LIMIT) {
+  const userUsedToday = userUsageResult?.count || 0;
+  if (userUsedToday >= AI_DAILY_LIMIT_USER) {
     return c.json({
-      error: `本日の利用上限（${AI_DAILY_LIMIT}回）に達しました。明日また利用できます。`,
+      error: `本日の利用上限（${AI_DAILY_LIMIT_USER}回）に達しました。明日また利用できます。`,
+      limitReached: true,
+      remaining: 0,
+    }, 429);
+  }
+
+  // Check IP rate limit
+  const ipUsageResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(ip, today).first<{ count: number }>();
+
+  const ipUsedToday = ipUsageResult?.count || 0;
+  if (ipUsedToday >= AI_DAILY_LIMIT_IP) {
+    return c.json({
+      error: 'このIPアドレスからの利用上限に達しました。明日また利用できます。',
       limitReached: true,
       remaining: 0,
     }, 429);
@@ -992,14 +1030,16 @@ ${notesInfo}
       }
     }
 
-    // Record AI usage
+    // Record AI usage (with both user_id and ip_address)
     const usageId = generateId();
     await c.env.DB.prepare(
-      'INSERT INTO ai_usage (id, user_id) VALUES (?, ?)'
-    ).bind(usageId, user.id).run();
+      'INSERT INTO ai_usage (id, user_id, ip_address) VALUES (?, ?, ?)'
+    ).bind(usageId, user.id, ip).run();
 
-    // Calculate remaining uses
-    const remaining = AI_DAILY_LIMIT - usedToday - 1;
+    // Calculate remaining uses (use the more restrictive limit)
+    const userRemaining = AI_DAILY_LIMIT_USER - userUsedToday - 1;
+    const ipRemaining = AI_DAILY_LIMIT_IP - ipUsedToday - 1;
+    const remaining = Math.min(userRemaining, ipRemaining);
 
     // Fetch the created trip
     const trip = await c.env.DB.prepare(
