@@ -82,6 +82,7 @@ export function LandingPage() {
 
       <footer className="footer">
         <span className="footer-text">旅程 — しずかに計画する旅</span>
+        <Link to="/contact" className="footer-link">お問い合わせ</Link>
       </footer>
     </div>
   )

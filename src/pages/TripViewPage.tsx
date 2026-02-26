@@ -2,10 +2,12 @@ import { useState, useEffect, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { Trip, Item } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
+import { useToast } from '../hooks/useToast'
 
 export function TripViewPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { showError, showSuccess } = useToast()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [isOwner, setIsOwner] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -60,11 +62,16 @@ export function TripViewPage() {
 
     try {
       const res = await fetch(`/api/trips/${trip.id}/share`, { method: 'POST' })
+      if (!res.ok) {
+        showError('共有リンクの作成に失敗しました')
+        return
+      }
       const data = (await res.json()) as { token: string }
       setShareToken(data.token)
       setShowShareModal(true)
     } catch (err) {
       console.error('Failed to create share link:', err)
+      showError('共有リンクの作成に失敗しました')
     }
   }
 
@@ -73,11 +80,17 @@ export function TripViewPage() {
     if (!confirm('共有リンクを削除しますか？')) return
 
     try {
-      await fetch(`/api/trips/${trip.id}/share`, { method: 'DELETE' })
+      const res = await fetch(`/api/trips/${trip.id}/share`, { method: 'DELETE' })
+      if (!res.ok) {
+        showError('共有リンクの削除に失敗しました')
+        return
+      }
       setShareToken(null)
       setShowShareModal(false)
+      showSuccess('共有リンクを削除しました')
     } catch (err) {
       console.error('Failed to delete share link:', err)
+      showError('共有リンクの削除に失敗しました')
     }
   }
 
@@ -85,11 +98,42 @@ export function TripViewPage() {
     if (!shareToken) return
     const url = `${window.location.origin}/s/${shareToken}`
     navigator.clipboard.writeText(url)
-    alert('リンクをコピーしました')
+    showSuccess('リンクをコピーしました')
   }
 
   function printTrip() {
     window.print()
+  }
+
+  function downloadPdf() {
+    if (!trip) return
+    window.open(`/api/trips/${trip.id}/pdf`, '_blank')
+  }
+
+  function exportCalendar() {
+    if (!trip) return
+    window.open(`/api/trips/${trip.id}/calendar.ics`, '_blank')
+  }
+
+  async function duplicateTrip() {
+    if (!trip) return
+    if (!confirm('この旅程を複製しますか？')) return
+
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/duplicate`, { method: 'POST' })
+      const data = (await res.json()) as { tripId?: string; error?: string }
+      if (!res.ok) {
+        showError(data.error || '複製に失敗しました')
+        return
+      }
+      if (data.tripId) {
+        showSuccess('旅程を複製しました')
+        navigate(`/trips/${data.tripId}/edit`)
+      }
+    } catch (err) {
+      console.error('Failed to duplicate trip:', err)
+      showError('複製に失敗しました')
+    }
   }
 
   function getItemsForDay(dayId: string): Item[] {
@@ -147,6 +191,10 @@ export function TripViewPage() {
             </>
           )}
           <button className="btn-text" onClick={printTrip}>印刷</button>
+          <button className="btn-text" onClick={downloadPdf}>PDF</button>
+          <button className="btn-text" onClick={exportCalendar}>カレンダー</button>
+          <button className="btn-text" onClick={duplicateTrip}>複製</button>
+          <Link to={`/trips/${trip.id}/album`} className="btn-text">アルバム</Link>
         </div>
       </div>
 
@@ -208,9 +256,41 @@ export function TripViewPage() {
                         {item.note && (
                           <p className="timeline-note">{item.note}</p>
                         )}
+                        {item.photoUrl && (
+                          <div className="item-photo">
+                            <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                            {item.photoUploadedByName && (
+                              <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
+                )}
+
+                {/* その他 section */}
+                {(day.notes || (day.photos && day.photos.length > 0)) && (
+                  <div className="day-notes-section">
+                    <div className="day-notes-header">
+                      <span className="day-notes-label">その他</span>
+                    </div>
+                    {day.notes && (
+                      <p className="day-notes-text">{day.notes}</p>
+                    )}
+                    {day.photos && day.photos.length > 0 && (
+                      <div className="day-photos-grid">
+                        {day.photos.map((photo) => (
+                          <div key={photo.id} className="day-photo-item">
+                            <img src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                            {photo.uploadedByName && (
+                              <span className="photo-uploader">📷 {photo.uploadedByName}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )
@@ -237,7 +317,14 @@ export function TripViewPage() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">共有リンク</h2>
             <div className="share-url-box">
-              <code className="share-url">{window.location.origin}/s/{shareToken}</code>
+              <a
+                href={`/s/${shareToken}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="share-url"
+              >
+                {window.location.origin}/s/{shareToken}
+              </a>
             </div>
             <div className="modal-actions">
               <button className="btn-text btn-danger" onClick={deleteShareLink}>

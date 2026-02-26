@@ -36,13 +36,13 @@ type AppEnv = {
 
 const app = new Hono<AppEnv>();
 
-// Helper to generate short random token
+// Helper to generate random token for share links
 function generateToken(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let token = '';
-  const array = new Uint8Array(8);
+  const array = new Uint8Array(12);
   crypto.getRandomValues(array);
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) {
     token += chars[array[i] % chars.length];
   }
   return token;
@@ -259,15 +259,92 @@ app.get('/api/trips/:id', async (c) => {
   const isOwner = !trip.userId || (user && trip.userId === user.id);
 
   const { results: days } = await c.env.DB.prepare(
-    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
-  ).bind(id).all();
+    'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(id).all<{ id: string; date: string; sort: number; notes: string | null; photos: string | null }>();
 
   const { results: items } = await c.env.DB.prepare(
-    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
-  ).bind(id).all();
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+     map_url as mapUrl, note, cost, sort, photo_url as photoUrl,
+     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(id).all<{
+    id: string; dayId: string; title: string; area: string | null;
+    timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
+    note: string | null; cost: number | null; sort: number; photoUrl: string | null;
+    photoUploadedBy: string | null; photoUploadedAt: string | null;
+  }>();
+
+  // Get day_photos from the new table
+  const { results: dayPhotos } = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, photo_url as photoUrl, uploaded_by as uploadedBy,
+     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
+     FROM day_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
+  ).bind(id).all<{
+    id: string; dayId: string; photoUrl: string;
+    uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
+  }>();
+
+  // Get uploader names for items
+  const uploaderIds = items.filter(i => i.photoUploadedBy).map(i => i.photoUploadedBy);
+  const uniqueUploaderIds = [...new Set(uploaderIds)];
+  const uploaderNames: Map<string, string> = new Map();
+
+  if (uniqueUploaderIds.length > 0) {
+    const placeholders = uniqueUploaderIds.map(() => '?').join(',');
+    const { results: users } = await c.env.DB.prepare(
+      `SELECT id, name, email FROM users WHERE id IN (${placeholders})`
+    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null; email: string | null }>();
+    for (const u of users) {
+      uploaderNames.set(u.id, u.name || u.email || '匿名');
+    }
+  }
+
+  // Enrich items with uploader names
+  const itemsWithUploaderNames = items.map((item) => ({
+    ...item,
+    photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
+  }));
+
+  // Group day_photos by day_id
+  const dayPhotosMap = new Map<string, Array<{
+    id: string; photoUrl: string; uploadedBy: string | null;
+    uploadedByName: string | null; uploadedAt: string | null;
+  }>>();
+  for (const photo of dayPhotos) {
+    const existing = dayPhotosMap.get(photo.dayId) || [];
+    existing.push({
+      id: photo.id,
+      photoUrl: photo.photoUrl,
+      uploadedBy: photo.uploadedBy,
+      uploadedByName: photo.uploadedByName,
+      uploadedAt: photo.uploadedAt,
+    });
+    dayPhotosMap.set(photo.dayId, existing);
+  }
+
+  // Parse photos JSON for each day and merge with new day_photos
+  const daysWithParsedPhotos = days.map((day) => {
+    // Old format photos (string array)
+    const oldPhotos: string[] = day.photos ? JSON.parse(day.photos) : [];
+    const oldPhotosFormatted = oldPhotos.map((url, i) => ({
+      id: `legacy-${day.id}-${i}`,
+      photoUrl: url,
+      uploadedBy: null,
+      uploadedByName: null,
+      uploadedAt: null,
+    }));
+
+    // New format photos from day_photos table
+    const newPhotos = dayPhotosMap.get(day.id) || [];
+
+    return {
+      ...day,
+      photos: [...oldPhotosFormatted, ...newPhotos],
+    };
+  });
 
   return c.json({
-    trip: { ...trip, days, items },
+    trip: { ...trip, days: daysWithParsedPhotos, items: itemsWithUploaderNames },
     isOwner,
   });
 });
@@ -358,6 +435,104 @@ app.delete('/api/trips/:id', async (c) => {
   await c.env.DB.prepare('DELETE FROM trips WHERE id = ?').bind(id).run();
 
   return c.json({ ok: true });
+});
+
+// Duplicate trip
+app.post('/api/trips/:id/duplicate', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('user');
+
+  // Require login for duplication
+  if (!user) {
+    return c.json({ error: '複製にはログインが必要です' }, 401);
+  }
+
+  // Get the original trip
+  const original = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, user_id as userId FROM trips WHERE id = ?'
+  ).bind(id).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    userId: string | null;
+  }>();
+
+  if (!original) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Check if user can access the original (owner or shared)
+  const isOwner = !original.userId || original.userId === user.id;
+  if (!isOwner) {
+    // Check if it's shared
+    const share = await c.env.DB.prepare(
+      'SELECT id FROM share_tokens WHERE trip_id = ?'
+    ).bind(id).first();
+    if (!share) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+  }
+
+  // Create new trip
+  const newTripId = generateId();
+  const newTitle = `${original.title} (コピー)`;
+
+  await c.env.DB.prepare(
+    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(newTripId, newTitle, original.startDate, original.endDate, original.theme, original.coverImageUrl, user.id).run();
+
+  // Copy days
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(id).all<{ id: string; date: string; sort: number }>();
+
+  const dayIdMap = new Map<string, string>();
+
+  for (const day of days) {
+    const newDayId = generateId();
+    dayIdMap.set(day.id, newDayId);
+
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+    ).bind(newDayId, newTripId, day.date, day.sort).run();
+  }
+
+  // Copy items
+  const { results: items } = await c.env.DB.prepare(
+    'SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(id).all<{
+    id: string;
+    day_id: string;
+    title: string;
+    area: string | null;
+    time_start: string | null;
+    time_end: string | null;
+    map_url: string | null;
+    note: string | null;
+    cost: number | null;
+    sort: number;
+  }>();
+
+  for (const item of items) {
+    const newDayId = dayIdMap.get(item.day_id);
+    if (!newDayId) continue;
+
+    const newItemId = generateId();
+
+    await c.env.DB.prepare(
+      'INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(newItemId, newTripId, newDayId, item.title, item.area, item.time_start, item.time_end, item.map_url, item.note, item.cost, item.sort).run();
+  }
+
+  // Fetch the new trip
+  const newTrip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt FROM trips WHERE id = ?'
+  ).bind(newTripId).first();
+
+  return c.json({ trip: newTrip, tripId: newTripId }, 201);
 });
 
 // ============ Days ============
@@ -593,6 +768,31 @@ app.delete('/api/trips/:tripId/items/:itemId', async (c) => {
   return c.json({ ok: true });
 });
 
+// Reorder items within a day
+app.put('/api/trips/:tripId/days/:dayId/reorder', async (c) => {
+  const { tripId, dayId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{ itemIds: string[] }>();
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  if (!body.itemIds || !Array.isArray(body.itemIds)) {
+    return c.json({ error: 'itemIds array is required' }, 400);
+  }
+
+  // Update sort order for each item
+  for (let i = 0; i < body.itemIds.length; i++) {
+    await c.env.DB.prepare(
+      'UPDATE items SET sort = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ? AND trip_id = ? AND day_id = ?'
+    ).bind(i, body.itemIds[i], tripId, dayId).run();
+  }
+
+  return c.json({ ok: true });
+});
+
 // ============ Share Tokens ============
 
 // Create share token for a trip
@@ -625,9 +825,15 @@ app.post('/api/trips/:tripId/share', async (c) => {
   return c.json({ token }, 201);
 });
 
-// Get share token for a trip
+// Get share token for a trip (owner only)
 app.get('/api/trips/:tripId/share', async (c) => {
   const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
 
   const share = await c.env.DB.prepare(
     'SELECT token FROM share_tokens WHERE trip_id = ?'
@@ -676,14 +882,480 @@ app.get('/api/shared/:token', async (c) => {
   }
 
   const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(share.trip_id).all<{ id: string; date: string; sort: number; notes: string | null; photos: string | null }>();
+
+  const { results: items } = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+     map_url as mapUrl, note, cost, sort, photo_url as photoUrl,
+     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(share.trip_id).all<{
+    id: string; dayId: string; title: string; area: string | null;
+    timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
+    note: string | null; cost: number | null; sort: number; photoUrl: string | null;
+    photoUploadedBy: string | null; photoUploadedAt: string | null;
+  }>();
+
+  // Get day_photos from the new table
+  const { results: dayPhotos } = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, photo_url as photoUrl, uploaded_by as uploadedBy,
+     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
+     FROM day_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
+  ).bind(share.trip_id).all<{
+    id: string; dayId: string; photoUrl: string;
+    uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
+  }>();
+
+  // Get uploader names for items
+  const uploaderIds = items.filter(i => i.photoUploadedBy).map(i => i.photoUploadedBy);
+  const uniqueUploaderIds = [...new Set(uploaderIds)];
+  const uploaderNames: Map<string, string> = new Map();
+
+  if (uniqueUploaderIds.length > 0) {
+    const placeholders = uniqueUploaderIds.map(() => '?').join(',');
+    const { results: users } = await c.env.DB.prepare(
+      `SELECT id, name, email FROM users WHERE id IN (${placeholders})`
+    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null; email: string | null }>();
+    for (const u of users) {
+      uploaderNames.set(u.id, u.name || u.email || '匿名');
+    }
+  }
+
+  // Enrich items with uploader names
+  const itemsWithUploaderNames = items.map((item) => ({
+    ...item,
+    photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
+  }));
+
+  // Group day_photos by day_id
+  const dayPhotosMap = new Map<string, Array<{
+    id: string; photoUrl: string; uploadedBy: string | null;
+    uploadedByName: string | null; uploadedAt: string | null;
+  }>>();
+  for (const photo of dayPhotos) {
+    const existing = dayPhotosMap.get(photo.dayId) || [];
+    existing.push({
+      id: photo.id,
+      photoUrl: photo.photoUrl,
+      uploadedBy: photo.uploadedBy,
+      uploadedByName: photo.uploadedByName,
+      uploadedAt: photo.uploadedAt,
+    });
+    dayPhotosMap.set(photo.dayId, existing);
+  }
+
+  // Parse photos JSON for each day and merge with new day_photos
+  const daysWithParsedPhotos = days.map((day) => {
+    // Old format photos (string array)
+    const oldPhotos: string[] = day.photos ? JSON.parse(day.photos) : [];
+    const oldPhotosFormatted = oldPhotos.map((url, i) => ({
+      id: `legacy-${day.id}-${i}`,
+      photoUrl: url,
+      uploadedBy: null,
+      uploadedByName: null,
+      uploadedAt: null,
+    }));
+
+    // New format photos from day_photos table
+    const newPhotos = dayPhotosMap.get(day.id) || [];
+
+    return {
+      ...day,
+      photos: [...oldPhotosFormatted, ...newPhotos],
+    };
+  });
+
+  return c.json({ trip: { ...trip, days: daysWithParsedPhotos, items: itemsWithUploaderNames } });
+});
+
+// OGP image for shared trip
+app.get('/api/shared/:token/ogp.png', async (c) => {
+  const token = c.req.param('token');
+
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    return c.json({ error: 'Invalid share link' }, 404);
+  }
+
+  const trip = await c.env.DB.prepare(
+    'SELECT title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl FROM trips WHERE id = ?'
+  ).bind(share.trip_id).first<{
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+  }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Import OGP generator dynamically
+  const { generateOgpImage } = await import('./ogp');
+
+  // Format date range
+  let dateRange: string | undefined;
+  if (trip.startDate && trip.endDate) {
+    const start = new Date(trip.startDate);
+    const end = new Date(trip.endDate);
+    const formatDate = (d: Date) =>
+      `${d.getMonth() + 1}/${d.getDate()}`;
+    dateRange = `${formatDate(start)} - ${formatDate(end)}`;
+  }
+
+  try {
+    const png = await generateOgpImage({
+      title: trip.title,
+      dateRange,
+      theme: (trip.theme === 'photo' ? 'photo' : 'quiet') as 'quiet' | 'photo',
+      coverImageUrl: trip.coverImageUrl,
+    });
+
+    return new Response(png as unknown as ArrayBuffer, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  } catch (error) {
+    console.error('OGP generation error:', error);
+    return c.json({ error: 'Failed to generate OGP image' }, 500);
+  }
+});
+
+// ============ PDF Export ============
+
+// Generate PDF for a trip
+app.get('/api/trips/:tripId/pdf', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const trip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(tripId).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  const { results: days } = await c.env.DB.prepare(
     'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
-  ).bind(share.trip_id).all();
+  ).bind(tripId).all<{ id: string; date: string; sort: number }>();
+
+  const { results: items } = await c.env.DB.prepare(
+    'SELECT id, day_id as dayId, title, area, time_start as timeStart, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{
+    id: string;
+    dayId: string;
+    title: string;
+    area: string | null;
+    timeStart: string | null;
+    note: string | null;
+    cost: number | null;
+    sort: number;
+  }>();
+
+  // Group items by day
+  const dayItems = new Map<string, typeof items>();
+  for (const item of items) {
+    const existing = dayItems.get(item.dayId) || [];
+    existing.push(item);
+    dayItems.set(item.dayId, existing);
+  }
+
+  // Build PDF data structure
+  const pdfData = {
+    title: trip.title,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    days: days.map((day) => ({
+      date: day.date,
+      items: (dayItems.get(day.id) || []).map((item) => ({
+        title: item.title,
+        timeStart: item.timeStart,
+        area: item.area,
+        cost: item.cost,
+        note: item.note,
+        mapUrl: null,
+      })),
+    })),
+  };
+
+  try {
+    const { generateTripPdf } = await import('./pdf');
+    const pdfBuffer = await generateTripPdf(pdfData);
+
+    return new Response(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(trip.title)}.pdf"`,
+        'Cache-Control': 'private, max-age=0',
+      },
+    });
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    return c.json({ error: 'Failed to generate PDF' }, 500);
+  }
+});
+
+// Generate PDF for shared trip
+app.get('/api/shared/:token/pdf', async (c) => {
+  const token = c.req.param('token');
+
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    return c.json({ error: 'Invalid share link' }, 404);
+  }
+
+  const tripId = share.trip_id;
+
+  const trip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(tripId).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{ id: string; date: string; sort: number }>();
+
+  const { results: items } = await c.env.DB.prepare(
+    'SELECT id, day_id as dayId, title, area, time_start as timeStart, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{
+    id: string;
+    dayId: string;
+    title: string;
+    area: string | null;
+    timeStart: string | null;
+    note: string | null;
+    cost: number | null;
+    sort: number;
+  }>();
+
+  // Group items by day
+  const dayItems = new Map<string, typeof items>();
+  for (const item of items) {
+    const existing = dayItems.get(item.dayId) || [];
+    existing.push(item);
+    dayItems.set(item.dayId, existing);
+  }
+
+  // Build PDF data structure
+  const pdfData = {
+    title: trip.title,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    days: days.map((day) => ({
+      date: day.date,
+      items: (dayItems.get(day.id) || []).map((item) => ({
+        title: item.title,
+        timeStart: item.timeStart,
+        area: item.area,
+        cost: item.cost,
+        note: item.note,
+        mapUrl: null,
+      })),
+    })),
+  };
+
+  try {
+    const { generateTripPdf } = await import('./pdf');
+    const pdfBuffer = await generateTripPdf(pdfData);
+
+    return new Response(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(trip.title)}.pdf"`,
+        'Cache-Control': 'private, max-age=0',
+      },
+    });
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    return c.json({ error: 'Failed to generate PDF' }, 500);
+  }
+});
+
+// ============ Calendar Export (ICS) ============
+
+// Generate ICS for a trip (owner only)
+app.get('/api/trips/:tripId/calendar.ics', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const trip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(tripId).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{ id: string; date: string; sort: number }>();
 
   const { results: items } = await c.env.DB.prepare(
     'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
-  ).bind(share.trip_id).all();
+  ).bind(tripId).all<{
+    id: string;
+    dayId: string;
+    title: string;
+    area: string | null;
+    timeStart: string | null;
+    timeEnd: string | null;
+    mapUrl: string | null;
+    note: string | null;
+    cost: number | null;
+    sort: number;
+  }>();
 
-  return c.json({ trip: { ...trip, days, items } });
+  try {
+    const { buildTripIcs } = await import('./ics');
+    const icsContent = buildTripIcs({
+      id: trip.id,
+      title: trip.title,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      days: days.map(d => ({ id: d.id, date: d.date })),
+      items: items.map(item => ({
+        id: item.id,
+        dayId: item.dayId,
+        title: item.title,
+        area: item.area,
+        timeStart: item.timeStart,
+        timeEnd: item.timeEnd,
+        note: item.note,
+        cost: item.cost,
+        mapUrl: item.mapUrl,
+      })),
+    });
+
+    return new Response(icsContent, {
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(trip.title)}.ics"`,
+        'Cache-Control': 'private, max-age=0',
+      },
+    });
+  } catch (error) {
+    console.error('ICS generation error:', error);
+    return c.json({ error: 'Failed to generate calendar file' }, 500);
+  }
+});
+
+// Generate ICS for shared trip
+app.get('/api/shared/:token/calendar.ics', async (c) => {
+  const token = c.req.param('token');
+
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    return c.json({ error: 'Invalid share link' }, 404);
+  }
+
+  const tripId = share.trip_id;
+
+  const trip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(tripId).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{ id: string; date: string; sort: number }>();
+
+  const { results: items } = await c.env.DB.prepare(
+    'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{
+    id: string;
+    dayId: string;
+    title: string;
+    area: string | null;
+    timeStart: string | null;
+    timeEnd: string | null;
+    mapUrl: string | null;
+    note: string | null;
+    cost: number | null;
+    sort: number;
+  }>();
+
+  try {
+    const { buildTripIcs } = await import('./ics');
+    const icsContent = buildTripIcs({
+      id: trip.id,
+      title: trip.title,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      days: days.map(d => ({ id: d.id, date: d.date })),
+      items: items.map(item => ({
+        id: item.id,
+        dayId: item.dayId,
+        title: item.title,
+        area: item.area,
+        timeStart: item.timeStart,
+        timeEnd: item.timeEnd,
+        note: item.note,
+        cost: item.cost,
+        mapUrl: item.mapUrl,
+      })),
+    });
+
+    return new Response(icsContent, {
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(trip.title)}.ics"`,
+        'Cache-Control': 'private, max-age=0',
+      },
+    });
+  } catch (error) {
+    console.error('ICS generation error:', error);
+    return c.json({ error: 'Failed to generate calendar file' }, 500);
+  }
 });
 
 // ============ Cover Images (R2) ============
@@ -782,6 +1454,334 @@ app.delete('/api/trips/:tripId/cover', async (c) => {
   ).bind(tripId).run();
 
   return c.json({ ok: true });
+});
+
+// ============ Item Photos ============
+
+// Upload photo for an item
+app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+
+  // Allow any logged-in user to upload photos to shared trips
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first();
+
+  if (!existing) {
+    return c.json({ error: 'Item not found' }, 404);
+  }
+
+  const contentType = c.req.header('Content-Type') || '';
+  if (!contentType.startsWith('image/')) {
+    return c.json({ error: 'Only image files are allowed' }, 400);
+  }
+
+  // Validate file size (max 5MB)
+  const contentLength = parseInt(c.req.header('Content-Length') || '0', 10);
+  if (contentLength > 5 * 1024 * 1024) {
+    return c.json({ error: 'File too large (max 5MB)' }, 400);
+  }
+
+  const ext = contentType.split('/')[1] || 'jpg';
+  const key = `photos/items/${itemId}.${ext}`;
+
+  try {
+    const body = await c.req.arrayBuffer();
+    await c.env.COVERS.put(key, body, {
+      httpMetadata: {
+        contentType,
+      },
+    });
+
+    const url = new URL(c.req.url);
+    const photoUrl = `${url.origin}/api/photos/items/${itemId}.${ext}`;
+
+    // Update item with photo URL and uploader info
+    await c.env.DB.prepare(
+      `UPDATE items SET
+        photo_url = ?,
+        photo_uploaded_by = ?,
+        photo_uploaded_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      WHERE id = ?`
+    ).bind(photoUrl, user?.id || null, itemId).run();
+
+    return c.json({ photoUrl }, 201);
+  } catch (error) {
+    console.error('Failed to upload item photo:', error);
+    return c.json({ error: 'Failed to upload image' }, 500);
+  }
+});
+
+// Delete photo for an item
+app.delete('/api/trips/:tripId/items/:itemId/photo', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const item = await c.env.DB.prepare(
+    'SELECT id, photo_url as photoUrl FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; photoUrl: string | null }>();
+
+  if (!item) {
+    return c.json({ error: 'Item not found' }, 404);
+  }
+
+  if (item.photoUrl) {
+    // Extract key from URL
+    const urlParts = item.photoUrl.split('/api/photos/items/');
+    if (urlParts[1]) {
+      const key = `photos/items/${urlParts[1]}`;
+      await c.env.COVERS.delete(key);
+    }
+  }
+
+  // Clear photo URL in database
+  await c.env.DB.prepare(
+    'UPDATE items SET photo_url = NULL, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+  ).bind(itemId).run();
+
+  return c.json({ ok: true });
+});
+
+// Get item photo
+app.get('/api/photos/items/:key', async (c) => {
+  const key = `photos/items/${c.req.param('key')}`;
+
+  const object = await c.env.COVERS.get(key);
+  if (!object) {
+    return c.json({ error: 'Image not found' }, 404);
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+  headers.set('Cache-Control', 'public, max-age=31536000');
+  headers.set('ETag', object.etag);
+
+  return new Response(object.body, { headers });
+});
+
+// ============ Day Notes & Photos (その他) ============
+
+// Update day notes and photos
+app.put('/api/trips/:tripId/days/:dayId/notes', async (c) => {
+  const { tripId, dayId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{ notes?: string; photos?: string[] }>();
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM days WHERE id = ? AND trip_id = ?'
+  ).bind(dayId, tripId).first();
+
+  if (!existing) {
+    return c.json({ error: 'Day not found' }, 404);
+  }
+
+  // Photos are stored as JSON array
+  const photosJson = body.photos ? JSON.stringify(body.photos) : null;
+
+  await c.env.DB.prepare(
+    'UPDATE days SET notes = COALESCE(?, notes), photos = COALESCE(?, photos) WHERE id = ?'
+  ).bind(body.notes ?? null, photosJson, dayId).run();
+
+  const day = await c.env.DB.prepare(
+    'SELECT id, date, sort, notes, photos FROM days WHERE id = ?'
+  ).bind(dayId).first();
+
+  return c.json({ day });
+});
+
+// Upload photo to day's "その他" section
+app.post('/api/trips/:tripId/days/:dayId/photos', async (c) => {
+  const { tripId, dayId } = c.req.param();
+  const user = c.get('user');
+
+  // Allow any logged-in user to upload photos to shared trips
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM days WHERE id = ? AND trip_id = ?'
+  ).bind(dayId, tripId).first<{ id: string }>();
+
+  if (!existing) {
+    return c.json({ error: 'Day not found' }, 404);
+  }
+
+  const contentType = c.req.header('Content-Type') || '';
+  if (!contentType.startsWith('image/')) {
+    return c.json({ error: 'Only image files are allowed' }, 400);
+  }
+
+  // Validate file size (max 5MB)
+  const contentLength = parseInt(c.req.header('Content-Length') || '0', 10);
+  if (contentLength > 5 * 1024 * 1024) {
+    return c.json({ error: 'File too large (max 5MB)' }, 400);
+  }
+
+  const ext = contentType.split('/')[1] || 'jpg';
+  const photoId = generateId();
+  const key = `photos/days/${dayId}/${photoId}.${ext}`;
+
+  try {
+    const body = await c.req.arrayBuffer();
+    await c.env.COVERS.put(key, body, {
+      httpMetadata: {
+        contentType,
+      },
+    });
+
+    const url = new URL(c.req.url);
+    const photoUrl = `${url.origin}/api/photos/days/${dayId}/${photoId}.${ext}`;
+
+    // Insert into day_photos table with uploader info
+    await c.env.DB.prepare(
+      `INSERT INTO day_photos (id, day_id, trip_id, photo_url, uploaded_by, uploaded_by_name)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(photoId, dayId, tripId, photoUrl, user.id, user.name || user.email || null).run();
+
+    return c.json({ photoId, photoUrl }, 201);
+  } catch (error) {
+    console.error('Failed to upload day photo:', error);
+    return c.json({ error: 'Failed to upload image' }, 500);
+  }
+});
+
+// Delete a photo from day's "その他" section
+app.delete('/api/trips/:tripId/days/:dayId/photos/:photoId', async (c) => {
+  const { tripId, dayId, photoId } = c.req.param();
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Get the photo to check ownership
+  const photo = await c.env.DB.prepare(
+    'SELECT id, photo_url, uploaded_by FROM day_photos WHERE id = ? AND day_id = ? AND trip_id = ?'
+  ).bind(photoId, dayId, tripId).first<{ id: string; photo_url: string; uploaded_by: string | null }>();
+
+  if (!photo) {
+    // Try to check old format (in days.photos JSON array)
+    const day = await c.env.DB.prepare(
+      'SELECT id, photos FROM days WHERE id = ? AND trip_id = ?'
+    ).bind(dayId, tripId).first<{ id: string; photos: string | null }>();
+
+    if (day && day.photos) {
+      const currentPhotos: string[] = JSON.parse(day.photos);
+      const photoToDelete = currentPhotos.find(p => p.includes(photoId));
+
+      if (photoToDelete) {
+        // Only trip owner can delete old format photos
+        const check = await checkTripOwnership(c.env.DB, tripId, user);
+        if (!check.ok) {
+          return c.json({ error: check.error }, check.status as 403 | 404);
+        }
+
+        // Extract key from URL and delete from R2
+        const urlParts = photoToDelete.split('/api/photos/days/');
+        if (urlParts[1]) {
+          const key = `photos/days/${urlParts[1]}`;
+          await c.env.COVERS.delete(key);
+        }
+
+        // Remove from array
+        const newPhotos = currentPhotos.filter(p => !p.includes(photoId));
+        await c.env.DB.prepare(
+          'UPDATE days SET photos = ? WHERE id = ?'
+        ).bind(JSON.stringify(newPhotos), dayId).run();
+
+        return c.json({ ok: true });
+      }
+    }
+
+    return c.json({ error: 'Photo not found' }, 404);
+  }
+
+  // Check if user is the uploader or the trip owner
+  const isUploader = photo.uploaded_by === user.id;
+  const tripOwnerCheck = await checkTripOwnership(c.env.DB, tripId, user);
+  const isTripOwner = tripOwnerCheck.ok;
+
+  if (!isUploader && !isTripOwner) {
+    return c.json({ error: 'Only the uploader or trip owner can delete this photo' }, 403);
+  }
+
+  // Delete from R2
+  const urlParts = photo.photo_url.split('/api/photos/days/');
+  if (urlParts[1]) {
+    const key = `photos/days/${urlParts[1]}`;
+    await c.env.COVERS.delete(key);
+  }
+
+  // Delete from database
+  await c.env.DB.prepare('DELETE FROM day_photos WHERE id = ?').bind(photoId).run();
+
+  return c.json({ ok: true });
+});
+
+// Get day photo
+app.get('/api/photos/days/:dayId/:key', async (c) => {
+  const { dayId, key } = c.req.param();
+  const fullKey = `photos/days/${dayId}/${key}`;
+
+  const object = await c.env.COVERS.get(fullKey);
+  if (!object) {
+    return c.json({ error: 'Image not found' }, 404);
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+  headers.set('Cache-Control', 'public, max-age=31536000');
+  headers.set('ETag', object.etag);
+
+  return new Response(object.body, { headers });
+});
+
+// ============ Feedback ============
+
+// Submit feedback (public endpoint)
+app.post('/api/feedback', async (c) => {
+  const body = await c.req.json<{ name?: string; message: string }>();
+
+  if (!body.message?.trim()) {
+    return c.json({ error: 'Message is required' }, 400);
+  }
+
+  const id = generateId();
+  const name = body.name?.trim() || '匿名';
+
+  await c.env.DB.prepare(
+    'INSERT INTO feedback (id, name, message) VALUES (?, ?, ?)'
+  ).bind(id, name, body.message.trim()).run();
+
+  return c.json({ ok: true }, 201);
+});
+
+// Get all feedback as JSON (for GitHub export)
+app.get('/api/feedback.json', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    'SELECT id, name, message, created_at as createdAt FROM feedback ORDER BY created_at DESC'
+  ).all();
+
+  return c.json({ feedback: results }, 200, {
+    'Cache-Control': 'public, max-age=60',
+  });
 });
 
 // ============ AI Trip Generation ============
@@ -897,22 +1897,57 @@ app.post('/api/trips/generate', async (c) => {
     }, 429);
   }
 
-  const body = await c.req.json<{
-    destination: string;
-    startDate: string;
-    endDate: string;
-    style?: TripStyle;
-    budget?: number;
-    notes?: string;
-  }>();
+  // Handle both JSON and FormData requests
+  const contentType = c.req.header('Content-Type') || '';
+  let destination: string;
+  let startDate: string;
+  let endDate: string;
+  let style: TripStyle | undefined;
+  let budget: number | undefined;
+  let notes: string | undefined;
+  let imageData: ArrayBuffer | null = null;
 
-  if (!body.destination?.trim() || !body.startDate || !body.endDate) {
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await c.req.formData();
+    destination = formData.get('destination') as string || '';
+    startDate = formData.get('startDate') as string || '';
+    endDate = formData.get('endDate') as string || '';
+    style = formData.get('style') as TripStyle | undefined;
+    const budgetStr = formData.get('budget') as string;
+    budget = budgetStr ? parseInt(budgetStr, 10) : undefined;
+    notes = formData.get('notes') as string | undefined;
+
+    const imageFile = formData.get('image') as File | null;
+    if (imageFile && imageFile.size > 0) {
+      if (imageFile.size > 5 * 1024 * 1024) {
+        return c.json({ error: '画像ファイルは5MB以下にしてください' }, 400);
+      }
+      imageData = await imageFile.arrayBuffer();
+    }
+  } else {
+    const body = await c.req.json<{
+      destination: string;
+      startDate: string;
+      endDate: string;
+      style?: TripStyle;
+      budget?: number;
+      notes?: string;
+    }>();
+    destination = body.destination;
+    startDate = body.startDate;
+    endDate = body.endDate;
+    style = body.style;
+    budget = body.budget;
+    notes = body.notes;
+  }
+
+  if (!destination?.trim() || !startDate || !endDate) {
     return c.json({ error: '目的地と日程は必須です' }, 400);
   }
 
   // Calculate number of days
-  const start = new Date(body.startDate);
-  const end = new Date(body.endDate);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   const dayCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
   if (dayCount < 1 || dayCount > 14) {
@@ -926,18 +1961,43 @@ app.post('/api/trips/generate', async (c) => {
     sightseeing: '観光名所巡り',
   };
 
-  const styleLabel = body.style ? styleLabels[body.style] : 'バランスの取れた';
-  const budgetInfo = body.budget ? `予算は約${body.budget.toLocaleString()}円です。` : '';
-  const notesInfo = body.notes ? `その他の要望: ${body.notes}` : '';
+  const styleLabel = style ? styleLabels[style] : 'バランスの取れた';
+  const budgetInfo = budget ? `予算は約${budget.toLocaleString()}円です。` : '';
+  const notesInfo = notes ? `その他の要望: ${notes}` : '';
 
-  const prompt = `あなたは旅行プランナーです。以下の条件で${body.destination}への旅行プランを作成してください。
+  // If image was provided, use vision model to extract information
+  let imageContext = '';
+  if (imageData) {
+    try {
+      // Use a vision model to describe the image
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const visionResponse = await (c.env.AI as any).run('@cf/llava-hf/llava-1.5-7b-hf', {
+        image: [...new Uint8Array(imageData)],
+        prompt: 'この画像は旅行に関するものです。画像に含まれる場所、観光スポット、イベント、食べ物、宿泊施設などの情報を日本語で詳しく説明してください。旅行プランに役立つ情報を抽出してください。',
+        max_tokens: 512,
+      });
+
+      const visionText = typeof visionResponse === 'object' && 'description' in visionResponse
+        ? (visionResponse as { description: string }).description
+        : String(visionResponse);
+
+      if (visionText && visionText.length > 10) {
+        imageContext = `\n\n参考画像から読み取った情報:\n${visionText}`;
+      }
+    } catch (err) {
+      console.error('Vision model error:', err);
+      // Continue without image context
+    }
+  }
+
+  const prompt = `あなたは旅行プランナーです。以下の条件で${destination}への旅行プランを作成してください。
 
 条件:
-- 目的地: ${body.destination}
-- 日程: ${body.startDate} から ${body.endDate} (${dayCount}日間)
+- 目的地: ${destination}
+- 日程: ${startDate} から ${endDate} (${dayCount}日間)
 - 旅のスタイル: ${styleLabel}
 ${budgetInfo}
-${notesInfo}
+${notesInfo}${imageContext}
 
 以下のJSON形式で出力してください。他の説明は不要です:
 {
@@ -997,7 +2057,7 @@ ${notesInfo}
 
     await c.env.DB.prepare(
       'INSERT INTO trips (id, title, start_date, end_date, theme, user_id) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(tripId, generatedTrip.title || `${body.destination}の旅`, body.startDate, body.endDate, theme, user?.id ?? null).run();
+    ).bind(tripId, generatedTrip.title || `${destination}の旅`, startDate, endDate, theme, user?.id ?? null).run();
 
     // Create days and items
     for (let i = 0; i < generatedTrip.days.length; i++) {
@@ -1053,8 +2113,136 @@ ${notesInfo}
   }
 });
 
+// Helper to check if request is from a crawler (for OGP)
+function isCrawler(userAgent: string | undefined): boolean {
+  if (!userAgent) return false;
+  const crawlers = [
+    'Twitterbot',
+    'facebookexternalhit',
+    'LinkedInBot',
+    'Slackbot',
+    'LINE',
+    'Discordbot',
+    'TelegramBot',
+    'WhatsApp',
+  ];
+  return crawlers.some(bot => userAgent.includes(bot));
+}
+
+// Generate OGP HTML for shared trips
+function generateOgpHtml(options: {
+  title: string;
+  description: string;
+  url: string;
+  imageUrl: string;
+}): string {
+  const { title, description, url, imageUrl } = options;
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)} - 旅程</title>
+  <meta name="description" content="${escapeHtml(description)}">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(url)}">
+  <meta property="og:image" content="${escapeHtml(imageUrl)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="旅程">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  <meta name="twitter:image" content="${escapeHtml(imageUrl)}">
+
+  <!-- Redirect to SPA for browsers -->
+  <meta http-equiv="refresh" content="0; url=${escapeHtml(url)}">
+</head>
+<body>
+  <p>リダイレクト中... <a href="${escapeHtml(url)}">こちらをクリック</a></p>
+</body>
+</html>`;
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Handle shared trip page with OGP for crawlers
+app.get('/s/:token', async (c) => {
+  const token = c.req.param('token');
+  const userAgent = c.req.header('User-Agent');
+
+  // If not a crawler, serve the SPA
+  if (!isCrawler(userAgent)) {
+    const url = new URL(c.req.url);
+    url.pathname = '/index.html';
+    return c.env.ASSETS.fetch(new Request(url.toString(), c.req.raw));
+  }
+
+  // For crawlers, return OGP HTML
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    // Return basic HTML for invalid token
+    return new Response('Not found', { status: 404 });
+  }
+
+  const trip = await c.env.DB.prepare(
+    'SELECT title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(share.trip_id).first<{
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+  }>();
+
+  if (!trip) {
+    return new Response('Not found', { status: 404 });
+  }
+
+  // Format description
+  let description = '旅程で作成された旅行プラン';
+  if (trip.startDate && trip.endDate) {
+    const start = new Date(trip.startDate);
+    const end = new Date(trip.endDate);
+    const formatDate = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
+    description = `${formatDate(start)} - ${formatDate(end)} の旅行プラン`;
+  }
+
+  const url = new URL(c.req.url);
+  const pageUrl = url.toString();
+  const imageUrl = `${url.origin}/api/shared/${token}/ogp.png`;
+
+  const html = generateOgpHtml({
+    title: trip.title,
+    description,
+    url: pageUrl,
+    imageUrl,
+  });
+
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+});
+
 // SPA routes - serve index.html for client-side routing
-const spaRoutes = ['/trips', '/trips/', '/s/', '/login'];
+const spaRoutes = ['/trips', '/trips/', '/login', '/contact'];
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);

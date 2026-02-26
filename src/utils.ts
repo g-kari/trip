@@ -26,3 +26,9 @@ export function formatDayDate(date: string): string {
   const dayOfWeek = days[d.getDay()]
   return `${d.getMonth() + 1}/${d.getDate()} (${dayOfWeek})`
 }
+
+// Generate Google Maps search URL from title and area
+export function generateMapUrl(title: string, area?: string): string {
+  const query = area ? `${title} ${area}` : title
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}

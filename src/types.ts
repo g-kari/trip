@@ -14,10 +14,20 @@ export type Trip = {
   items?: Item[]
 }
 
+export type DayPhoto = {
+  id: string
+  photoUrl: string
+  uploadedBy: string | null
+  uploadedByName: string | null
+  uploadedAt: string | null
+}
+
 export type Day = {
   id: string
   date: string
   sort: number
+  notes: string | null
+  photos: DayPhoto[]
 }
 
 export type Item = {
@@ -31,4 +41,8 @@ export type Item = {
   note: string | null
   cost: number | null
   sort: number
+  photoUrl: string | null
+  photoUploadedBy: string | null
+  photoUploadedByName: string | null
+  photoUploadedAt: string | null
 }

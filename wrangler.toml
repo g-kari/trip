@@ -3,7 +3,12 @@ main = "src/worker.ts"
 compatibility_date = "2026-02-19"
 
 # Serve the Vite build output as static assets.
-assets = { directory = "./dist", binding = "ASSETS" }
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+# Let the Worker handle all routing, don't auto-redirect for missing files
+not_found_handling = "none"
+html_handling = "none"
 
 # D1 database (create later with: wrangler d1 create trip-itinerary)
 [[d1_databases]]

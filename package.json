@@ -10,10 +10,16 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@resvg/resvg-wasm": "^2.6.2",
     "hono": "^4.12.0",
+    "jspdf": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.1"
+    "react-router-dom": "^7.13.1",
+    "satori": "^0.19.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260219.0",

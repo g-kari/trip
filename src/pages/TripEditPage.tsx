@@ -1,8 +1,435 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { Trip, Day, Item, TripTheme } from '../types'
-import { formatDateRange, formatCost, formatDayLabel } from '../utils'
+import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
+
+// Sortable item component
+function SortableItem({
+  item,
+  tripId,
+  editingItem,
+  onStartEdit,
+  onDelete,
+  editItemTime,
+  setEditItemTime,
+  editItemTitle,
+  setEditItemTitle,
+  editItemArea,
+  setEditItemArea,
+  editItemCost,
+  setEditItemCost,
+  editItemNote,
+  setEditItemNote,
+  editItemMapUrl,
+  setEditItemMapUrl,
+  savingItem,
+  onCancelEdit,
+  onSubmitEdit,
+  onPhotoUploaded,
+}: {
+  item: Item
+  tripId: string
+  editingItem: Item | null
+  onStartEdit: (item: Item) => void
+  onDelete: (id: string) => void
+  editItemTime: string
+  setEditItemTime: (v: string) => void
+  editItemTitle: string
+  setEditItemTitle: (v: string) => void
+  editItemArea: string
+  setEditItemArea: (v: string) => void
+  editItemCost: string
+  setEditItemCost: (v: string) => void
+  editItemNote: string
+  setEditItemNote: (v: string) => void
+  editItemMapUrl: string
+  setEditItemMapUrl: (v: string) => void
+  savingItem: boolean
+  onCancelEdit: () => void
+  onSubmitEdit: (e: React.FormEvent) => void
+  onPhotoUploaded: () => void
+}) {
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
+  async function uploadItemPhoto(file: File) {
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ファイルサイズは5MB以下にしてください')
+      return
+    }
+
+    setUploadingPhoto(true)
+    try {
+      const res = await fetch(`/api/trips/${tripId}/items/${item.id}/photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) throw new Error('Upload failed')
+      onPhotoUploaded()
+    } catch (err) {
+      console.error('Failed to upload photo:', err)
+      alert('写真のアップロードに失敗しました')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  async function deleteItemPhoto() {
+    if (!confirm('この写真を削除しますか？')) return
+    try {
+      await fetch(`/api/trips/${tripId}/items/${item.id}/photo`, { method: 'DELETE' })
+      onPhotoUploaded()
+    } catch (err) {
+      console.error('Failed to delete photo:', err)
+    }
+  }
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="timeline-item">
+      {editingItem?.id === item.id ? (
+        <form className="edit-item-form no-print" onSubmit={onSubmitEdit}>
+          <div className="form-row">
+            <input
+              type="time"
+              value={editItemTime}
+              onChange={(e) => setEditItemTime(e.target.value)}
+              className="input input-small"
+            />
+            <input
+              type="text"
+              value={editItemTitle}
+              onChange={(e) => setEditItemTitle(e.target.value)}
+              className="input"
+              placeholder="タイトル"
+              autoFocus
+            />
+          </div>
+          <div className="form-row">
+            <input
+              type="text"
+              value={editItemArea}
+              onChange={(e) => setEditItemArea(e.target.value)}
+              className="input"
+              placeholder="エリア"
+            />
+            <input
+              type="number"
+              value={editItemCost}
+              onChange={(e) => setEditItemCost(e.target.value)}
+              className="input input-small"
+              placeholder="費用"
+            />
+          </div>
+          <input
+            type="text"
+            value={editItemNote}
+            onChange={(e) => setEditItemNote(e.target.value)}
+            className="input"
+            placeholder="メモ"
+          />
+          <input
+            type="url"
+            value={editItemMapUrl}
+            onChange={(e) => setEditItemMapUrl(e.target.value)}
+            className="input"
+            placeholder="地図URL（Google Maps等）"
+          />
+          <div className="form-actions">
+            <button type="button" className="btn-text" onClick={onCancelEdit}>
+              キャンセル
+            </button>
+            <button type="submit" className="btn-filled" disabled={savingItem || !editItemTitle.trim()}>
+              {savingItem ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <span
+            className="timeline-time drag-handle"
+            {...attributes}
+            {...listeners}
+            title="ドラッグで並び替え"
+          >
+            {item.timeStart || '—'}
+          </span>
+          <div className="timeline-content">
+            <span className="timeline-title">{item.title}</span>
+            <div className="timeline-meta">
+              {item.area && <span>{item.area}</span>}
+              {item.cost != null && item.cost > 0 && (
+                <span>{formatCost(item.cost)}</span>
+              )}
+              {item.mapUrl && (
+                <a
+                  href={item.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="map-link"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  地図を見る
+                </a>
+              )}
+            </div>
+            {item.note && (
+              <p className="timeline-note">{item.note}</p>
+            )}
+            {/* Item photo (memory) */}
+            {item.photoUrl && (
+              <div className="item-photo">
+                <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                {item.photoUploadedByName && (
+                  <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
+                )}
+              </div>
+            )}
+            <div className="item-actions no-print">
+              <button className="btn-text btn-small" onClick={() => onStartEdit(item)}>
+                編集
+              </button>
+              {item.photoUrl ? (
+                <button className="btn-text btn-small" onClick={deleteItemPhoto}>
+                  写真削除
+                </button>
+              ) : (
+                <button
+                  className="btn-text btn-small"
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                >
+                  {uploadingPhoto ? '...' : '写真追加'}
+                </button>
+              )}
+              <button className="btn-text btn-small btn-danger" onClick={() => onDelete(item.id)}>
+                削除
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) uploadItemPhoto(file)
+                  e.target.value = ''
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Day notes section (その他)
+function DayNotesSection({
+  day,
+  tripId,
+  onUpdated,
+}: {
+  day: Day
+  tripId: string
+  onUpdated: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [notes, setNotes] = useState(day.notes || '')
+  const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  // Update local state when day changes
+  useEffect(() => {
+    setNotes(day.notes || '')
+  }, [day.notes])
+
+  async function saveNotes() {
+    setSaving(true)
+    try {
+      await fetch(`/api/trips/${tripId}/days/${day.id}/notes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      })
+      setEditing(false)
+      onUpdated()
+    } catch (err) {
+      console.error('Failed to save notes:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function uploadPhoto(file: File) {
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ファイルサイズは5MB以下にしてください')
+      return
+    }
+
+    setUploadingPhoto(true)
+    try {
+      const res = await fetch(`/api/trips/${tripId}/days/${day.id}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) throw new Error('Upload failed')
+      onUpdated()
+    } catch (err) {
+      console.error('Failed to upload photo:', err)
+      alert('写真のアップロードに失敗しました')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  async function deletePhoto(photoId: string) {
+    if (!confirm('この写真を削除しますか？')) return
+
+    // Handle legacy IDs that start with 'legacy-'
+    let actualPhotoId = photoId
+    if (photoId.startsWith('legacy-')) {
+      // For legacy photos, extract from the ID pattern: legacy-{dayId}-{index}
+      // We need the photo URL to extract the actual ID
+      const photo = day.photos.find(p => p.id === photoId)
+      if (photo) {
+        const parts = photo.photoUrl.split('/')
+        const photoIdWithExt = parts[parts.length - 1]
+        actualPhotoId = photoIdWithExt.split('.')[0]
+      }
+    }
+
+    try {
+      await fetch(`/api/trips/${tripId}/days/${day.id}/photos/${actualPhotoId}`, { method: 'DELETE' })
+      onUpdated()
+    } catch (err) {
+      console.error('Failed to delete photo:', err)
+    }
+  }
+
+  const hasContent = (day.notes && day.notes.trim()) || (day.photos && day.photos.length > 0)
+
+  return (
+    <div className="day-notes-section">
+      <div className="day-notes-header">
+        <span className="day-notes-label">その他</span>
+      </div>
+
+      {/* Notes */}
+      {editing ? (
+        <div className="day-notes-edit no-print">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="input textarea"
+            placeholder="この日のメモを入力..."
+            rows={3}
+          />
+          <div className="form-actions">
+            <button type="button" className="btn-text" onClick={() => setEditing(false)}>
+              キャンセル
+            </button>
+            <button type="button" className="btn-filled" onClick={saveNotes} disabled={saving}>
+              {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {day.notes && (
+            <p className="day-notes-text">{day.notes}</p>
+          )}
+          <button className="btn-text btn-small no-print" onClick={() => setEditing(true)}>
+            {day.notes ? 'メモを編集' : '+ メモを追加'}
+          </button>
+        </>
+      )}
+
+      {/* Photos */}
+      {day.photos && day.photos.length > 0 && (
+        <div className="day-photos-grid">
+          {day.photos.map((photo) => (
+            <div key={photo.id} className="day-photo-item">
+              <img src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+              {photo.uploadedByName && (
+                <span className="photo-uploader">📷 {photo.uploadedByName}</span>
+              )}
+              <button
+                className="btn-text btn-small btn-danger day-photo-delete no-print"
+                onClick={() => deletePhoto(photo.id)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add photo button */}
+      <button
+        className="btn-text btn-small no-print"
+        onClick={() => photoInputRef.current?.click()}
+        disabled={uploadingPhoto}
+        style={{ marginTop: hasContent ? 'var(--space-2)' : 0 }}
+      >
+        {uploadingPhoto ? '...' : '+ 写真を追加'}
+      </button>
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) uploadPhoto(file)
+          e.target.value = ''
+        }}
+      />
+    </div>
+  )
+}
 
 export function TripEditPage() {
   const { id } = useParams<{ id: string }>()
@@ -10,6 +437,14 @@ export function TripEditPage() {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -171,6 +606,26 @@ export function TripEditPage() {
     }
   }
 
+  async function duplicateTrip() {
+    if (!trip) return
+    if (!confirm('この旅程を複製しますか？')) return
+
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/duplicate`, { method: 'POST' })
+      const data = (await res.json()) as { tripId?: string; error?: string }
+      if (!res.ok) {
+        alert(data.error || '複製に失敗しました')
+        return
+      }
+      if (data.tripId) {
+        navigate(`/trips/${data.tripId}/edit`)
+      }
+    } catch (err) {
+      console.error('Failed to duplicate trip:', err)
+      alert('複製に失敗しました')
+    }
+  }
+
   // Create new day
   async function createDay(e: React.FormEvent) {
     e.preventDefault()
@@ -216,6 +671,9 @@ export function TripEditPage() {
 
     setCreatingItem(true)
     try {
+      // Auto-generate map URL if not provided
+      const mapUrl = newItemMapUrl || generateMapUrl(newItemTitle.trim(), newItemArea || undefined)
+
       const res = await fetch(`/api/trips/${trip.id}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -226,7 +684,7 @@ export function TripEditPage() {
           area: newItemArea || undefined,
           note: newItemNote || undefined,
           cost: newItemCost ? parseInt(newItemCost, 10) : undefined,
-          mapUrl: newItemMapUrl || undefined,
+          mapUrl,
         }),
       })
       const data = (await res.json()) as { item: Item }
@@ -265,6 +723,9 @@ export function TripEditPage() {
 
     setSavingItem(true)
     try {
+      // Auto-generate map URL if not provided
+      const mapUrl = editItemMapUrl || generateMapUrl(editItemTitle.trim(), editItemArea || undefined)
+
       await fetch(`/api/trips/${trip.id}/items/${editingItem.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -274,7 +735,7 @@ export function TripEditPage() {
           area: editItemArea || undefined,
           note: editItemNote || undefined,
           cost: editItemCost ? parseInt(editItemCost, 10) : undefined,
-          mapUrl: editItemMapUrl || undefined,
+          mapUrl,
         }),
       })
       setEditingItem(null)
@@ -344,10 +805,50 @@ export function TripEditPage() {
   function getItemsForDay(dayId: string): Item[] {
     return (trip?.items || [])
       .filter((item) => item.dayId === dayId)
-      .sort((a, b) => {
-        if (a.timeStart && b.timeStart) return a.timeStart.localeCompare(b.timeStart)
-        return a.sort - b.sort
+      .sort((a, b) => a.sort - b.sort)
+  }
+
+  // Handle drag end for reordering items
+  async function handleDragEnd(event: DragEndEvent, dayId: string) {
+    const { active, over } = event
+    if (!over || active.id === over.id || !trip) return
+
+    const dayItems = getItemsForDay(dayId)
+    const oldIndex = dayItems.findIndex((item) => item.id === active.id)
+    const newIndex = dayItems.findIndex((item) => item.id === over.id)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Optimistically update the UI
+    const reorderedItems = arrayMove(dayItems, oldIndex, newIndex)
+    const newItemIds = reorderedItems.map((item) => item.id)
+
+    // Update local state
+    setTrip((prev) => {
+      if (!prev) return null
+      const otherItems = prev.items?.filter((item) => item.dayId !== dayId) || []
+      const updatedDayItems = reorderedItems.map((item, index) => ({
+        ...item,
+        sort: index,
+      }))
+      return {
+        ...prev,
+        items: [...otherItems, ...updatedDayItems],
+      }
+    })
+
+    // Save to server
+    try {
+      await fetch(`/api/trips/${trip.id}/days/${dayId}/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds: newItemIds }),
       })
+    } catch (err) {
+      console.error('Failed to reorder items:', err)
+      // Refresh to get correct order on error
+      await refreshTrip()
+    }
   }
 
   function getTotalCost(): number {
@@ -512,6 +1013,8 @@ export function TripEditPage() {
         )}
         <div className="hero-actions-row no-print" style={{ marginTop: 'var(--space-3)' }}>
           <Link to={`/trips/${trip.id}`} className="btn-text">プレビュー</Link>
+          <button className="btn-text" onClick={() => window.open(`/api/trips/${trip.id}/pdf`, '_blank')}>PDF</button>
+          <button className="btn-text" onClick={duplicateTrip}>複製</button>
           <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
         </div>
       </div>
@@ -560,103 +1063,43 @@ export function TripEditPage() {
                     </div>
                   </div>
                 ) : (
-                  items.map((item) => (
-                    <div key={item.id} className="timeline-item">
-                      {editingItem?.id === item.id ? (
-                        <form className="edit-item-form no-print" onSubmit={updateItem}>
-                          <div className="form-row">
-                            <input
-                              type="time"
-                              value={editItemTime}
-                              onChange={(e) => setEditItemTime(e.target.value)}
-                              className="input input-small"
-                            />
-                            <input
-                              type="text"
-                              value={editItemTitle}
-                              onChange={(e) => setEditItemTitle(e.target.value)}
-                              className="input"
-                              placeholder="タイトル"
-                              autoFocus
-                            />
-                          </div>
-                          <div className="form-row">
-                            <input
-                              type="text"
-                              value={editItemArea}
-                              onChange={(e) => setEditItemArea(e.target.value)}
-                              className="input"
-                              placeholder="エリア"
-                            />
-                            <input
-                              type="number"
-                              value={editItemCost}
-                              onChange={(e) => setEditItemCost(e.target.value)}
-                              className="input input-small"
-                              placeholder="費用"
-                            />
-                          </div>
-                          <input
-                            type="text"
-                            value={editItemNote}
-                            onChange={(e) => setEditItemNote(e.target.value)}
-                            className="input"
-                            placeholder="メモ"
-                          />
-                          <input
-                            type="url"
-                            value={editItemMapUrl}
-                            onChange={(e) => setEditItemMapUrl(e.target.value)}
-                            className="input"
-                            placeholder="地図URL（Google Maps等）"
-                          />
-                          <div className="form-actions">
-                            <button type="button" className="btn-text" onClick={() => setEditingItem(null)}>
-                              キャンセル
-                            </button>
-                            <button type="submit" className="btn-filled" disabled={savingItem || !editItemTitle.trim()}>
-                              {savingItem ? '保存中...' : '保存'}
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <>
-                          <span className="timeline-time">{item.timeStart || '—'}</span>
-                          <div className="timeline-content">
-                            <span className="timeline-title">{item.title}</span>
-                            <div className="timeline-meta">
-                              {item.area && <span>{item.area}</span>}
-                              {item.cost != null && item.cost > 0 && (
-                                <span>{formatCost(item.cost)}</span>
-                              )}
-                              {item.mapUrl && (
-                                <a
-                                  href={item.mapUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="map-link"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  地図を見る
-                                </a>
-                              )}
-                            </div>
-                            {item.note && (
-                              <p className="timeline-note">{item.note}</p>
-                            )}
-                            <div className="item-actions no-print">
-                              <button className="btn-text btn-small" onClick={() => startEditItem(item)}>
-                                編集
-                              </button>
-                              <button className="btn-text btn-small btn-danger" onClick={() => deleteItem(item.id)}>
-                                削除
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => handleDragEnd(event, day.id)}
+                  >
+                    <SortableContext
+                      items={items.map((item) => item.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {items.map((item) => (
+                        <SortableItem
+                          key={item.id}
+                          item={item}
+                          tripId={trip.id}
+                          editingItem={editingItem}
+                          onStartEdit={startEditItem}
+                          onDelete={deleteItem}
+                          editItemTime={editItemTime}
+                          setEditItemTime={setEditItemTime}
+                          editItemTitle={editItemTitle}
+                          setEditItemTitle={setEditItemTitle}
+                          editItemArea={editItemArea}
+                          setEditItemArea={setEditItemArea}
+                          editItemCost={editItemCost}
+                          setEditItemCost={setEditItemCost}
+                          editItemNote={editItemNote}
+                          setEditItemNote={setEditItemNote}
+                          editItemMapUrl={editItemMapUrl}
+                          setEditItemMapUrl={setEditItemMapUrl}
+                          savingItem={savingItem}
+                          onCancelEdit={() => setEditingItem(null)}
+                          onSubmitEdit={updateItem}
+                          onPhotoUploaded={refreshTrip}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 )}
 
                 {/* Add item form */}
@@ -734,6 +1177,13 @@ export function TripEditPage() {
                     + 予定を追加
                   </button>
                 )}
+
+                {/* その他 section */}
+                <DayNotesSection
+                  day={day}
+                  tripId={trip.id}
+                  onUpdated={refreshTrip}
+                />
               </div>
             )
           })

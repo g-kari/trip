@@ -1,13 +1,21 @@
-import { useState, useEffect, useLayoutEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { Trip, Item } from '../types'
 import { formatDateRange, formatCost, formatDayDate } from '../utils'
+import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../hooks/useToast'
 
 export function SharedTripPage() {
   const { token } = useParams<{ token: string }>()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [uploadingItemPhoto, setUploadingItemPhoto] = useState<string | null>(null)
+  const [uploadingDayPhoto, setUploadingDayPhoto] = useState<string | null>(null)
+  const itemPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -20,6 +28,18 @@ export function SharedTripPage() {
       document.documentElement.removeAttribute('data-theme')
     }
   }, [trip?.theme])
+
+  async function refreshTrip() {
+    try {
+      const res = await fetch(`/api/shared/${token}`)
+      if (res.ok) {
+        const data = await res.json() as { trip: Trip }
+        setTrip(data.trip)
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     async function fetchTrip() {
@@ -45,6 +65,78 @@ export function SharedTripPage() {
     }
     fetchTrip()
   }, [token])
+
+  // Upload photo for item
+  async function uploadItemPhoto(itemId: string, file: File) {
+    if (!trip || !user) return
+    if (!file.type.startsWith('image/')) {
+      showError('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError('ファイルサイズは5MB以下にしてください')
+      return
+    }
+
+    setUploadingItemPhoto(itemId)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) {
+        if (res.status === 401) {
+          showError('ログインが必要です')
+          return
+        }
+        throw new Error('Upload failed')
+      }
+      showSuccess('写真をアップロードしました')
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to upload photo:', err)
+      showError('写真のアップロードに失敗しました')
+    } finally {
+      setUploadingItemPhoto(null)
+    }
+  }
+
+  // Upload photo for day's "その他" section
+  async function uploadDayPhoto(dayId: string, file: File) {
+    if (!trip || !user) return
+    if (!file.type.startsWith('image/')) {
+      showError('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError('ファイルサイズは5MB以下にしてください')
+      return
+    }
+
+    setUploadingDayPhoto(dayId)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/days/${dayId}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) {
+        if (res.status === 401) {
+          showError('ログインが必要です')
+          return
+        }
+        throw new Error('Upload failed')
+      }
+      showSuccess('写真をアップロードしました')
+      await refreshTrip()
+    } catch (err) {
+      console.error('Failed to upload photo:', err)
+      showError('写真のアップロードに失敗しました')
+    } finally {
+      setUploadingDayPhoto(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -100,6 +192,30 @@ export function SharedTripPage() {
   // Calculate total cost
   const totalCost = items.reduce((sum, item) => sum + (item.cost || 0), 0)
 
+  async function duplicateTrip() {
+    if (!trip) return
+
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/duplicate`, { method: 'POST' })
+      const data = (await res.json()) as { tripId?: string; error?: string }
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert('複製するにはログインが必要です')
+          navigate('/login')
+          return
+        }
+        alert(data.error || '複製に失敗しました')
+        return
+      }
+      if (data.tripId) {
+        navigate(`/trips/${data.tripId}/edit`)
+      }
+    } catch (err) {
+      console.error('Failed to duplicate trip:', err)
+      alert('複製に失敗しました')
+    }
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -115,6 +231,14 @@ export function SharedTripPage() {
           {(trip.startDate || trip.endDate) && (
             <p className="hero-subtitle">{formatDateRange(trip.startDate, trip.endDate)}</p>
           )}
+          <div className="hero-actions-row no-print">
+            <button className="btn-text" onClick={() => window.print()}>印刷</button>
+            <button className="btn-text" onClick={() => window.open(`/api/shared/${token}/pdf`, '_blank')}>PDF</button>
+            <button className="btn-text" onClick={() => window.open(`/api/shared/${token}/calendar.ics`, '_blank')}>カレンダー</button>
+            <button className="btn-text" onClick={duplicateTrip}>
+              {user ? '複製' : '複製してログイン'}
+            </button>
+          </div>
         </section>
 
         {days.map((day, index) => {
@@ -157,9 +281,87 @@ export function SharedTripPage() {
                       {item.note && (
                         <p className="timeline-note">{item.note}</p>
                       )}
+                      {item.photoUrl && (
+                        <div className="item-photo">
+                          <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                          {item.photoUploadedByName && (
+                            <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
+                          )}
+                        </div>
+                      )}
+                      {/* Photo upload for logged-in users */}
+                      {user && !item.photoUrl && (
+                        <div className="photo-upload-section no-print">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            ref={(el) => {
+                              if (el) itemPhotoInputRefs.current.set(item.id, el)
+                            }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) uploadItemPhoto(item.id, file)
+                            }}
+                          />
+                          <button
+                            className="btn-text btn-small"
+                            onClick={() => itemPhotoInputRefs.current.get(item.id)?.click()}
+                            disabled={uploadingItemPhoto === item.id}
+                          >
+                            {uploadingItemPhoto === item.id ? 'アップロード中...' : '📷 写真を追加'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
+              )}
+
+              {/* その他 section */}
+              {(day.notes || (day.photos && day.photos.length > 0) || user) && (
+                <div className="day-notes-section">
+                  <div className="day-notes-header">
+                    <span className="day-notes-label">その他</span>
+                  </div>
+                  {day.notes && (
+                    <p className="day-notes-text">{day.notes}</p>
+                  )}
+                  {day.photos && day.photos.length > 0 && (
+                    <div className="day-photos-grid">
+                      {day.photos.map((photo) => (
+                        <div key={photo.id} className="day-photo-item">
+                          <img src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                          {photo.uploadedByName && (
+                            <span className="photo-uploader">📷 {photo.uploadedByName}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Photo upload for logged-in users */}
+                  {user && (
+                    <div className="photo-upload-section no-print" style={{ marginTop: 'var(--space-2)' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id={`day-photo-${day.id}`}
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) uploadDayPhoto(day.id, file)
+                        }}
+                      />
+                      <button
+                        className="btn-text btn-small"
+                        onClick={() => document.getElementById(`day-photo-${day.id}`)?.click()}
+                        disabled={uploadingDayPhoto === day.id}
+                      >
+                        {uploadingDayPhoto === day.id ? 'アップロード中...' : '📷 写真を追加'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </section>
           )

@@ -1,21 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import type { Trip } from '../types'
+import type { Trip, TripTheme } from '../types'
 import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../hooks/useToast'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 
 export function TripListPage() {
   const navigate = useNavigate()
   const { user, loading: authLoading } = useAuth()
+  const { showError } = useToast()
   const [trips, setTrips] = useState<Trip[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newTripTitle, setNewTripTitle] = useState('')
   const [newTripStartDate, setNewTripStartDate] = useState('')
   const [newTripEndDate, setNewTripEndDate] = useState('')
+  const [newTripTheme, setNewTripTheme] = useState<TripTheme>('quiet')
   const [creating, setCreating] = useState(false)
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStartDate, setFilterStartDate] = useState('')
+  const [filterEndDate, setFilterEndDate] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
 
   // AI generation state
   const [showAiForm, setShowAiForm] = useState(false)
@@ -25,10 +34,13 @@ export function TripListPage() {
   const [aiStyle, setAiStyle] = useState<TripStyle>('sightseeing')
   const [aiBudget, setAiBudget] = useState('')
   const [aiNotes, setAiNotes] = useState('')
+  const [aiImage, setAiImage] = useState<File | null>(null)
+  const [aiImagePreview, setAiImagePreview] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiRemaining, setAiRemaining] = useState<number | null>(null)
   const [aiLimitReached, setAiLimitReached] = useState(false)
+  const aiImageInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!authLoading) {
@@ -55,10 +67,15 @@ export function TripListPage() {
   async function fetchTrips() {
     try {
       const res = await fetch('/api/trips')
+      if (!res.ok) {
+        showError('旅程の読み込みに失敗しました')
+        return
+      }
       const data = (await res.json()) as { trips: Trip[] }
       setTrips(data.trips || [])
     } catch (err) {
       console.error('Failed to fetch trips:', err)
+      showError('ネットワークエラーが発生しました')
     } finally {
       setLoading(false)
     }
@@ -77,6 +94,7 @@ export function TripListPage() {
           title: newTripTitle.trim(),
           startDate: newTripStartDate || undefined,
           endDate: newTripEndDate || undefined,
+          theme: newTripTheme,
         }),
       })
       const data = (await res.json()) as { trip: Trip }
@@ -85,8 +103,28 @@ export function TripListPage() {
       }
     } catch (err) {
       console.error('Failed to create trip:', err)
+      showError('旅程の作成に失敗しました')
     } finally {
       setCreating(false)
+    }
+  }
+
+  function handleAiImageSelect(file: File | null) {
+    if (file && !file.type.startsWith('image/')) {
+      showError('画像ファイルを選択してください')
+      return
+    }
+    if (file && file.size > 5 * 1024 * 1024) {
+      showError('ファイルサイズは5MB以下にしてください')
+      return
+    }
+    setAiImage(file)
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => setAiImagePreview(e.target?.result as string)
+      reader.readAsDataURL(file)
+    } else {
+      setAiImagePreview(null)
     }
   }
 
@@ -97,18 +135,38 @@ export function TripListPage() {
     setGenerating(true)
     setAiError(null)
     try {
-      const res = await fetch('/api/trips/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destination: aiDestination.trim(),
-          startDate: aiStartDate,
-          endDate: aiEndDate,
-          style: aiStyle,
-          budget: aiBudget ? parseInt(aiBudget, 10) : undefined,
-          notes: aiNotes || undefined,
-        }),
-      })
+      let res: Response
+
+      if (aiImage) {
+        // Use FormData for image upload
+        const formData = new FormData()
+        formData.append('destination', aiDestination.trim())
+        formData.append('startDate', aiStartDate)
+        formData.append('endDate', aiEndDate)
+        formData.append('style', aiStyle)
+        if (aiBudget) formData.append('budget', aiBudget)
+        if (aiNotes) formData.append('notes', aiNotes)
+        formData.append('image', aiImage)
+
+        res = await fetch('/api/trips/generate', {
+          method: 'POST',
+          body: formData,
+        })
+      } else {
+        res = await fetch('/api/trips/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            destination: aiDestination.trim(),
+            startDate: aiStartDate,
+            endDate: aiEndDate,
+            style: aiStyle,
+            budget: aiBudget ? parseInt(aiBudget, 10) : undefined,
+            notes: aiNotes || undefined,
+          }),
+        })
+      }
+
       const data = (await res.json()) as { trip?: Trip; tripId?: string; error?: string; remaining?: number; limitReached?: boolean }
       if (!res.ok) {
         setAiError(data.error || 'エラーが発生しました')
@@ -280,6 +338,41 @@ export function TripListPage() {
             className="input textarea"
             rows={2}
           />
+          {/* Image input for AI */}
+          <div className="ai-image-section">
+            {aiImagePreview ? (
+              <div className="ai-image-preview">
+                <img src={aiImagePreview} alt="参考画像" className="ai-image-thumb" />
+                <button
+                  type="button"
+                  className="btn-text btn-small"
+                  onClick={() => handleAiImageSelect(null)}
+                >
+                  削除
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn-outline btn-small"
+                onClick={() => aiImageInputRef.current?.click()}
+              >
+                + 参考画像を追加（任意）
+              </button>
+            )}
+            <input
+              ref={aiImageInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null
+                handleAiImageSelect(file)
+                e.target.value = ''
+              }}
+            />
+            <p className="ai-image-hint">旅行のチラシやスクリーンショットを添付すると、AIが参考にします</p>
+          </div>
           {aiError && (
             <p className="error-text">{aiError}</p>
           )}
@@ -323,6 +416,22 @@ export function TripListPage() {
               className="input"
             />
           </div>
+          <div className="theme-selector">
+            <button
+              type="button"
+              className={`theme-btn ${newTripTheme === 'quiet' ? 'active' : ''}`}
+              onClick={() => setNewTripTheme('quiet')}
+            >
+              しずか
+            </button>
+            <button
+              type="button"
+              className={`theme-btn ${newTripTheme === 'photo' ? 'active' : ''}`}
+              onClick={() => setNewTripTheme('photo')}
+            >
+              写真映え
+            </button>
+          </div>
           <button
             type="submit"
             className="btn-filled"
@@ -333,16 +442,122 @@ export function TripListPage() {
         </form>
       )}
 
-      {trips.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">—</div>
-          <p className="empty-state-text">
-            まだ旅程がありません。<br />
-            あたらしい旅程をつくりましょう。
-          </p>
+      {/* Search and Filter */}
+      {trips.length > 0 && (
+        <div className="search-filter-section">
+          <div className="search-bar">
+            <input
+              type="text"
+              placeholder="旅程を検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input search-input"
+            />
+            <button
+              type="button"
+              className={`btn-text filter-toggle ${showFilters ? 'active' : ''}`}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              絞り込み
+            </button>
+          </div>
+          {showFilters && (
+            <div className="filter-options">
+              <div className="filter-row">
+                <label className="filter-label">期間</label>
+                <div className="date-inputs">
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="input"
+                    placeholder="開始日"
+                  />
+                  <span className="date-separator">〜</span>
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="input"
+                    placeholder="終了日"
+                  />
+                </div>
+              </div>
+              {(filterStartDate || filterEndDate) && (
+                <button
+                  type="button"
+                  className="btn-text"
+                  onClick={() => {
+                    setFilterStartDate('')
+                    setFilterEndDate('')
+                  }}
+                >
+                  フィルターをクリア
+                </button>
+              )}
+            </div>
+          )}
         </div>
-      ) : (
-        trips.map((trip) => (
+      )}
+
+      {(() => {
+        // Filter trips based on search query and date range
+        const filteredTrips = trips.filter((trip) => {
+          // Text search
+          if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase()
+            if (!trip.title.toLowerCase().includes(query)) {
+              return false
+            }
+          }
+          // Date range filter
+          if (filterStartDate && trip.startDate) {
+            if (trip.startDate < filterStartDate) {
+              return false
+            }
+          }
+          if (filterEndDate && trip.endDate) {
+            if (trip.endDate > filterEndDate) {
+              return false
+            }
+          }
+          return true
+        })
+
+        if (trips.length === 0) {
+          return (
+            <div className="empty-state">
+              <div className="empty-state-icon">—</div>
+              <p className="empty-state-text">
+                まだ旅程がありません。<br />
+                あたらしい旅程をつくりましょう。
+              </p>
+            </div>
+          )
+        }
+
+        if (filteredTrips.length === 0) {
+          return (
+            <div className="empty-state">
+              <p className="empty-state-text">
+                検索条件に一致する旅程がありません
+              </p>
+              <button
+                type="button"
+                className="btn-text"
+                onClick={() => {
+                  setSearchQuery('')
+                  setFilterStartDate('')
+                  setFilterEndDate('')
+                }}
+              >
+                条件をクリア
+              </button>
+            </div>
+          )
+        }
+
+        return filteredTrips.map((trip) => (
           <div
             key={trip.id}
             className="trip-card"
@@ -357,7 +572,7 @@ export function TripListPage() {
             )}
           </div>
         ))
-      )}
+      })()}
     </div>
   )
 }
