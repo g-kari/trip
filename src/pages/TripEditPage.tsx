@@ -6,6 +6,7 @@ import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../
 import { useDebounce } from '../hooks/useDebounce'
 import { DatePicker } from '../components/DatePicker'
 import { TimePicker } from '../components/TimePicker'
+import { ReminderSettings } from '../components/ReminderSettings'
 
 // Draggable item component using HTML5 Drag and Drop API
 function DraggableItem({
@@ -581,6 +582,9 @@ export function TripEditPage() {
   const [isTemplate, setIsTemplate] = useState(false)
   const [templateUses, setTemplateUses] = useState(0)
   const [savingTemplate, setSavingTemplate] = useState(false)
+
+  // Reminder modal state
+  const [showReminderModal, setShowReminderModal] = useState(false)
 
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
@@ -1282,6 +1286,7 @@ export function TripEditPage() {
           <Link to={`/trips/${trip.id}`} className="btn-text">プレビュー</Link>
           <button className="btn-text" onClick={() => window.open(`/api/trips/${trip.id}/pdf`, '_blank')}>PDF</button>
           <button className="btn-text" onClick={duplicateTrip}>複製</button>
+          <button className="btn-text" onClick={() => setShowReminderModal(true)}>リマインダー</button>
           <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
         </div>
       </div>
@@ -1539,6 +1544,14 @@ export function TripEditPage() {
       >
         ← 旅程一覧に戻る
       </button>
+
+      {/* Reminder settings modal */}
+      {showReminderModal && (
+        <ReminderSettings
+          trip={trip}
+          onClose={() => setShowReminderModal(false)}
+        />
+      )}
     </>
   )
 }

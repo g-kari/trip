@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
+import { ReminderSettings } from '../components/ReminderSettings'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -136,6 +137,8 @@ export function TripViewPage() {
   // Export dropdown state
   const [showExportDropdown, setShowExportDropdown] = useState(false)
   const exportDropdownRef = useRef<HTMLDivElement>(null)
+  // Reminder modal state
+  const [showReminderModal, setShowReminderModal] = useState(false)
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -667,6 +670,7 @@ export function TripViewPage() {
             <button className="btn-text" onClick={duplicateTrip}>複製</button>
           )}
           <Link to={`/trips/${trip.id}/album`} className="btn-text">アルバム</Link>
+          <button className="btn-text" onClick={() => setShowReminderModal(true)}>リマインダー</button>
         </div>
       </div>
 
@@ -970,6 +974,14 @@ export function TripViewPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Reminder settings modal */}
+      {showReminderModal && (
+        <ReminderSettings
+          trip={trip}
+          onClose={() => setShowReminderModal(false)}
+        />
       )}
     </>
   )
