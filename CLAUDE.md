@@ -168,47 +168,7 @@ Phase 4: 仕上げ      — LP → 全体の磨き込み
 3. `npx wrangler d1 create trip-itinerary` to create the D1 database
 4. Replace `database_id = "REPLACE_ME"` in `wrangler.toml` with actual ID
 5. `npx wrangler d1 migrations apply trip-itinerary` to run migrations
-6. Set up authentication secrets (see below)
-
-### Authentication Setup
-
-#### Google OAuth
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable "Google+ API" or "People API"
-4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
-5. Select "Web application"
-6. Add authorized redirect URI: `https://your-domain.com/api/auth/google/callback`
-7. Copy Client ID and Client Secret
-8. Set secrets:
-   ```bash
-   npx wrangler secret put GOOGLE_CLIENT_ID
-   npx wrangler secret put GOOGLE_CLIENT_SECRET
-   ```
-
-#### LINE Login
-
-1. Go to [LINE Developers Console](https://developers.line.biz/console/)
-2. Create a new provider (if needed)
-3. Create a new "LINE Login" channel
-4. In channel settings:
-   - Enable "Web app" under "App types"
-   - Add callback URL: `https://your-domain.com/api/auth/line/callback`
-5. Copy Channel ID and Channel secret from "Basic settings"
-6. Set secrets:
-   ```bash
-   npx wrangler secret put LINE_CHANNEL_ID
-   npx wrangler secret put LINE_CHANNEL_SECRET
-   ```
-
-#### Session Secret
-
-Generate a random string for session encryption:
-```bash
-npx wrangler secret put SESSION_SECRET
-# Enter a random 32+ character string
-```
+6. Set up authentication secrets (see [docs/SETUP.md](docs/SETUP.md))
 
 ## Testing
 
@@ -310,16 +270,6 @@ Inspired by katasu.me. The design should feel calm, warm, and unhurried.
 ## Important Notes
 
 - The `wrangler.toml` `database_id` is a placeholder (`REPLACE_ME`) — D1 will not work without a real ID
-- Authentication uses self-hosted OAuth (Google and LINE)
+- Authentication uses self-hosted OAuth (Google and LINE) — see [docs/SETUP.md](docs/SETUP.md)
 - No CI/CD pipeline exists
 - No Dockerfile or containerization — the app is Cloudflare-native
-
-## Required Environment Secrets
-
-| Secret | Description |
-|--------|-------------|
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `LINE_CHANNEL_ID` | LINE Login channel ID |
-| `LINE_CHANNEL_SECRET` | LINE Login channel secret |
-| `SESSION_SECRET` | Random string for session encryption |
