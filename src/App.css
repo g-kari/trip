@@ -223,10 +223,29 @@
   cursor: grab;
   user-select: none;
   touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+/* Visual indicator for drag handle on touch devices */
+@media (pointer: coarse) {
+  .drag-handle {
+    position: relative;
+  }
+
+  .drag-handle::before {
+    content: '⋮';
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-faint);
+    font-size: 0.875rem;
+  }
 }
 
 .timeline-item.dragging {
@@ -1259,6 +1278,8 @@
   justify-content: center;
   z-index: 1000;
   padding: var(--space-5);
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
 }
 
 .album-lightbox-close {
@@ -1284,6 +1305,9 @@
   max-height: 100%;
   object-fit: contain;
   border-radius: 4px;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
 }
 
 .album-lightbox-caption {
@@ -1610,4 +1634,388 @@
   font-size: 0.75rem;
   color: var(--color-text-faint);
   margin-top: var(--space-2);
+}
+
+/* ========================================
+   Mobile Responsive Styles
+   ======================================== */
+
+/* Ensure minimum touch target sizes (44px) */
+@media (pointer: coarse) {
+  /* Larger touch targets for touch devices */
+  .btn-outline,
+  .btn-filled,
+  .btn-text,
+  .theme-btn,
+  .style-btn,
+  .login-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .btn-small {
+    min-height: 36px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  /* Larger drag handle touch area */
+  .drag-handle {
+    min-width: 56px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Larger close button for lightbox */
+  .album-lightbox-close {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 1.75rem;
+  }
+
+  /* Larger lightbox navigation buttons */
+  .album-lightbox-nav {
+    min-width: 48px;
+    min-height: 64px;
+    padding: var(--space-4);
+  }
+
+  /* Photo delete buttons more accessible */
+  .item-photo-delete,
+  .day-photo-delete {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    opacity: 1; /* Always visible on touch */
+  }
+
+  /* Inputs with adequate height */
+  .input {
+    min-height: 44px;
+  }
+
+  /* Modal close button */
+  .modal-close {
+    min-height: 44px;
+  }
+}
+
+/* Small screen adjustments (under 480px) */
+@media (max-width: 480px) {
+  /* Reduce padding on main content */
+  .main {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  /* Header adjustments */
+  .header {
+    padding: var(--space-4);
+  }
+
+  /* Hero section adjustments */
+  .hero {
+    padding: var(--space-6) 0 var(--space-5);
+  }
+
+  .hero-title {
+    font-size: 1.25rem;
+  }
+
+  .hero-subtitle {
+    font-size: 0.8125rem;
+  }
+
+  /* Hero actions wrap on small screens */
+  .hero-actions-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1);
+  }
+
+  .hero-actions-row .btn-text {
+    padding: var(--space-2);
+    font-size: 0.75rem;
+  }
+
+  /* Landing page adjustments */
+  .landing-title {
+    font-size: 2rem;
+  }
+
+  .landing-tagline {
+    font-size: 0.9375rem;
+  }
+
+  .landing-btn {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  /* Form adjustments */
+  .form-row {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .form-row .input {
+    width: 100%;
+  }
+
+  .input-small {
+    max-width: none;
+    width: 100%;
+  }
+
+  .form-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
+    margin-top: var(--space-2);
+  }
+
+  /* Date inputs stack on mobile */
+  .date-inputs {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .date-inputs .input {
+    width: 100%;
+  }
+
+  .date-separator {
+    display: none;
+  }
+
+  /* Edit trip form full width */
+  .edit-trip-form {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Theme selector buttons */
+  .theme-selector {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .theme-btn {
+    flex: 1;
+    max-width: 140px;
+  }
+
+  /* Timeline adjustments */
+  .timeline-item {
+    grid-template-columns: 48px 1fr;
+    gap: var(--space-2);
+  }
+
+  .timeline-time {
+    font-size: 0.75rem;
+  }
+
+  .timeline-title {
+    font-size: 0.875rem;
+  }
+
+  .timeline-meta {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  /* Item actions wrap */
+  .item-actions {
+    flex-wrap: wrap;
+  }
+
+  /* Modal full width on mobile */
+  .modal {
+    max-width: 100%;
+    margin: var(--space-3);
+    padding: var(--space-5);
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  /* Share URL box scroll */
+  .share-url-box {
+    max-width: 100%;
+  }
+
+  .share-url {
+    font-size: 0.75rem;
+  }
+
+  /* Album grid single column on very small screens */
+  .album-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+
+  .album-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .album-title {
+    font-size: 1rem;
+  }
+
+  /* Lightbox full screen on mobile */
+  .album-lightbox {
+    padding: var(--space-3);
+  }
+
+  .album-lightbox-caption {
+    font-size: 0.75rem;
+    bottom: var(--space-3);
+    left: var(--space-3);
+    right: var(--space-3);
+  }
+
+  .album-lightbox-nav {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .album-lightbox-nav.prev {
+    left: var(--space-1);
+  }
+
+  .album-lightbox-nav.next {
+    right: var(--space-1);
+  }
+
+  /* Day photos grid smaller */
+  .day-photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: var(--space-2);
+  }
+
+  .day-photo {
+    height: 80px;
+  }
+
+  /* Total cost */
+  .total-cost {
+    padding: var(--space-3);
+  }
+
+  /* Toast positioning */
+  .toast-container {
+    bottom: var(--space-4);
+    left: var(--space-3);
+    right: var(--space-3);
+    transform: none;
+    max-width: none;
+  }
+
+  /* Login container */
+  .login-container {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .login-logo {
+    font-size: 1.25rem;
+    margin-bottom: var(--space-6);
+  }
+
+  /* Filter section */
+  .search-bar {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .filter-toggle {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Section header wrap */
+  .section-header {
+    flex-wrap: wrap;
+  }
+
+  /* Trip card */
+  .trip-card {
+    padding: var(--space-4);
+  }
+
+  .trip-card-title {
+    font-size: 0.9375rem;
+  }
+
+  /* AI form */
+  .ai-form {
+    padding: var(--space-4);
+  }
+
+  .style-options {
+    flex-direction: column;
+  }
+
+  .style-btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  /* Add day buttons */
+  .add-day-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add-day-buttons .btn-outline,
+  .add-day-buttons .btn-text {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Feature cards */
+  .feature {
+    padding: var(--space-3);
+  }
+
+  .feature-icon {
+    font-size: 1.25rem;
+  }
+
+  /* Footer */
+  .footer {
+    padding: var(--space-5) var(--space-4);
+  }
+}
+
+/* Very small screens (under 360px) */
+@media (max-width: 360px) {
+  .main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .hero-title {
+    font-size: 1.125rem;
+  }
+
+  .landing-title {
+    font-size: 1.75rem;
+  }
+
+  .album-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-photos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .timeline-item {
+    grid-template-columns: 44px 1fr;
+  }
 }

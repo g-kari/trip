@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Trip, Item } from '../types'
 import { formatDayLabel } from '../utils'
@@ -151,9 +151,13 @@ export function AlbumPage() {
     setLightboxIndex((lightboxIndex - 1 + allPhotos.length) % allPhotos.length)
   }, [lightboxIndex, allPhotos.length])
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation and prevent body scroll when lightbox is open
   useEffect(() => {
     if (lightboxIndex === null) return
+
+    // Prevent body scroll
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') closeLightbox()
@@ -162,8 +166,42 @@ export function AlbumPage() {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = originalOverflow
+    }
   }, [lightboxIndex, nextPhoto, prevPhoto])
+
+  // Touch/swipe handling for lightbox
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null || touchStartY.current === null) return
+
+    const touchEndX = e.changedTouches[0].clientX
+    const touchEndY = e.changedTouches[0].clientY
+    const deltaX = touchEndX - touchStartX.current
+    const deltaY = touchEndY - touchStartY.current
+
+    // Only trigger if horizontal swipe is greater than vertical (to avoid scrolling conflicts)
+    // and the swipe is at least 50px
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      if (deltaX > 0) {
+        prevPhoto()
+      } else {
+        nextPhoto()
+      }
+    }
+
+    touchStartX.current = null
+    touchStartY.current = null
+  }
 
   if (loading) {
     return (
@@ -249,7 +287,12 @@ export function AlbumPage() {
 
       {/* Lightbox */}
       {lightboxIndex !== null && allPhotos[lightboxIndex] && (
-        <div className="album-lightbox" onClick={closeLightbox}>
+        <div
+          className="album-lightbox"
+          onClick={closeLightbox}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <button className="album-lightbox-close no-print" onClick={closeLightbox}>
             ✕
           </button>
@@ -280,6 +323,7 @@ export function AlbumPage() {
             src={allPhotos[lightboxIndex].url}
             alt={allPhotos[lightboxIndex].title}
             onClick={(e) => e.stopPropagation()}
+            draggable={false}
           />
           <div className="album-lightbox-caption">
             <span>{allPhotos[lightboxIndex].dayLabel} — </span>
