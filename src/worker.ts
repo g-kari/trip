@@ -965,7 +965,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
 
 // ============ Days ============
 
-// Helper to check trip ownership
+// Helper to check trip ownership (owner-only operations)
 async function checkTripOwnership(
   db: D1Database,
   tripId: string,
@@ -987,13 +987,50 @@ async function checkTripOwnership(
   return { ok: true };
 }
 
+// Helper to check if user can edit a trip (owner or collaborator with editor role)
+async function checkCanEditTrip(
+  db: D1Database,
+  tripId: string,
+  user: User | null
+): Promise<{ ok: boolean; error?: string; status?: number; isOwner?: boolean }> {
+  const trip = await db
+    .prepare('SELECT id, user_id as userId FROM trips WHERE id = ?')
+    .bind(tripId)
+    .first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return { ok: false, error: 'Trip not found', status: 404 };
+  }
+
+  // Check if user is owner
+  if (!trip.userId || (user && trip.userId === user.id)) {
+    return { ok: true, isOwner: true };
+  }
+
+  if (!user) {
+    return { ok: false, error: 'Forbidden', status: 403 };
+  }
+
+  // Check if user is a collaborator with edit permission
+  const collaborator = await db
+    .prepare('SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?')
+    .bind(tripId, user.id)
+    .first<{ role: string }>();
+
+  if (collaborator && collaborator.role === 'editor') {
+    return { ok: true, isOwner: false };
+  }
+
+  return { ok: false, error: 'Forbidden', status: 403 };
+}
+
 // Create day
 app.post('/api/trips/:tripId/days', async (c) => {
   const tripId = c.req.param('tripId');
   const user = c.get('user');
   const body = await c.req.json<{ date: string; sort?: number }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1022,7 +1059,7 @@ app.put('/api/trips/:tripId/days/:dayId', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<{ date?: string; sort?: number }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1049,7 +1086,7 @@ app.delete('/api/trips/:tripId/days/:dayId', async (c) => {
   const { tripId, dayId } = c.req.param();
   const user = c.get('user');
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1086,7 +1123,7 @@ app.post('/api/trips/:tripId/items', async (c) => {
     sort?: number;
   }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1136,7 +1173,7 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     sort?: number;
   }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1187,7 +1224,7 @@ app.delete('/api/trips/:tripId/items/:itemId', async (c) => {
   const { tripId, itemId } = c.req.param();
   const user = c.get('user');
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1211,7 +1248,7 @@ app.put('/api/trips/:tripId/days/:dayId/reorder', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<{ itemIds: string[] }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1236,7 +1273,7 @@ app.put('/api/trips/:tripId/items/:itemId/reorder', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<{ newDayId: string; newSort: number }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -1538,6 +1575,417 @@ app.get('/api/shared/:token/ogp.png', async (c) => {
     console.error('OGP generation error:', error);
     return c.json({ error: 'Failed to generate OGP image' }, 500);
   }
+});
+
+// ============ Collaborators ============
+
+// Helper to check trip access (owner or collaborator with edit permission)
+async function checkTripEditAccess(
+  db: D1Database,
+  tripId: string,
+  user: User | null
+): Promise<{ ok: boolean; error?: string; status?: number; isOwner?: boolean; role?: string }> {
+  if (!user) {
+    return { ok: false, error: 'ログインが必要です', status: 401 };
+  }
+
+  const trip = await db
+    .prepare('SELECT id, user_id as userId FROM trips WHERE id = ?')
+    .bind(tripId)
+    .first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return { ok: false, error: 'Trip not found', status: 404 };
+  }
+
+  // Check if user is owner
+  if (!trip.userId || trip.userId === user.id) {
+    return { ok: true, isOwner: true, role: 'owner' };
+  }
+
+  // Check if user is a collaborator with edit permission
+  const collaborator = await db
+    .prepare('SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ?')
+    .bind(tripId, user.id)
+    .first<{ role: string }>();
+
+  if (collaborator) {
+    if (collaborator.role === 'editor') {
+      return { ok: true, isOwner: false, role: 'editor' };
+    }
+    // Viewers can view but not edit
+    return { ok: false, error: '編集権限がありません', status: 403, role: 'viewer' };
+  }
+
+  return { ok: false, error: 'Forbidden', status: 403 };
+}
+
+// Get collaborators for a trip
+app.get('/api/trips/:tripId/collaborators', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  // Only owner can see full collaborator list
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Get collaborators with user info
+  const { results: collaborators } = await c.env.DB.prepare(`
+    SELECT tc.id, tc.user_id as userId, tc.role, tc.created_at as createdAt,
+           u.name as userName, u.email as userEmail, u.avatar_url as userAvatarUrl,
+           ib.name as invitedByName
+    FROM trip_collaborators tc
+    LEFT JOIN users u ON tc.user_id = u.id
+    LEFT JOIN users ib ON tc.invited_by = ib.id
+    WHERE tc.trip_id = ?
+    ORDER BY tc.created_at ASC
+  `).bind(tripId).all<{
+    id: string;
+    userId: string;
+    role: string;
+    createdAt: string;
+    userName: string | null;
+    userEmail: string | null;
+    userAvatarUrl: string | null;
+    invitedByName: string | null;
+  }>();
+
+  // Get pending invites
+  const { results: pendingInvites } = await c.env.DB.prepare(`
+    SELECT ci.id, ci.email, ci.role, ci.token, ci.created_at as createdAt, ci.expires_at as expiresAt,
+           u.name as invitedByName
+    FROM collaborator_invites ci
+    LEFT JOIN users u ON ci.invited_by = u.id
+    WHERE ci.trip_id = ? AND ci.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    ORDER BY ci.created_at ASC
+  `).bind(tripId).all<{
+    id: string;
+    email: string;
+    role: string;
+    token: string;
+    createdAt: string;
+    expiresAt: string;
+    invitedByName: string | null;
+  }>();
+
+  return c.json({ collaborators, pendingInvites });
+});
+
+// Add collaborator (by email - creates invite)
+app.post('/api/trips/:tripId/collaborators', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  // Only owner can add collaborators
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const body = await c.req.json<{ email: string; role?: string }>();
+
+  if (!body.email?.trim()) {
+    return c.json({ error: 'メールアドレスを入力してください' }, 400);
+  }
+
+  const email = body.email.trim().toLowerCase();
+  const role = body.role === 'viewer' ? 'viewer' : 'editor';
+
+  // Check if user already has access (is owner)
+  const trip = await c.env.DB.prepare(
+    'SELECT user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ userId: string | null }>();
+
+  // Check if the email belongs to an existing user
+  const existingUser = await c.env.DB.prepare(
+    'SELECT id, email FROM users WHERE email = ?'
+  ).bind(email).first<{ id: string; email: string }>();
+
+  if (existingUser) {
+    // Check if they're the owner
+    if (trip?.userId === existingUser.id) {
+      return c.json({ error: 'オーナーを共同編集者として追加することはできません' }, 400);
+    }
+
+    // Check if already a collaborator
+    const existingCollab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, existingUser.id).first();
+
+    if (existingCollab) {
+      return c.json({ error: 'このユーザーは既に共同編集者です' }, 400);
+    }
+
+    // Add them directly as a collaborator
+    const id = generateId();
+    await c.env.DB.prepare(`
+      INSERT INTO trip_collaborators (id, trip_id, user_id, role, invited_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(id, tripId, existingUser.id, role, user!.id).run();
+
+    return c.json({
+      collaborator: {
+        id,
+        userId: existingUser.id,
+        role,
+        createdAt: new Date().toISOString(),
+      },
+      addedDirectly: true,
+    }, 201);
+  }
+
+  // Check if invite already exists
+  const existingInvite = await c.env.DB.prepare(
+    'SELECT id FROM collaborator_invites WHERE trip_id = ? AND email = ? AND expires_at > strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')'
+  ).bind(tripId, email).first();
+
+  if (existingInvite) {
+    return c.json({ error: 'このメールアドレスには既に招待を送信済みです' }, 400);
+  }
+
+  // Create an invite
+  const id = generateId();
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+
+  await c.env.DB.prepare(`
+    INSERT INTO collaborator_invites (id, trip_id, email, role, token, invited_by, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, tripId, email, role, token, user!.id, expiresAt).run();
+
+  return c.json({
+    invite: {
+      id,
+      email,
+      role,
+      token,
+      expiresAt,
+    },
+    addedDirectly: false,
+  }, 201);
+});
+
+// Accept collaborator invite
+app.post('/api/collaborator-invites/:token/accept', async (c) => {
+  const token = c.req.param('token');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Get the invite
+  const invite = await c.env.DB.prepare(`
+    SELECT id, trip_id as tripId, email, role, expires_at as expiresAt, invited_by as invitedBy
+    FROM collaborator_invites
+    WHERE token = ?
+  `).bind(token).first<{
+    id: string;
+    tripId: string;
+    email: string;
+    role: string;
+    expiresAt: string;
+    invitedBy: string;
+  }>();
+
+  if (!invite) {
+    return c.json({ error: '招待リンクが無効です' }, 404);
+  }
+
+  // Check if expired
+  if (new Date(invite.expiresAt) < new Date()) {
+    return c.json({ error: '招待リンクの有効期限が切れています' }, 400);
+  }
+
+  // Check if already a collaborator
+  const existingCollab = await c.env.DB.prepare(
+    'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+  ).bind(invite.tripId, user.id).first();
+
+  if (existingCollab) {
+    // Delete the invite since user already has access
+    await c.env.DB.prepare('DELETE FROM collaborator_invites WHERE id = ?').bind(invite.id).run();
+    return c.json({ error: 'あなたは既にこの旅程の共同編集者です', tripId: invite.tripId }, 400);
+  }
+
+  // Check if user is the owner
+  const trip = await c.env.DB.prepare(
+    'SELECT user_id as userId, title FROM trips WHERE id = ?'
+  ).bind(invite.tripId).first<{ userId: string | null; title: string }>();
+
+  if (trip?.userId === user.id) {
+    await c.env.DB.prepare('DELETE FROM collaborator_invites WHERE id = ?').bind(invite.id).run();
+    return c.json({ error: 'あなたはこの旅程のオーナーです', tripId: invite.tripId }, 400);
+  }
+
+  // Add as collaborator
+  const id = generateId();
+  await c.env.DB.prepare(`
+    INSERT INTO trip_collaborators (id, trip_id, user_id, role, invited_by)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(id, invite.tripId, user.id, invite.role, invite.invitedBy).run();
+
+  // Delete the invite
+  await c.env.DB.prepare('DELETE FROM collaborator_invites WHERE id = ?').bind(invite.id).run();
+
+  return c.json({
+    collaborator: {
+      id,
+      userId: user.id,
+      role: invite.role,
+      createdAt: new Date().toISOString(),
+    },
+    tripId: invite.tripId,
+    tripTitle: trip?.title,
+  });
+});
+
+// Remove collaborator
+app.delete('/api/trips/:tripId/collaborators/:userId', async (c) => {
+  const { tripId, userId } = c.req.param();
+  const user = c.get('user');
+
+  // Check if current user is owner or the collaborator themselves
+  const trip = await c.env.DB.prepare(
+    'SELECT user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  const isOwner = trip.userId && user && trip.userId === user.id;
+  const isSelf = user && userId === user.id;
+
+  if (!isOwner && !isSelf) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  await c.env.DB.prepare(
+    'DELETE FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+  ).bind(tripId, userId).run();
+
+  return c.json({ ok: true });
+});
+
+// Cancel pending invite
+app.delete('/api/trips/:tripId/invites/:inviteId', async (c) => {
+  const { tripId, inviteId } = c.req.param();
+  const user = c.get('user');
+
+  // Only owner can cancel invites
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  await c.env.DB.prepare(
+    'DELETE FROM collaborator_invites WHERE id = ? AND trip_id = ?'
+  ).bind(inviteId, tripId).run();
+
+  return c.json({ ok: true });
+});
+
+// Check for updates since a timestamp (for polling)
+app.get('/api/trips/:tripId/updates', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+  const url = new URL(c.req.url);
+  const since = url.searchParams.get('since');
+
+  // Check access (owner or collaborator)
+  const access = await checkTripEditAccess(c.env.DB, tripId, user);
+  if (!access.ok && access.role !== 'viewer') {
+    return c.json({ error: access.error }, access.status as 401 | 403 | 404);
+  }
+
+  // Update active editor status
+  if (user) {
+    await c.env.DB.prepare(`
+      INSERT INTO active_editors (id, trip_id, user_id, last_active_at)
+      VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+      ON CONFLICT(trip_id, user_id) DO UPDATE SET last_active_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    `).bind(generateId(), tripId, user.id).run();
+
+    // Clean up stale active editors (inactive for more than 30 seconds)
+    await c.env.DB.prepare(`
+      DELETE FROM active_editors
+      WHERE trip_id = ? AND last_active_at < strftime('%Y-%m-%dT%H:%M:%fZ', datetime('now', '-30 seconds'))
+    `).bind(tripId).run();
+  }
+
+  // Get trip's updated_at
+  const trip = await c.env.DB.prepare(
+    'SELECT updated_at as updatedAt FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ updatedAt: string }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Get active editors
+  const { results: activeEditors } = await c.env.DB.prepare(`
+    SELECT ae.user_id as userId, ae.last_active_at as lastActiveAt,
+           u.name as userName, u.avatar_url as avatarUrl
+    FROM active_editors ae
+    LEFT JOIN users u ON ae.user_id = u.id
+    WHERE ae.trip_id = ?
+  `).bind(tripId).all<{
+    userId: string;
+    lastActiveAt: string;
+    userName: string | null;
+    avatarUrl: string | null;
+  }>();
+
+  // Check if there are updates
+  let hasUpdates = false;
+  if (since) {
+    const sinceDate = new Date(since);
+    const updatedDate = new Date(trip.updatedAt);
+    hasUpdates = updatedDate > sinceDate;
+  }
+
+  return c.json({
+    hasUpdates,
+    updatedAt: trip.updatedAt,
+    activeEditors: activeEditors.filter(e => user && e.userId !== user.id), // Exclude current user
+    currentUserRole: access.role,
+  });
+});
+
+// Get trips shared with the current user (as collaborator)
+app.get('/api/shared-with-me', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const { results: trips } = await c.env.DB.prepare(`
+    SELECT t.id, t.title, t.start_date as startDate, t.end_date as endDate,
+           t.theme, t.cover_image_url as coverImageUrl, t.created_at as createdAt,
+           tc.role, u.name as ownerName, u.avatar_url as ownerAvatarUrl
+    FROM trip_collaborators tc
+    INNER JOIN trips t ON tc.trip_id = t.id
+    LEFT JOIN users u ON t.user_id = u.id
+    WHERE tc.user_id = ?
+    ORDER BY t.created_at DESC
+  `).bind(user.id).all<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    createdAt: string;
+    role: string;
+    ownerName: string | null;
+    ownerAvatarUrl: string | null;
+  }>();
+
+  return c.json({ trips });
 });
 
 // ============ PDF Export ============
@@ -2433,7 +2881,7 @@ app.put('/api/trips/:tripId/days/:dayId/notes', async (c) => {
   const user = c.get('user');
   const body = await c.req.json<{ notes?: string; photos?: string[] }>();
 
-  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
@@ -3485,7 +3933,7 @@ app.get('/s/:token', async (c) => {
 });
 
 // SPA routes - serve index.html for client-side routing
-const spaRoutes = ['/trips', '/trips/', '/login', '/contact'];
+const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite'];
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
@@ -3495,7 +3943,8 @@ app.get('*', async (c) => {
   const isSpaRoute = spaRoutes.some(route => path.startsWith(route)) ||
     path === '/' ||
     path.match(/^\/trips\/[^/]+$/) ||  // /trips/:id
-    path.match(/^\/trips\/[^/]+\/edit$/);  // /trips/:id/edit
+    path.match(/^\/trips\/[^/]+\/edit$/) ||  // /trips/:id/edit
+    path.match(/^\/invite\/[^/]+$/);  // /invite/:token
 
   if (isSpaRoute) {
     url.pathname = '/index.html';

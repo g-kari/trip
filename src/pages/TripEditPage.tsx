@@ -7,6 +7,15 @@ import { useDebounce } from '../hooks/useDebounce'
 import { DatePicker } from '../components/DatePicker'
 import { TimePicker } from '../components/TimePicker'
 import { ReminderSettings } from '../components/ReminderSettings'
+import { CollaboratorManager } from '../components/CollaboratorManager'
+
+// Active editor type for collaborative editing
+type ActiveEditor = {
+  userId: string
+  lastActiveAt: string
+  userName: string | null
+  avatarUrl: string | null
+}
 
 // Draggable item component using HTML5 Drag and Drop API
 function DraggableItem({
@@ -586,6 +595,15 @@ export function TripEditPage() {
   // Reminder modal state
   const [showReminderModal, setShowReminderModal] = useState(false)
 
+  // Collaborator modal state
+  const [showCollaboratorModal, setShowCollaboratorModal] = useState(false)
+
+  // Active editors (collaborative editing)
+  const [activeEditors, setActiveEditors] = useState<ActiveEditor[]>([])
+  const [currentUserRole, setCurrentUserRole] = useState<string>('owner')
+  const lastUpdateTimestamp = useRef<string | null>(null)
+  const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
 
@@ -631,6 +649,56 @@ export function TripEditPage() {
         .catch(err => console.error('Failed to fetch template status:', err))
     }
   }, [id, fetchTrip])
+
+  // Polling for collaborative editing - check for updates every 5 seconds
+  useEffect(() => {
+    if (!id) return
+
+    const tripId = id  // Capture id for use in nested function
+
+    async function checkForUpdates() {
+      try {
+        const url = lastUpdateTimestamp.current
+          ? `/api/trips/${tripId}/updates?since=${encodeURIComponent(lastUpdateTimestamp.current)}`
+          : `/api/trips/${tripId}/updates`
+
+        const res = await fetch(url)
+        if (!res.ok) return
+
+        const data = await res.json() as {
+          hasUpdates: boolean
+          updatedAt: string
+          activeEditors: ActiveEditor[]
+          currentUserRole: string
+        }
+
+        setActiveEditors(data.activeEditors)
+        setCurrentUserRole(data.currentUserRole)
+
+        // Update the trip data if there are updates (and we're not currently editing)
+        if (data.hasUpdates && !editingItem) {
+          // Fetch the latest trip data
+          await fetchTrip(tripId)
+        }
+
+        lastUpdateTimestamp.current = data.updatedAt
+      } catch (err) {
+        console.error('Failed to check for updates:', err)
+      }
+    }
+
+    // Initial check
+    checkForUpdates()
+
+    // Set up polling interval (5 seconds)
+    pollingInterval.current = setInterval(checkForUpdates, 5000)
+
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current)
+      }
+    }
+  }, [id, editingItem, fetchTrip])
 
   // Toggle template status
   async function toggleTemplate() {
@@ -1287,8 +1355,33 @@ export function TripEditPage() {
           <button className="btn-text" onClick={() => window.open(`/api/trips/${trip.id}/pdf`, '_blank')}>PDF</button>
           <button className="btn-text" onClick={duplicateTrip}>複製</button>
           <button className="btn-text" onClick={() => setShowReminderModal(true)}>リマインダー</button>
+          {currentUserRole === 'owner' && (
+            <button className="btn-text" onClick={() => setShowCollaboratorModal(true)}>共同編集者</button>
+          )}
           <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
         </div>
+
+        {/* Active editors indicator */}
+        {activeEditors.length > 0 && (
+          <div className="active-editors no-print">
+            <span className="active-editors-label">編集中:</span>
+            {activeEditors.map((editor) => (
+              <span key={editor.userId} className="active-editor">
+                {editor.avatarUrl && (
+                  <img src={editor.avatarUrl} alt="" className="active-editor-avatar" />
+                )}
+                <span className="active-editor-name">{editor.userName || '匿名'}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Role indicator for collaborators */}
+        {currentUserRole !== 'owner' && (
+          <div className="collaborator-role-badge no-print">
+            {currentUserRole === 'editor' ? '編集者として参加中' : '閲覧者として参加中'}
+          </div>
+        )}
       </div>
 
       {(!trip.days || trip.days.length === 0) ? (
@@ -1550,6 +1643,13 @@ export function TripEditPage() {
         <ReminderSettings
           trip={trip}
           onClose={() => setShowReminderModal(false)}
+        />
+      )}
+
+      {showCollaboratorModal && (
+        <CollaboratorManager
+          tripId={trip.id}
+          onClose={() => setShowCollaboratorModal(false)}
         />
       )}
     </>

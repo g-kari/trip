@@ -19,6 +19,7 @@ import { AlbumPage } from './pages/AlbumPage'
 import { TemplatesPage } from './pages/TemplatesPage'
 import { StatsPage } from './pages/StatsPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { InviteAcceptPage } from './pages/InviteAcceptPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -33,6 +34,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/login" element={<LoginPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/s/:token" element={<SharedTripPage />} />
+              <Route path="/invite/:token" element={<InviteAcceptPage />} />
 
               {/* メインレイアウト配下のページ */}
               <Route element={<Layout />}>
