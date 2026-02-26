@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import type { Trip, TripTheme } from '../types'
 import { formatDateRange } from '../utils'
@@ -42,16 +42,7 @@ export function TripListPage() {
   const [aiLimitReached, setAiLimitReached] = useState(false)
   const aiImageInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (!authLoading) {
-      fetchTrips()
-      if (user) {
-        fetchAiUsage()
-      }
-    }
-  }, [authLoading, user])
-
-  async function fetchAiUsage() {
+  const fetchAiUsage = useCallback(async () => {
     try {
       const res = await fetch('/api/ai/usage')
       if (res.ok) {
@@ -62,9 +53,9 @@ export function TripListPage() {
     } catch (err) {
       console.error('Failed to fetch AI usage:', err)
     }
-  }
+  }, [])
 
-  async function fetchTrips() {
+  const fetchTrips = useCallback(async () => {
     try {
       const res = await fetch('/api/trips')
       if (!res.ok) {
@@ -79,7 +70,16 @@ export function TripListPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [showError])
+
+  useEffect(() => {
+    if (!authLoading) {
+      fetchTrips()
+      if (user) {
+        fetchAiUsage()
+      }
+    }
+  }, [authLoading, user, fetchTrips, fetchAiUsage])
 
   async function createTrip(e: React.FormEvent) {
     e.preventDefault()
