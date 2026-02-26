@@ -698,10 +698,10 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(newTripId, newTitle, original.startDate, original.endDate, original.theme, original.coverImageUrl, original.budget, user.id).run();
 
-  // Copy days
+  // Copy days (including notes and photos for owner's trips)
   const { results: days } = await c.env.DB.prepare(
-    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
-  ).bind(id).all<{ id: string; date: string; sort: number }>();
+    'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(id).all<{ id: string; date: string; sort: number; notes: string | null; photos: string | null }>();
 
   const dayIdMap = new Map<string, string>();
 
@@ -709,14 +709,18 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     const newDayId = generateId();
     dayIdMap.set(day.id, newDayId);
 
+    // Only copy notes and photos if user is the owner of the original trip
+    const notes = isOwner ? day.notes : null;
+    const photos = isOwner ? day.photos : null;
+
     await c.env.DB.prepare(
-      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
-    ).bind(newDayId, newTripId, day.date, day.sort).run();
+      'INSERT INTO days (id, trip_id, date, sort, notes, photos) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(newDayId, newTripId, day.date, day.sort, notes, photos).run();
   }
 
-  // Copy items
+  // Copy items (including photo_url for owner's trips)
   const { results: items } = await c.env.DB.prepare(
-    'SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort FROM items WHERE trip_id = ? ORDER BY sort ASC'
+    'SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort, photo_url FROM items WHERE trip_id = ? ORDER BY sort ASC'
   ).bind(id).all<{
     id: string;
     day_id: string;
@@ -729,6 +733,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     cost: number | null;
     cost_category: string | null;
     sort: number;
+    photo_url: string | null;
   }>();
 
   for (const item of items) {
@@ -737,9 +742,36 @@ app.post('/api/trips/:id/duplicate', async (c) => {
 
     const newItemId = generateId();
 
+    // Only copy photo_url if user is the owner of the original trip
+    const photoUrl = isOwner ? item.photo_url : null;
+
     await c.env.DB.prepare(
-      'INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(newItemId, newTripId, newDayId, item.title, item.area, item.time_start, item.time_end, item.map_url, item.note, item.cost, item.cost_category, item.sort).run();
+      'INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(newItemId, newTripId, newDayId, item.title, item.area, item.time_start, item.time_end, item.map_url, item.note, item.cost, item.cost_category, item.sort, photoUrl).run();
+  }
+
+  // Copy day_photos (only for owner's trips)
+  if (isOwner) {
+    const { results: dayPhotos } = await c.env.DB.prepare(
+      'SELECT id, day_id, photo_url, uploaded_by, uploaded_by_name, uploaded_at FROM day_photos WHERE trip_id = ?'
+    ).bind(id).all<{
+      id: string;
+      day_id: string;
+      photo_url: string;
+      uploaded_by: string | null;
+      uploaded_by_name: string | null;
+      uploaded_at: string | null;
+    }>();
+
+    for (const photo of dayPhotos) {
+      const newDayId = dayIdMap.get(photo.day_id);
+      if (!newDayId) continue;
+
+      const newPhotoId = generateId();
+      await c.env.DB.prepare(
+        'INSERT INTO day_photos (id, trip_id, day_id, photo_url, uploaded_by, uploaded_by_name, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).bind(newPhotoId, newTripId, newDayId, photo.photo_url, photo.uploaded_by, photo.uploaded_by_name, photo.uploaded_at).run();
+    }
   }
 
   // Fetch the new trip

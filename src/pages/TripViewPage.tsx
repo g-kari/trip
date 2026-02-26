@@ -614,7 +614,9 @@ export function TripViewPage() {
           <button className="btn-text" onClick={printTrip}>印刷</button>
           <button className="btn-text" onClick={downloadPdf}>PDF</button>
           <button className="btn-text" onClick={exportCalendar}>カレンダー</button>
-          <button className="btn-text" onClick={duplicateTrip}>複製</button>
+          {user && (
+            <button className="btn-text" onClick={duplicateTrip}>複製</button>
+          )}
           <Link to={`/trips/${trip.id}/album`} className="btn-text">アルバム</Link>
         </div>
       </div>

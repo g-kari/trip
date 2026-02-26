@@ -30,6 +30,7 @@ export function TripListPage() {
     (searchParams.get('archived') === '1' ? 'archived' : 'active') as ArchiveTab
   )
   const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   // Search and filter state (synced with URL)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
@@ -167,6 +168,28 @@ export function TripListPage() {
       setArchivingId(null)
     }
   }, [showError])
+
+  // Duplicate trip
+  const duplicateTrip = useCallback(async (tripId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDuplicatingId(tripId)
+    try {
+      const res = await fetch(`/api/trips/${tripId}/duplicate`, { method: 'POST' })
+      const data = (await res.json()) as { tripId?: string; error?: string }
+      if (!res.ok) {
+        showError(data.error || '複製に失敗しました')
+        return
+      }
+      if (data.tripId) {
+        navigate(`/trips/${data.tripId}/edit`)
+      }
+    } catch (err) {
+      console.error('Failed to duplicate trip:', err)
+      showError('複製に失敗しました')
+    } finally {
+      setDuplicatingId(null)
+    }
+  }, [navigate, showError])
 
   async function createTrip(e: React.FormEvent) {
     e.preventDefault()
@@ -741,18 +764,28 @@ export function TripListPage() {
               </div>
             )}
             {user && (
-              <button
-                type="button"
-                className="btn-text btn-small archive-btn"
-                onClick={(e) => toggleArchive(trip.id, e)}
-                disabled={archivingId === trip.id}
-              >
-                {archivingId === trip.id
-                  ? '処理中...'
-                  : trip.isArchived
-                    ? 'アーカイブ解除'
-                    : 'アーカイブ'}
-              </button>
+              <div className="trip-card-actions">
+                <button
+                  type="button"
+                  className="btn-text btn-small duplicate-btn"
+                  onClick={(e) => duplicateTrip(trip.id, e)}
+                  disabled={duplicatingId === trip.id}
+                >
+                  {duplicatingId === trip.id ? '複製中...' : '複製'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-text btn-small archive-btn"
+                  onClick={(e) => toggleArchive(trip.id, e)}
+                  disabled={archivingId === trip.id}
+                >
+                  {archivingId === trip.id
+                    ? '処理中...'
+                    : trip.isArchived
+                      ? 'アーカイブ解除'
+                      : 'アーカイブ'}
+                </button>
+              </div>
             )}
           </div>
         ))

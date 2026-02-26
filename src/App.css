@@ -1375,6 +1375,29 @@
   cursor: not-allowed;
 }
 
+/* Trip card actions container */
+.trip-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Duplicate button on trip card */
+.duplicate-btn {
+  padding-left: 0;
+  color: var(--color-text-faint);
+}
+
+.duplicate-btn:hover {
+  color: var(--color-text-muted);
+}
+
+.duplicate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .filter-buttons {
