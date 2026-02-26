@@ -1883,6 +1883,160 @@ app.get('/api/photos/days/:dayId/:key', async (c) => {
   return new Response(object.body, { headers });
 });
 
+// ============ Templates ============
+
+// Get all public templates
+app.get('/api/templates', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, template_uses as templateUses, created_at as createdAt
+     FROM trips
+     WHERE is_template = 1
+     ORDER BY template_uses DESC, created_at DESC`
+  ).all<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    templateUses: number;
+    createdAt: string;
+  }>();
+
+  return c.json({ templates: results });
+});
+
+// Use a template (create a copy for the logged-in user)
+app.post('/api/templates/:id/use', async (c) => {
+  const templateId = c.req.param('id');
+  const user = c.get('user');
+
+  // Require login to use template
+  if (!user) {
+    return c.json({ error: 'テンプレートの利用にはログインが必要です' }, 401);
+  }
+
+  // Get the template
+  const template = await c.env.DB.prepare(
+    `SELECT id, title, start_date as startDate, end_date as endDate, theme, is_template as isTemplate
+     FROM trips WHERE id = ? AND is_template = 1`
+  ).bind(templateId).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    isTemplate: number;
+  }>();
+
+  if (!template) {
+    return c.json({ error: 'テンプレートが見つかりません' }, 404);
+  }
+
+  // Create new trip from template
+  const newTripId = generateId();
+
+  await c.env.DB.prepare(
+    `INSERT INTO trips (id, title, start_date, end_date, theme, user_id, is_template, template_uses)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 0)`
+  ).bind(newTripId, template.title, template.startDate, template.endDate, template.theme, user.id).run();
+
+  // Copy days
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort, notes FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(templateId).all<{ id: string; date: string; sort: number; notes: string | null }>();
+
+  const dayIdMap = new Map<string, string>();
+
+  for (const day of days) {
+    const newDayId = generateId();
+    dayIdMap.set(day.id, newDayId);
+
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort, notes) VALUES (?, ?, ?, ?, ?)'
+    ).bind(newDayId, newTripId, day.date, day.sort, day.notes).run();
+  }
+
+  // Copy items (without photos)
+  const { results: items } = await c.env.DB.prepare(
+    `SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost, sort
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(templateId).all<{
+    id: string;
+    day_id: string;
+    title: string;
+    area: string | null;
+    time_start: string | null;
+    time_end: string | null;
+    map_url: string | null;
+    note: string | null;
+    cost: number | null;
+    sort: number;
+  }>();
+
+  for (const item of items) {
+    const newDayId = dayIdMap.get(item.day_id);
+    if (!newDayId) continue;
+
+    const newItemId = generateId();
+
+    await c.env.DB.prepare(
+      `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, sort)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(newItemId, newTripId, newDayId, item.title, item.area, item.time_start, item.time_end, item.map_url, item.note, item.cost, item.sort).run();
+  }
+
+  // Increment template_uses
+  await c.env.DB.prepare(
+    'UPDATE trips SET template_uses = template_uses + 1 WHERE id = ?'
+  ).bind(templateId).run();
+
+  // Get the new trip
+  const newTrip = await c.env.DB.prepare(
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, created_at as createdAt FROM trips WHERE id = ?'
+  ).bind(newTripId).first();
+
+  return c.json({ trip: newTrip, tripId: newTripId }, 201);
+});
+
+// Toggle template status (owner only)
+app.put('/api/trips/:id/template', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+  const body = await c.req.json<{ isTemplate: boolean }>();
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  await c.env.DB.prepare(
+    'UPDATE trips SET is_template = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+  ).bind(body.isTemplate ? 1 : 0, tripId).run();
+
+  return c.json({ ok: true, isTemplate: body.isTemplate });
+});
+
+// Get template status for a trip
+app.get('/api/trips/:id/template', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const result = await c.env.DB.prepare(
+    'SELECT is_template as isTemplate, template_uses as templateUses FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ isTemplate: number; templateUses: number }>();
+
+  return c.json({
+    isTemplate: result?.isTemplate === 1,
+    templateUses: result?.templateUses || 0,
+  });
+});
+
 // ============ Feedback ============
 
 // Submit feedback (public endpoint)

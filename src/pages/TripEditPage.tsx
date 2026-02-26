@@ -532,6 +532,11 @@ export function TripEditPage() {
   const [uploadingCover, setUploadingCover] = useState(false)
   const coverInputRef = useRef<HTMLInputElement>(null)
 
+  // Template state
+  const [isTemplate, setIsTemplate] = useState(false)
+  const [templateUses, setTemplateUses] = useState(0)
+  const [savingTemplate, setSavingTemplate] = useState(false)
+
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
 
@@ -564,8 +569,39 @@ export function TripEditPage() {
   useEffect(() => {
     if (id) {
       fetchTrip(id)
+      // Fetch template status
+      fetch(`/api/trips/${id}/template`)
+        .then(res => res.ok ? res.json() as Promise<{ isTemplate?: boolean; templateUses?: number }> : null)
+        .then((data) => {
+          if (data) {
+            setIsTemplate(data.isTemplate || false)
+            setTemplateUses(data.templateUses || 0)
+          }
+        })
+        .catch(err => console.error('Failed to fetch template status:', err))
     }
   }, [id, fetchTrip])
+
+  // Toggle template status
+  async function toggleTemplate() {
+    if (!trip) return
+
+    setSavingTemplate(true)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/template`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTemplate: !isTemplate }),
+      })
+      if (res.ok) {
+        setIsTemplate(!isTemplate)
+      }
+    } catch (err) {
+      console.error('Failed to toggle template:', err)
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
 
   async function refreshTrip() {
     if (id) {
@@ -1034,6 +1070,25 @@ export function TripEditPage() {
                 e.target.value = ''
               }}
             />
+          </div>
+          {/* Template toggle */}
+          <div className="template-toggle-section">
+            <label className="template-toggle">
+              <input
+                type="checkbox"
+                checked={isTemplate}
+                onChange={toggleTemplate}
+                disabled={savingTemplate}
+              />
+              <span className="template-toggle-label">
+                テンプレートとして公開
+              </span>
+            </label>
+            {isTemplate && (
+              <span className="template-uses-badge">
+                {templateUses}回使用
+              </span>
+            )}
           </div>
           {/* Auto-save indicator */}
           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)', textAlign: 'center' }}>

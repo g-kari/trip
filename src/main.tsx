@@ -15,6 +15,7 @@ import { SharedTripPage } from './pages/SharedTripPage'
 import { LoginPage } from './pages/LoginPage'
 import { ContactPage } from './pages/ContactPage'
 import { AlbumPage } from './pages/AlbumPage'
+import { TemplatesPage } from './pages/TemplatesPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -35,6 +36,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/trips/:id" element={<TripViewPage />} />
                 <Route path="/trips/:id/edit" element={<TripEditPage />} />
                 <Route path="/trips/:id/album" element={<AlbumPage />} />
+                <Route path="/templates" element={<TemplatesPage />} />
               </Route>
             </Routes>
           </BrowserRouter>

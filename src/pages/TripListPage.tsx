@@ -230,6 +230,9 @@ export function TripListPage() {
       <div className="section-header">
         <span className="section-title">{user ? 'マイ旅程' : 'trips'}</span>
         <div className="section-actions">
+          <Link to="/templates" className="btn-text">
+            テンプレート
+          </Link>
           <button
             className="btn-outline"
             onClick={() => {
