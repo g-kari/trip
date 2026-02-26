@@ -5,6 +5,7 @@ import './index.css'
 import './App.css'
 import { AuthProvider } from './components/AuthProvider'
 import { Layout } from './components/Layout'
+import { HomePage } from './pages/HomePage'
 import { TripListPage } from './pages/TripListPage'
 import { TripViewPage } from './pages/TripViewPage'
 import { TripEditPage } from './pages/TripEditPage'
@@ -17,12 +18,12 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <Routes>
           {/* 認証不要のページ */}
+          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/s/:token" element={<SharedTripPage />} />
 
           {/* メインレイアウト配下のページ */}
           <Route element={<Layout />}>
-            <Route path="/" element={<TripListPage />} />
             <Route path="/trips" element={<TripListPage />} />
             <Route path="/trips/:id" element={<TripViewPage />} />
             <Route path="/trips/:id/edit" element={<TripEditPage />} />

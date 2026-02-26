@@ -1,9 +1,14 @@
+// Theme types
+export type TripTheme = 'quiet' | 'photo'
+
 // API response types
 export type Trip = {
   id: string
   title: string
   startDate: string | null
   endDate: string | null
+  theme: TripTheme
+  coverImageUrl: string | null
   createdAt: string
   days?: Day[]
   items?: Item[]

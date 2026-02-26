@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import type { Trip, Item } from '../types'
 import { formatDateRange, formatCost, formatDayDate } from '../utils'
@@ -8,6 +8,18 @@ export function SharedTripPage() {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Apply theme to document
+  useLayoutEffect(() => {
+    if (trip?.theme && trip.theme !== 'quiet') {
+      document.documentElement.setAttribute('data-theme', trip.theme)
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+    return () => {
+      document.documentElement.removeAttribute('data-theme')
+    }
+  }, [trip?.theme])
 
   useEffect(() => {
     async function fetchTrip() {
@@ -95,7 +107,10 @@ export function SharedTripPage() {
       </header>
 
       <main className="main">
-        <section className="hero">
+        <section
+          className={`hero ${trip.coverImageUrl ? 'hero-with-cover' : ''}`}
+          style={trip.coverImageUrl ? { backgroundImage: `url(${trip.coverImageUrl})` } : undefined}
+        >
           <h1 className="hero-title">{trip.title}</h1>
           {(trip.startDate || trip.endDate) && (
             <p className="hero-subtitle">{formatDateRange(trip.startDate, trip.endDate)}</p>

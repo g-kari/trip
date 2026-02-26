@@ -58,6 +58,22 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ========================================
+   Theme: Photo (写真映え) — vibrant aesthetic
+   ======================================== */
+
+[data-theme="photo"] {
+  --color-bg:          #1a1a2e;
+  --color-bg-elevated: #16213e;
+  --color-text:        #f0f0f0;
+  --color-text-muted:  #a0a0b0;
+  --color-text-faint:  #6a6a80;
+  --color-border:      #2a2a4e;
+  --color-border-light:#232340;
+  --color-accent:      #e94560;
+  --color-accent-hover:#ff6b8a;
+}
+
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;

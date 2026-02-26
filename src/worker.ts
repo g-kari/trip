@@ -19,6 +19,7 @@ import type { User } from './auth/types';
 type Bindings = {
   DB: D1Database;
   ASSETS: { fetch: (request: Request) => Promise<Response> };
+  COVERS: R2Bucket;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
 };
@@ -205,7 +206,7 @@ app.post('/api/auth/logout', async (c) => {
 app.get('/api/trips', async (c) => {
   const user = c.get('user');
 
-  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, created_at as createdAt FROM trips';
+  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt FROM trips';
   const params: string[] = [];
 
   if (user) {
@@ -233,12 +234,14 @@ app.get('/api/trips/:id', async (c) => {
   const user = c.get('user');
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
   ).bind(id).first<{
     id: string;
     title: string;
     startDate: string | null;
     endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
     userId: string | null;
     createdAt: string;
     updatedAt: string;
@@ -271,20 +274,21 @@ app.get('/api/trips/:id', async (c) => {
 // Create trip
 app.post('/api/trips', async (c) => {
   const user = c.get('user');
-  const body = await c.req.json<{ title: string; startDate?: string; endDate?: string }>();
+  const body = await c.req.json<{ title: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string }>();
 
   if (!body.title?.trim()) {
     return c.json({ error: 'Title is required' }, 400);
   }
 
   const id = generateId();
+  const theme = body.theme === 'photo' ? 'photo' : 'quiet';
 
   await c.env.DB.prepare(
-    'INSERT INTO trips (id, title, start_date, end_date, user_id) VALUES (?, ?, ?, ?, ?)'
-  ).bind(id, body.title.trim(), body.startDate ?? null, body.endDate ?? null, user?.id ?? null).run();
+    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(id, body.title.trim(), body.startDate ?? null, body.endDate ?? null, theme, body.coverImageUrl ?? null, user?.id ?? null).run();
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, created_at as createdAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt FROM trips WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ trip }, 201);
@@ -294,7 +298,7 @@ app.post('/api/trips', async (c) => {
 app.put('/api/trips/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
-  const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string }>();
+  const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string }>();
 
   const existing = await c.env.DB.prepare(
     'SELECT id, user_id as userId FROM trips WHERE id = ?'
@@ -309,17 +313,24 @@ app.put('/api/trips/:id', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
+  // Validate theme if provided
+  const theme = body.theme !== undefined
+    ? (body.theme === 'photo' ? 'photo' : 'quiet')
+    : null;
+
   await c.env.DB.prepare(
     `UPDATE trips SET
       title = COALESCE(?, title),
       start_date = COALESCE(?, start_date),
       end_date = COALESCE(?, end_date),
+      theme = COALESCE(?, theme),
+      cover_image_url = COALESCE(?, cover_image_url),
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?`
-  ).bind(body.title ?? null, body.startDate ?? null, body.endDate ?? null, id).run();
+  ).bind(body.title ?? null, body.startDate ?? null, body.endDate ?? null, theme, body.coverImageUrl ?? null, id).run();
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ trip });
@@ -656,7 +667,7 @@ app.get('/api/shared/:token', async (c) => {
   }
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl FROM trips WHERE id = ?'
   ).bind(share.trip_id).first();
 
   if (!trip) {
@@ -672,6 +683,104 @@ app.get('/api/shared/:token', async (c) => {
   ).bind(share.trip_id).all();
 
   return c.json({ trip: { ...trip, days, items } });
+});
+
+// ============ Cover Images (R2) ============
+
+// Upload cover image
+app.post('/api/trips/:tripId/cover', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const contentType = c.req.header('Content-Type') || '';
+  if (!contentType.startsWith('image/')) {
+    return c.json({ error: 'Only image files are allowed' }, 400);
+  }
+
+  // Validate file size (max 5MB)
+  const contentLength = parseInt(c.req.header('Content-Length') || '0', 10);
+  if (contentLength > 5 * 1024 * 1024) {
+    return c.json({ error: 'File too large (max 5MB)' }, 400);
+  }
+
+  const ext = contentType.split('/')[1] || 'jpg';
+  const key = `covers/${tripId}.${ext}`;
+
+  try {
+    const body = await c.req.arrayBuffer();
+    await c.env.COVERS.put(key, body, {
+      httpMetadata: {
+        contentType,
+      },
+    });
+
+    const url = new URL(c.req.url);
+    const coverImageUrl = `${url.origin}/api/covers/${tripId}.${ext}`;
+
+    // Update trip with cover image URL
+    await c.env.DB.prepare(
+      'UPDATE trips SET cover_image_url = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+    ).bind(coverImageUrl, tripId).run();
+
+    return c.json({ coverImageUrl }, 201);
+  } catch (error) {
+    console.error('Failed to upload cover image:', error);
+    return c.json({ error: 'Failed to upload image' }, 500);
+  }
+});
+
+// Get cover image
+app.get('/api/covers/:key', async (c) => {
+  const key = `covers/${c.req.param('key')}`;
+
+  const object = await c.env.COVERS.get(key);
+  if (!object) {
+    return c.json({ error: 'Image not found' }, 404);
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+  headers.set('Cache-Control', 'public, max-age=31536000');
+  headers.set('ETag', object.etag);
+
+  return new Response(object.body, { headers });
+});
+
+// Delete cover image
+app.delete('/api/trips/:tripId/cover', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Get current cover URL to determine the key
+  const trip = await c.env.DB.prepare(
+    'SELECT cover_image_url as coverImageUrl FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ coverImageUrl: string | null }>();
+
+  if (trip?.coverImageUrl) {
+    // Extract key from URL
+    const urlParts = trip.coverImageUrl.split('/api/covers/');
+    if (urlParts[1]) {
+      const key = `covers/${urlParts[1]}`;
+      await c.env.COVERS.delete(key);
+    }
+  }
+
+  // Clear cover image URL in database
+  await c.env.DB.prepare(
+    'UPDATE trips SET cover_image_url = NULL, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+  ).bind(tripId).run();
+
+  return c.json({ ok: true });
 });
 
 // SPA routes - serve index.html for client-side routing

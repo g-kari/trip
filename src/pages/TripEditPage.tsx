@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import type { Trip, Day, Item } from '../types'
+import type { Trip, Day, Item, TripTheme } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
 
@@ -11,10 +11,23 @@ export function TripEditPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Apply theme to document
+  useLayoutEffect(() => {
+    if (trip?.theme && trip.theme !== 'quiet') {
+      document.documentElement.setAttribute('data-theme', trip.theme)
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+    return () => {
+      document.documentElement.removeAttribute('data-theme')
+    }
+  }, [trip?.theme])
+
   // Trip edit state
   const [editTripTitle, setEditTripTitle] = useState('')
   const [editTripStartDate, setEditTripStartDate] = useState('')
   const [editTripEndDate, setEditTripEndDate] = useState('')
+  const [editTripTheme, setEditTripTheme] = useState<TripTheme>('quiet')
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
@@ -46,6 +59,10 @@ export function TripEditPage() {
   // Auto-generate days state
   const [generatingDays, setGeneratingDays] = useState(false)
 
+  // Cover image state
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+
   // Track if initial load is complete
   const initialLoadComplete = useRef(false)
 
@@ -64,6 +81,7 @@ export function TripEditPage() {
         setEditTripTitle(data.trip.title)
         setEditTripStartDate(data.trip.startDate || '')
         setEditTripEndDate(data.trip.endDate || '')
+        setEditTripTheme(data.trip.theme || 'quiet')
         initialLoadComplete.current = true
       }
     } catch (err) {
@@ -88,7 +106,7 @@ export function TripEditPage() {
   }
 
   // Auto-save trip function
-  const saveTrip = useCallback(async (title: string, startDate: string, endDate: string) => {
+  const saveTrip = useCallback(async (title: string, startDate: string, endDate: string, theme: TripTheme) => {
     if (!trip || !title.trim()) return
 
     setSaving(true)
@@ -100,6 +118,7 @@ export function TripEditPage() {
           title: title.trim(),
           startDate: startDate || undefined,
           endDate: endDate || undefined,
+          theme,
         }),
       })
       setLastSaved(new Date())
@@ -109,6 +128,7 @@ export function TripEditPage() {
         title: title.trim(),
         startDate: startDate || null,
         endDate: endDate || null,
+        theme,
       } : null)
     } catch (err) {
       console.error('Failed to save trip:', err)
@@ -129,13 +149,14 @@ export function TripEditPage() {
     if (
       editTripTitle === trip.title &&
       editTripStartDate === (trip.startDate || '') &&
-      editTripEndDate === (trip.endDate || '')
+      editTripEndDate === (trip.endDate || '') &&
+      editTripTheme === (trip.theme || 'quiet')
     ) {
       return
     }
 
-    debouncedSaveTrip(editTripTitle, editTripStartDate, editTripEndDate)
-  }, [editTripTitle, editTripStartDate, editTripEndDate, debouncedSaveTrip, trip])
+    debouncedSaveTrip(editTripTitle, editTripStartDate, editTripEndDate, editTripTheme)
+  }, [editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, debouncedSaveTrip, trip])
 
   // Delete trip
   async function deleteTrip() {
@@ -333,6 +354,55 @@ export function TripEditPage() {
     return (trip?.items || []).reduce((sum, item) => sum + (item.cost || 0), 0)
   }
 
+  // Upload cover image
+  async function uploadCoverImage(file: File) {
+    if (!trip) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('ファイルサイズは5MB以下にしてください')
+      return
+    }
+
+    setUploadingCover(true)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/cover`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+
+      if (!res.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data = (await res.json()) as { coverImageUrl: string }
+      setTrip(prev => prev ? { ...prev, coverImageUrl: data.coverImageUrl } : null)
+    } catch (err) {
+      console.error('Failed to upload cover:', err)
+      alert('画像のアップロードに失敗しました')
+    } finally {
+      setUploadingCover(false)
+    }
+  }
+
+  // Delete cover image
+  async function deleteCoverImage() {
+    if (!trip) return
+    if (!confirm('カバー画像を削除しますか？')) return
+
+    try {
+      await fetch(`/api/trips/${trip.id}/cover`, { method: 'DELETE' })
+      setTrip(prev => prev ? { ...prev, coverImageUrl: null } : null)
+    } catch (err) {
+      console.error('Failed to delete cover:', err)
+    }
+  }
+
   if (loading) {
     return (
       <div className="empty-state">
@@ -376,6 +446,58 @@ export function TripEditPage() {
               value={editTripEndDate}
               onChange={(e) => setEditTripEndDate(e.target.value)}
               className="input"
+            />
+          </div>
+          {/* Theme selector */}
+          <div className="theme-selector">
+            <button
+              type="button"
+              className={`theme-btn ${editTripTheme === 'quiet' ? 'active' : ''}`}
+              onClick={() => setEditTripTheme('quiet')}
+            >
+              しずか
+            </button>
+            <button
+              type="button"
+              className={`theme-btn ${editTripTheme === 'photo' ? 'active' : ''}`}
+              onClick={() => setEditTripTheme('photo')}
+            >
+              写真映え
+            </button>
+          </div>
+          {/* Cover image */}
+          <div className="cover-section">
+            {trip.coverImageUrl ? (
+              <div className="cover-preview">
+                <img src={trip.coverImageUrl} alt="カバー画像" className="cover-image" />
+                <button
+                  type="button"
+                  className="btn-text btn-small btn-danger"
+                  onClick={deleteCoverImage}
+                >
+                  削除
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn-outline cover-upload-btn"
+                onClick={() => coverInputRef.current?.click()}
+                disabled={uploadingCover}
+              >
+                {uploadingCover ? 'アップロード中...' : 'カバー画像を追加'}
+              </button>
+            )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) uploadCoverImage(file)
+                e.target.value = ''
+              }}
             />
           </div>
           {/* Auto-save indicator */}
