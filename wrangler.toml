@@ -3,6 +3,11 @@ main = "src/worker.ts"
 compatibility_date = "2026-02-19"
 compatibility_flags = ["nodejs_compat"]
 
+# Custom domain
+routes = [
+  { pattern = "shio.0g0.xyz", custom_domain = true }
+]
+
 # Serve the Vite build output as static assets.
 [assets]
 directory = "./dist"
@@ -30,11 +35,6 @@ binding = "AI"
 [observability]
 enabled = true
 head_sampling_rate = 1  # 100% of requests (adjust for production if needed)
-
-# Custom domain
-routes = [
-  { pattern = "shio.0g0.xyz", custom_domain = true }
-]
 
 # Environment variables (secrets should be set via `wrangler secret put`)
 [vars]
