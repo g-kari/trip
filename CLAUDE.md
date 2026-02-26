@@ -93,6 +93,100 @@ codex review --uncommitted "Check for bugs, security issues, and code quality"
 
 Only proceed with the commit if codex reports no critical issues. If issues are found, fix them first.
 
+### Automated Task Processing (課題リスト自動処理)
+
+This project uses an automated task processing workflow. When starting a new session:
+
+1. **Check current task list** — Review the TodoWrite task list (if any pending tasks exist)
+2. **Process tasks sequentially** — Use subagents (`Task` tool with `subagent_type=general-purpose`) for each task
+3. **Commit after each task** — Create a git commit with the standard format after completing each feature
+4. **Apply migrations** — Run `npx wrangler d1 migrations apply trip-itinerary --remote` if database changes are made
+5. **Push and deploy after batch** — After completing 2-4 tasks, push to remote and deploy
+6. **Propose new features** — When the task list is empty, propose 4 new features and add them to the task list
+
+#### Task Processing Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    START NEW SESSION                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Check TodoWrite for pending tasks                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────────┐
+│  Tasks exist?           │     │  No tasks? Propose 4 new    │
+│  → Process first task   │     │  features and add to list   │
+└─────────────────────────┘     └─────────────────────────────┘
+              │                               │
+              ▼                               │
+┌─────────────────────────────────────────────────────────────┐
+│  Use Task tool with subagent to implement feature           │
+│  - subagent_type: general-purpose                           │
+│  - Include: DB migration, API, Frontend, CSS                │
+└─────────────────────────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Apply migrations if needed:                                │
+│  npx wrangler d1 migrations apply trip-itinerary --remote   │
+└─────────────────────────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Commit with standard format:                               │
+│  feat: <description>                                        │
+│                                                             │
+│  Generated with [Claude Code](https://claude.ai/code)       │
+│  via [Happy](https://happy.engineering)                     │
+│                                                             │
+│  Co-Authored-By: Claude <noreply@anthropic.com>             │
+│  Co-Authored-By: Happy <yesreply@happy.engineering>         │
+└─────────────────────────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Mark task as completed in TodoWrite                        │
+│  Move to next pending task                                  │
+└─────────────────────────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  After 2-4 tasks: git push && npm run build && npx wrangler │
+│  deploy                                                     │
+└─────────────────────────────────────────────────────────────┘
+              │
+              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  All tasks done? → Propose 4 new features                   │
+│  More tasks? → Continue processing                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Feature Proposal Guidelines
+
+When proposing new features, consider:
+- User experience improvements
+- Missing core functionality
+- Mobile/accessibility enhancements
+- Performance optimizations
+- Social/sharing features
+- Data management features
+
+Example feature categories:
+- 検索・フィルター機能
+- アーカイブ機能
+- ダークモード
+- 複製機能
+- オフライン対応
+- 通知機能
+- 統計・分析機能
+
 ## Architecture
 
 ### Backend (src/worker.ts)

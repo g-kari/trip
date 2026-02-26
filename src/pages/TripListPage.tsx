@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import type { Trip, TripTheme } from '../types'
 import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
@@ -7,9 +7,12 @@ import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
+type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
+type ThemeFilter = '' | 'quiet' | 'photo'
 
 export function TripListPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const { showError } = useToast()
   const [trips, setTrips] = useState<Trip[]>([])
@@ -21,11 +24,15 @@ export function TripListPage() {
   const [newTripTheme, setNewTripTheme] = useState<TripTheme>('quiet')
   const [creating, setCreating] = useState(false)
 
-  // Search and filter state
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterStartDate, setFilterStartDate] = useState('')
-  const [filterEndDate, setFilterEndDate] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
+  // Search and filter state (synced with URL)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [filterStartDate, setFilterStartDate] = useState(searchParams.get('dateFrom') || '')
+  const [filterEndDate, setFilterEndDate] = useState(searchParams.get('dateTo') || '')
+  const [filterTheme, setFilterTheme] = useState<ThemeFilter>((searchParams.get('theme') as ThemeFilter) || '')
+  const [sortOrder, setSortOrder] = useState<SortOption>((searchParams.get('sort') as SortOption) || 'created_desc')
+  const [showFilters, setShowFilters] = useState(
+    !!(searchParams.get('dateFrom') || searchParams.get('dateTo') || searchParams.get('theme') || searchParams.get('sort'))
+  )
 
   // AI generation state
   const [showAiForm, setShowAiForm] = useState(false)
@@ -56,9 +63,21 @@ export function TripListPage() {
     }
   }, [])
 
+  // Build URL params for API call
+  const buildApiUrl = useCallback(() => {
+    const params = new URLSearchParams()
+    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    if (filterTheme) params.set('theme', filterTheme)
+    if (filterStartDate) params.set('dateFrom', filterStartDate)
+    if (filterEndDate) params.set('dateTo', filterEndDate)
+    if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
+    const queryString = params.toString()
+    return queryString ? `/api/trips?${queryString}` : '/api/trips'
+  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder])
+
   const fetchTrips = useCallback(async () => {
     try {
-      const res = await fetch('/api/trips')
+      const res = await fetch(buildApiUrl())
       if (!res.ok) {
         showError('旅程の読み込みに失敗しました')
         return
@@ -71,7 +90,7 @@ export function TripListPage() {
     } finally {
       setLoading(false)
     }
-  }, [showError])
+  }, [showError, buildApiUrl])
 
   useEffect(() => {
     if (!authLoading) {
@@ -81,6 +100,44 @@ export function TripListPage() {
       }
     }
   }, [authLoading, user, fetchTrips, fetchAiUsage])
+
+  // Update URL params when filters change
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    if (filterTheme) params.set('theme', filterTheme)
+    if (filterStartDate) params.set('dateFrom', filterStartDate)
+    if (filterEndDate) params.set('dateTo', filterEndDate)
+    if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
+    setSearchParams(params, { replace: true })
+  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder, setSearchParams])
+
+  // Debounced search to avoid too many API calls
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setLoading(true)
+    }, 300)
+  }, [])
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return !!(searchQuery.trim() || filterTheme || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
+  }, [searchQuery, filterTheme, filterStartDate, filterEndDate, sortOrder])
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setSearchQuery('')
+    setFilterTheme('')
+    setFilterStartDate('')
+    setFilterEndDate('')
+    setSortOrder('created_desc')
+  }, [])
 
   async function createTrip(e: React.FormEvent) {
     e.preventDefault()
@@ -452,136 +509,179 @@ export function TripListPage() {
       )}
 
       {/* Search and Filter */}
-      {trips.length > 0 && (
-        <div className="search-filter-section">
-          <div className="search-bar">
-            <input
-              type="text"
-              placeholder="旅程を検索..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input search-input"
-            />
-            <button
-              type="button"
-              className={`btn-text filter-toggle ${showFilters ? 'active' : ''}`}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              絞り込み
-            </button>
-          </div>
-          {showFilters && (
-            <div className="filter-options">
-              <div className="filter-row">
-                <label className="filter-label">期間</label>
-                <div className="date-inputs">
-                  <input
-                    type="date"
-                    value={filterStartDate}
-                    onChange={(e) => setFilterStartDate(e.target.value)}
-                    className="input"
-                    placeholder="開始日"
-                  />
-                  <span className="date-separator">〜</span>
-                  <input
-                    type="date"
-                    value={filterEndDate}
-                    onChange={(e) => setFilterEndDate(e.target.value)}
-                    className="input"
-                    placeholder="終了日"
-                  />
-                </div>
-              </div>
-              {(filterStartDate || filterEndDate) && (
+      <div className="search-filter-section">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="タイトルで検索..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="input search-input"
+          />
+          <button
+            type="button"
+            className={`btn-text filter-toggle ${showFilters ? 'active' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            {showFilters ? '閉じる' : '絞り込み'}
+            {hasActiveFilters && !showFilters && <span className="filter-indicator" />}
+          </button>
+        </div>
+        {showFilters && (
+          <div className="filter-options">
+            {/* Theme filter */}
+            <div className="filter-row">
+              <label className="filter-label">テーマ</label>
+              <div className="filter-buttons">
                 <button
                   type="button"
-                  className="btn-text"
-                  onClick={() => {
-                    setFilterStartDate('')
-                    setFilterEndDate('')
-                  }}
+                  className={`filter-btn ${filterTheme === '' ? 'active' : ''}`}
+                  onClick={() => setFilterTheme('')}
                 >
-                  フィルターをクリア
+                  すべて
                 </button>
-              )}
+                <button
+                  type="button"
+                  className={`filter-btn ${filterTheme === 'quiet' ? 'active' : ''}`}
+                  onClick={() => setFilterTheme('quiet')}
+                >
+                  しずか
+                </button>
+                <button
+                  type="button"
+                  className={`filter-btn ${filterTheme === 'photo' ? 'active' : ''}`}
+                  onClick={() => setFilterTheme('photo')}
+                >
+                  写真映え
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {(() => {
-        // Filter trips based on search query and date range
-        const filteredTrips = trips.filter((trip) => {
-          // Text search
-          if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase()
-            if (!trip.title.toLowerCase().includes(query)) {
-              return false
-            }
-          }
-          // Date range filter
-          if (filterStartDate && trip.startDate) {
-            if (trip.startDate < filterStartDate) {
-              return false
-            }
-          }
-          if (filterEndDate && trip.endDate) {
-            if (trip.endDate > filterEndDate) {
-              return false
-            }
-          }
-          return true
-        })
-
-        if (trips.length === 0) {
-          return (
-            <div className="empty-state">
-              <div className="empty-state-icon">—</div>
-              <p className="empty-state-text">
-                まだ旅程がありません。<br />
-                あたらしい旅程をつくりましょう。
-              </p>
+            {/* Date range filter */}
+            <div className="filter-row">
+              <label className="filter-label">期間</label>
+              <div className="date-inputs filter-date-inputs">
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => setFilterStartDate(e.target.value)}
+                  className="input"
+                />
+                <span className="date-separator">〜</span>
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => setFilterEndDate(e.target.value)}
+                  className="input"
+                />
+              </div>
             </div>
-          )
-        }
-
-        if (filteredTrips.length === 0) {
-          return (
-            <div className="empty-state">
-              <p className="empty-state-text">
-                検索条件に一致する旅程がありません
-              </p>
+            {/* Sort order */}
+            <div className="filter-row">
+              <label className="filter-label">並び順</label>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOption)}
+                className="input sort-select"
+              >
+                <option value="created_desc">作成日（新しい順）</option>
+                <option value="created_asc">作成日（古い順）</option>
+                <option value="start_date_desc">開始日（新しい順）</option>
+                <option value="start_date_asc">開始日（古い順）</option>
+              </select>
+            </div>
+            {/* Clear filters button */}
+            {hasActiveFilters && (
               <button
                 type="button"
-                className="btn-text"
-                onClick={() => {
-                  setSearchQuery('')
-                  setFilterStartDate('')
-                  setFilterEndDate('')
-                }}
+                className="btn-text clear-filters-btn"
+                onClick={clearFilters}
               >
-                条件をクリア
+                フィルターをクリア
               </button>
-            </div>
-          )
-        }
+            )}
+          </div>
+        )}
+        {/* Active filters summary */}
+        {hasActiveFilters && !showFilters && (
+          <div className="active-filters">
+            {searchQuery.trim() && (
+              <span className="filter-tag">
+                「{searchQuery.trim()}」
+                <button type="button" onClick={() => setSearchQuery('')} className="filter-tag-remove">x</button>
+              </span>
+            )}
+            {filterTheme && (
+              <span className="filter-tag">
+                {filterTheme === 'quiet' ? 'しずか' : '写真映え'}
+                <button type="button" onClick={() => setFilterTheme('')} className="filter-tag-remove">x</button>
+              </span>
+            )}
+            {(filterStartDate || filterEndDate) && (
+              <span className="filter-tag">
+                {filterStartDate || '...'} 〜 {filterEndDate || '...'}
+                <button type="button" onClick={() => { setFilterStartDate(''); setFilterEndDate('') }} className="filter-tag-remove">x</button>
+              </span>
+            )}
+            {sortOrder !== 'created_desc' && (
+              <span className="filter-tag">
+                {sortOrder === 'created_asc' && '作成日（古い順）'}
+                {sortOrder === 'start_date_desc' && '開始日（新しい順）'}
+                {sortOrder === 'start_date_asc' && '開始日（古い順）'}
+                <button type="button" onClick={() => setSortOrder('created_desc')} className="filter-tag-remove">x</button>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
-        return filteredTrips.map((trip) => (
+      {/* Trip list - now uses API-based filtering */}
+      {trips.length === 0 && !hasActiveFilters ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">—</div>
+          <p className="empty-state-text">
+            まだ旅程がありません。<br />
+            あたらしい旅程をつくりましょう。
+          </p>
+        </div>
+      ) : trips.length === 0 && hasActiveFilters ? (
+        <div className="empty-state">
+          <p className="empty-state-text">
+            検索条件に一致する旅程がありません
+          </p>
+          <button
+            type="button"
+            className="btn-text"
+            onClick={clearFilters}
+          >
+            条件をクリア
+          </button>
+        </div>
+      ) : (
+        trips.map((trip) => (
           <div
             key={trip.id}
             className="trip-card"
             onClick={() => navigate(`/trips/${trip.id}`)}
             style={{ cursor: 'pointer' }}
           >
-            <div className="trip-card-title">{trip.title}</div>
-            {trip.startDate && trip.endDate && (
+            <div className="trip-card-header">
+              <div className="trip-card-title">{trip.title}</div>
+              {trip.theme && (
+                <span className={`trip-card-theme trip-card-theme-${trip.theme}`}>
+                  {trip.theme === 'quiet' ? 'しずか' : '写真映え'}
+                </span>
+              )}
+            </div>
+            {(trip.startDate || trip.endDate) && (
               <div className="trip-card-date">
-                {formatDateRange(trip.startDate, trip.endDate)}
+                {trip.startDate && trip.endDate
+                  ? formatDateRange(trip.startDate, trip.endDate)
+                  : trip.startDate || trip.endDate}
               </div>
             )}
           </div>
         ))
-      })()}
+      )}
     </div>
   )
 }

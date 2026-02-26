@@ -315,23 +315,73 @@ app.post('/api/auth/logout', async (c) => {
 
 // ============ Trips ============
 
-// List all trips (for logged in user)
+// List all trips (for logged in user) with search and filter support
 app.get('/api/trips', async (c) => {
   const user = c.get('user');
+  const url = new URL(c.req.url);
+
+  // Parse query parameters
+  const q = url.searchParams.get('q')?.trim() || '';
+  const theme = url.searchParams.get('theme') || '';
+  const dateFrom = url.searchParams.get('dateFrom') || '';
+  const dateTo = url.searchParams.get('dateTo') || '';
+  const sort = url.searchParams.get('sort') || 'created_desc';
 
   let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, created_at as createdAt FROM trips';
-  const params: string[] = [];
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
 
+  // User filter (required)
   if (user) {
-    // Show user's trips only
-    query += ' WHERE user_id = ?';
+    conditions.push('user_id = ?');
     params.push(user.id);
   } else {
-    // Show trips without owner (legacy data or anonymous)
-    query += ' WHERE user_id IS NULL';
+    conditions.push('user_id IS NULL');
   }
 
-  query += ' ORDER BY created_at DESC';
+  // Title search (partial match, case-insensitive)
+  if (q) {
+    conditions.push('title LIKE ?');
+    params.push(`%${q}%`);
+  }
+
+  // Theme filter
+  if (theme === 'quiet' || theme === 'photo') {
+    conditions.push('theme = ?');
+    params.push(theme);
+  }
+
+  // Date range filter (using start_date for dateFrom, end_date for dateTo)
+  if (dateFrom) {
+    conditions.push('(start_date >= ? OR start_date IS NULL)');
+    params.push(dateFrom);
+  }
+  if (dateTo) {
+    conditions.push('(end_date <= ? OR end_date IS NULL)');
+    params.push(dateTo);
+  }
+
+  // Build WHERE clause
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+
+  // Sort order
+  switch (sort) {
+    case 'created_asc':
+      query += ' ORDER BY created_at ASC';
+      break;
+    case 'start_date_desc':
+      query += ' ORDER BY start_date DESC NULLS LAST';
+      break;
+    case 'start_date_asc':
+      query += ' ORDER BY start_date ASC NULLS LAST';
+      break;
+    case 'created_desc':
+    default:
+      query += ' ORDER BY created_at DESC';
+      break;
+  }
 
   const stmt = params.length > 0
     ? c.env.DB.prepare(query).bind(...params)
