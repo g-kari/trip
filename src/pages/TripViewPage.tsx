@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast'
 import { useAuth } from '../hooks/useAuth'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
+import { MapEmbed } from '../components/MapEmbed'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -668,6 +669,9 @@ export function TripViewPage() {
           <Link to={`/trips/${trip.id}/album`} className="btn-text">アルバム</Link>
         </div>
       </div>
+
+      {/* Map section */}
+      <MapEmbed items={trip.items || []} />
 
       {(!trip.days || trip.days.length === 0) ? (
         <div className="empty-state">

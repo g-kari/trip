@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
+import { MapEmbed } from '../components/MapEmbed'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -637,6 +638,9 @@ export function SharedTripPage() {
             />
           </div>
         </section>
+
+        {/* Map section */}
+        <MapEmbed items={items} />
 
         {days.map((day, index) => {
           const dayItems = itemsByDay.get(day.id) || []

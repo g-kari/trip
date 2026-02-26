@@ -3614,3 +3614,131 @@
     height: 60px;
   }
 }
+
+/* ========================================
+   Map Embed Section
+   ======================================== */
+
+.map-embed-section {
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+}
+
+.map-embed-title {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+/* Location selector buttons */
+.map-embed-locations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.map-embed-location-btn {
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.map-embed-location-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.map-embed-location-btn.active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* Map container */
+.map-embed-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+}
+
+.map-embed-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Map actions */
+.map-embed-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+.map-embed-link {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.map-embed-link:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+/* Photo theme specific styles */
+[data-theme="photo"] .map-embed-section {
+  border-color: var(--color-border);
+}
+
+[data-theme="photo"] .map-embed-location-btn.active {
+  background-color: var(--color-text);
+  color: var(--color-bg);
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .map-embed-section {
+    padding: var(--space-4);
+    margin-left: calc(-1 * var(--space-5));
+    margin-right: calc(-1 * var(--space-5));
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .map-embed-container {
+    aspect-ratio: 4 / 3;
+    border-radius: var(--radius-s);
+  }
+
+  .map-embed-locations {
+    gap: var(--space-1);
+  }
+
+  .map-embed-location-btn {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.6875rem;
+  }
+}
+
+/* Print styles - hide map section when printing */
+@media print {
+  .map-embed-section {
+    display: none;
+  }
+}
