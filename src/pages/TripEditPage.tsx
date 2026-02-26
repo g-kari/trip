@@ -8,6 +8,9 @@ import { DatePicker } from '../components/DatePicker'
 import { TimePicker } from '../components/TimePicker'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { CollaboratorManager } from '../components/CollaboratorManager'
+import { TripMemberManager } from '../components/ExpenseSplitter'
+import { SettlementSummary } from '../components/SettlementSummary'
+import type { TripMember } from '../types'
 
 // Active editor type for collaborative editing
 type ActiveEditor = {
@@ -580,6 +583,10 @@ export function TripEditPage() {
   const [editItemMapUrl, setEditItemMapUrl] = useState('')
   const [savingItem, setSavingItem] = useState(false)
 
+  // Trip members for expense splitting
+  const [tripMembers, setTripMembers] = useState<TripMember[]>([])
+  const [showMemberManager, setShowMemberManager] = useState(false)
+
   // Auto-generate days state
   const [generatingDays, setGeneratingDays] = useState(false)
 
@@ -634,9 +641,23 @@ export function TripEditPage() {
     }
   }, [])
 
+  // Fetch trip members
+  const fetchMembers = useCallback(async (tripId: string) => {
+    try {
+      const res = await fetch(`/api/trips/${tripId}/members`)
+      if (res.ok) {
+        const data = await res.json() as { members: TripMember[] }
+        setTripMembers(data.members || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch members:', err)
+    }
+  }, [])
+
   useEffect(() => {
     if (id) {
       fetchTrip(id)
+      fetchMembers(id)
       // Fetch template status
       fetch(`/api/trips/${id}/template`)
         .then(res => res.ok ? res.json() as Promise<{ isTemplate?: boolean; templateUses?: number }> : null)
@@ -648,7 +669,7 @@ export function TripEditPage() {
         })
         .catch(err => console.error('Failed to fetch template status:', err))
     }
-  }, [id, fetchTrip])
+  }, [id, fetchTrip, fetchMembers])
 
   // Polling for collaborative editing - check for updates every 5 seconds
   useEffect(() => {
@@ -1579,6 +1600,28 @@ export function TripEditPage() {
           <span className="total-cost-value">{formatCost(getTotalCost())}</span>
         </div>
       )}
+
+      {/* Expense Splitting Section */}
+      <div className="expense-section-wrapper no-print">
+        <button
+          type="button"
+          className="btn-outline expense-toggle-btn"
+          onClick={() => setShowMemberManager(!showMemberManager)}
+        >
+          {showMemberManager ? '− 費用分割を閉じる' : '+ 費用分割・精算'}
+        </button>
+
+        {showMemberManager && trip && (
+          <div className="expense-management">
+            <TripMemberManager
+              tripId={trip.id}
+              members={tripMembers}
+              onMembersChange={() => fetchMembers(trip.id)}
+            />
+            <SettlementSummary tripId={trip.id} />
+          </div>
+        )}
+      </div>
 
       {/* Add day form */}
       <div className="add-day-section no-print">

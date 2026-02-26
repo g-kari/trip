@@ -9,6 +9,7 @@ import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
+import { SettlementSummary } from '../components/SettlementSummary'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -836,6 +837,11 @@ export function TripViewPage() {
           <span className="total-cost-label">合計費用</span>
           <span className="total-cost-value">{formatCost(getTotalCost())}</span>
         </div>
+      )}
+
+      {/* Settlement Summary */}
+      {trip && (
+        <SettlementSummary tripId={trip.id} />
       )}
 
       {/* Feedback Section */}
