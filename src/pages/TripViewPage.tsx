@@ -11,6 +11,7 @@ import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
+import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon } from '../components/Icons'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -630,43 +631,52 @@ export function TripViewPage() {
         <div className="hero-actions-row no-print">
           {isOwner && (
             <>
-              <Link to={`/trips/${trip.id}/edit`} className="btn-text">編集</Link>
-              <button className="btn-text" onClick={createShareLink}>共有</button>
+              <Link to={`/trips/${trip.id}/edit`} className="btn-icon" title="編集">
+                <EditIcon size={16} />
+              </Link>
+              <button className="btn-icon" onClick={createShareLink} title="共有">
+                <ShareIcon size={16} />
+              </button>
             </>
           )}
-          <button className="btn-text" onClick={printTrip}>印刷</button>
-          <button className="btn-text" onClick={exportCalendar}>カレンダー</button>
+          <button className="btn-icon" onClick={printTrip} title="印刷">
+            <PrintIcon size={16} />
+          </button>
+          {user && (
+            <button className="btn-icon" onClick={duplicateTrip} title="複製">
+              <CopyIcon size={16} />
+            </button>
+          )}
+          <Link to={`/trips/${trip.id}/album`} className="btn-icon" title="アルバム">
+            <ImageIcon size={16} />
+          </Link>
+          <button className="btn-icon" onClick={() => setShowReminderModal(true)} title="リマインダー">
+            <BellIcon size={16} />
+          </button>
           {isOwner && (
             <div className="export-dropdown-container" ref={exportDropdownRef}>
               <button
-                className="btn-text"
+                className="btn-icon"
                 onClick={() => setShowExportDropdown(!showExportDropdown)}
+                title="エクスポート"
               >
-                エクスポート
+                ⋮
               </button>
               {showExportDropdown && (
                 <div className="export-dropdown">
-                  <button
-                    className="export-dropdown-item"
-                    onClick={() => exportData('json')}
-                  >
+                  <button className="export-dropdown-item" onClick={exportCalendar}>
+                    カレンダー
+                  </button>
+                  <button className="export-dropdown-item" onClick={() => exportData('json')}>
                     JSON形式
                   </button>
-                  <button
-                    className="export-dropdown-item"
-                    onClick={() => exportData('csv')}
-                  >
+                  <button className="export-dropdown-item" onClick={() => exportData('csv')}>
                     CSV形式（Excel）
                   </button>
                 </div>
               )}
             </div>
           )}
-          {user && (
-            <button className="btn-text" onClick={duplicateTrip}>複製</button>
-          )}
-          <Link to={`/trips/${trip.id}/album`} className="btn-text">アルバム</Link>
-          <button className="btn-text" onClick={() => setShowReminderModal(true)}>リマインダー</button>
         </div>
       </div>
 

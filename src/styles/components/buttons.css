@@ -42,3 +42,28 @@
   background-color: var(--color-accent-hover);
   border-color: var(--color-accent-hover);
 }
+
+/* Icon button - minimal footprint for action icons */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-s);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-icon:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.btn-icon svg {
+  flex-shrink: 0;
+}
