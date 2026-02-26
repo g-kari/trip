@@ -11,7 +11,7 @@ import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon } from '../components/Icons'
+import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon } from '../components/Icons'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -658,9 +658,9 @@ export function TripViewPage() {
               <button
                 className="btn-icon"
                 onClick={() => setShowExportDropdown(!showExportDropdown)}
-                title="エクスポート"
+                title="その他"
               >
-                ⋮
+                <MoreVerticalIcon size={16} />
               </button>
               {showExportDropdown && (
                 <div className="export-dropdown">
