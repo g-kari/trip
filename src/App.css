@@ -371,31 +371,99 @@
   touch-action: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+  position: relative;
 }
 
 .drag-handle:active {
   cursor: grabbing;
 }
 
+/* Drag handle icon (always visible) */
+.drag-handle::before {
+  content: '⋮⋮';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  font-size: 0.75rem;
+  letter-spacing: -2px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.timeline-item:hover .drag-handle::before {
+  opacity: 1;
+  color: var(--color-text-muted);
+}
+
 /* Visual indicator for drag handle on touch devices */
 @media (pointer: coarse) {
-  .drag-handle {
-    position: relative;
-  }
-
   .drag-handle::before {
-    content: '⋮';
-    position: absolute;
-    left: -12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-text-faint);
+    left: -14px;
     font-size: 0.875rem;
+    opacity: 0.7;
   }
 }
 
+/* Draggable timeline item */
+.timeline-item[draggable="true"] {
+  cursor: grab;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.timeline-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Dragging state */
 .timeline-item.dragging {
-  opacity: 0.5;
+  opacity: 0.4;
+  background-color: var(--color-bg);
+}
+
+/* Drag over state (drop target highlight) */
+.timeline-item.drag-over {
+  background-color: var(--color-bg-elevated);
+  border-top: 2px solid var(--color-accent);
+  margin-top: -2px;
+}
+
+/* Touch dragging visual feedback */
+.timeline-item.touch-dragging {
+  opacity: 0.7;
+  background-color: var(--color-bg-elevated);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Day section drop zone */
+.day-section {
+  transition: background-color 0.15s ease;
+}
+
+.day-section.day-drop-zone-active {
+  background-color: rgba(var(--color-accent-rgb, 61, 46, 31), 0.03);
+}
+
+/* Empty day drop zone */
+.empty-day-drop-zone {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  min-height: 60px;
+  border-radius: var(--radius-m);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.empty-day-drop-zone.drop-zone-highlight {
+  background-color: var(--color-bg-elevated);
+  border: 2px dashed var(--color-accent);
+  padding: calc(var(--space-3) - 2px) calc(var(--space-3) - 2px);
+}
+
+.empty-day-drop-zone.drop-zone-highlight .timeline-title {
+  color: var(--color-accent) !important;
 }
 
 .timeline-content {

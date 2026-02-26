@@ -1,30 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import type { Trip, Day, Item, TripTheme, CostCategory } from '../types'
 import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
 
-// Sortable item component
-function SortableItem({
+// Draggable item component using HTML5 Drag and Drop API
+function DraggableItem({
   item,
+  dayId,
   tripId,
   editingItem,
   onStartEdit,
@@ -47,8 +31,15 @@ function SortableItem({
   onCancelEdit,
   onSubmitEdit,
   onPhotoUploaded,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onDrop,
+  isDragging,
+  isDragOver,
 }: {
   item: Item
+  dayId: string
   tripId: string
   editingItem: Item | null
   onStartEdit: (item: Item) => void
@@ -71,9 +62,17 @@ function SortableItem({
   onCancelEdit: () => void
   onSubmitEdit: (e: React.FormEvent) => void
   onPhotoUploaded: () => void
+  onDragStart: (e: React.DragEvent, itemId: string, dayId: string) => void
+  onDragOver: (e: React.DragEvent, itemId: string, dayId: string) => void
+  onDragEnd: () => void
+  onDrop: (e: React.DragEvent, targetItemId: string, targetDayId: string) => void
+  isDragging: boolean
+  isDragOver: boolean
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const itemRef = useRef<HTMLDivElement>(null)
 
   async function uploadItemPhoto(file: File) {
     if (!file.type.startsWith('image/')) {
@@ -111,23 +110,52 @@ function SortableItem({
       console.error('Failed to delete photo:', err)
     }
   }
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+  // Touch event handlers for long-press drag on mobile
+  function handleTouchStart() {
+    if (editingItem?.id === item.id) return
+
+    longPressTimer.current = setTimeout(() => {
+      // Trigger a visual feedback and enable dragging
+      if (itemRef.current) {
+        itemRef.current.setAttribute('draggable', 'true')
+        // Simulate drag start for visual feedback
+        itemRef.current.classList.add('touch-dragging')
+      }
+    }, 500) // 500ms long press
+  }
+
+  function handleTouchEnd() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    if (itemRef.current) {
+      itemRef.current.classList.remove('touch-dragging')
+    }
+  }
+
+  function handleTouchMove() {
+    // Cancel long press if finger moves
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="timeline-item">
+    <div
+      ref={itemRef}
+      className={`timeline-item ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
+      draggable={editingItem?.id !== item.id}
+      onDragStart={(e) => onDragStart(e, item.id, dayId)}
+      onDragOver={(e) => onDragOver(e, item.id, dayId)}
+      onDragEnd={onDragEnd}
+      onDrop={(e) => onDrop(e, item.id, dayId)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
+    >
       {editingItem?.id === item.id ? (
         <form className="edit-item-form no-print" onSubmit={onSubmitEdit}>
           <div className="form-row">
@@ -201,8 +229,6 @@ function SortableItem({
         <>
           <span
             className="timeline-time drag-handle"
-            {...attributes}
-            {...listeners}
             title="ドラッグで並び替え"
           >
             {item.timeStart || '—'}
@@ -489,13 +515,10 @@ export function TripEditPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Drag and drop sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
+  // Drag and drop state (HTML5 API)
+  const [draggedItem, setDraggedItem] = useState<{ itemId: string; dayId: string } | null>(null)
+  const [dragOverItem, setDragOverItem] = useState<{ itemId: string; dayId: string } | null>(null)
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null)
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -906,45 +929,158 @@ export function TripEditPage() {
       .sort((a, b) => a.sort - b.sort)
   }
 
-  // Handle drag end for reordering items
-  async function handleDragEnd(event: DragEndEvent, dayId: string) {
-    const { active, over } = event
-    if (!over || active.id === over.id || !trip) return
+  // HTML5 Drag and Drop handlers
+  function handleDragStart(e: React.DragEvent, itemId: string, dayId: string) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId, dayId }))
+    setDraggedItem({ itemId, dayId })
+  }
 
-    const dayItems = getItemsForDay(dayId)
-    const oldIndex = dayItems.findIndex((item) => item.id === active.id)
-    const newIndex = dayItems.findIndex((item) => item.id === over.id)
+  function handleDragOver(e: React.DragEvent, itemId: string, dayId: string) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverItem({ itemId, dayId })
+  }
 
-    if (oldIndex === -1 || newIndex === -1) return
+  function handleDragOverDay(e: React.DragEvent, dayId: string) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverDay(dayId)
+  }
 
-    // Optimistically update the UI
-    const reorderedItems = arrayMove(dayItems, oldIndex, newIndex)
-    const newItemIds = reorderedItems.map((item) => item.id)
+  function handleDragEnd() {
+    setDraggedItem(null)
+    setDragOverItem(null)
+    setDragOverDay(null)
+  }
 
-    // Update local state
+  // Handle drop on an item (reorder within same day or move to different day)
+  async function handleDrop(e: React.DragEvent, targetItemId: string, targetDayId: string) {
+    e.preventDefault()
+    if (!trip || !draggedItem) return
+
+    const { itemId: sourceItemId, dayId: sourceDayId } = draggedItem
+
+    // Reset drag state
+    setDraggedItem(null)
+    setDragOverItem(null)
+    setDragOverDay(null)
+
+    if (sourceItemId === targetItemId) return
+
+    // Get items for target day
+    const targetDayItems = getItemsForDay(targetDayId)
+    const targetIndex = targetDayItems.findIndex((item) => item.id === targetItemId)
+
+    if (sourceDayId === targetDayId) {
+      // Same day reorder
+      const sourceDayItems = getItemsForDay(sourceDayId)
+      const sourceIndex = sourceDayItems.findIndex((item) => item.id === sourceItemId)
+
+      if (sourceIndex === -1 || targetIndex === -1) return
+
+      // Reorder items
+      const reorderedItems = [...sourceDayItems]
+      const [movedItem] = reorderedItems.splice(sourceIndex, 1)
+      reorderedItems.splice(targetIndex, 0, movedItem)
+
+      // Update local state optimistically
+      setTrip((prev) => {
+        if (!prev) return null
+        const otherItems = prev.items?.filter((item) => item.dayId !== sourceDayId) || []
+        const updatedDayItems = reorderedItems.map((item, index) => ({
+          ...item,
+          sort: index,
+        }))
+        return {
+          ...prev,
+          items: [...otherItems, ...updatedDayItems],
+        }
+      })
+
+      // Save to server (same day)
+      try {
+        const newItemIds = reorderedItems.map((item) => item.id)
+        await fetch(`/api/trips/${trip.id}/days/${sourceDayId}/reorder`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemIds: newItemIds }),
+        })
+      } catch (err) {
+        console.error('Failed to reorder items:', err)
+        await refreshTrip()
+      }
+    } else {
+      // Move to different day
+      const newSort = targetIndex >= 0 ? targetIndex : targetDayItems.length
+
+      // Update local state optimistically
+      setTrip((prev) => {
+        if (!prev) return null
+        const updatedItems = prev.items?.map((item) => {
+          if (item.id === sourceItemId) {
+            return { ...item, dayId: targetDayId, sort: newSort }
+          }
+          return item
+        }) || []
+        return { ...prev, items: updatedItems }
+      })
+
+      // Save to server (cross-day move)
+      try {
+        await fetch(`/api/trips/${trip.id}/items/${sourceItemId}/reorder`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newDayId: targetDayId, newSort }),
+        })
+        // Refresh to get correct sort values after move
+        await refreshTrip()
+      } catch (err) {
+        console.error('Failed to move item:', err)
+        await refreshTrip()
+      }
+    }
+  }
+
+  // Handle drop on a day (move to end of that day)
+  async function handleDropOnDay(e: React.DragEvent, targetDayId: string) {
+    e.preventDefault()
+    if (!trip || !draggedItem) return
+
+    const { itemId: sourceItemId, dayId: sourceDayId } = draggedItem
+
+    // Reset drag state
+    setDraggedItem(null)
+    setDragOverItem(null)
+    setDragOverDay(null)
+
+    if (sourceDayId === targetDayId) return
+
+    const targetDayItems = getItemsForDay(targetDayId)
+    const newSort = targetDayItems.length
+
+    // Update local state optimistically
     setTrip((prev) => {
       if (!prev) return null
-      const otherItems = prev.items?.filter((item) => item.dayId !== dayId) || []
-      const updatedDayItems = reorderedItems.map((item, index) => ({
-        ...item,
-        sort: index,
-      }))
-      return {
-        ...prev,
-        items: [...otherItems, ...updatedDayItems],
-      }
+      const updatedItems = prev.items?.map((item) => {
+        if (item.id === sourceItemId) {
+          return { ...item, dayId: targetDayId, sort: newSort }
+        }
+        return item
+      }) || []
+      return { ...prev, items: updatedItems }
     })
 
     // Save to server
     try {
-      await fetch(`/api/trips/${trip.id}/days/${dayId}/reorder`, {
+      await fetch(`/api/trips/${trip.id}/items/${sourceItemId}/reorder`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds: newItemIds }),
+        body: JSON.stringify({ newDayId: targetDayId, newSort }),
       })
+      await refreshTrip()
     } catch (err) {
-      console.error('Failed to reorder items:', err)
-      // Refresh to get correct order on error
+      console.error('Failed to move item:', err)
       await refreshTrip()
     }
   }
@@ -1171,7 +1307,12 @@ export function TripEditPage() {
             const { label, dateStr } = formatDayLabel(day.date, index)
             const items = getItemsForDay(day.id)
             return (
-              <div key={day.id} className="day-section">
+              <div
+                key={day.id}
+                className={`day-section ${dragOverDay === day.id ? 'day-drop-zone-active' : ''}`}
+                onDragOver={(e) => handleDragOverDay(e, day.id)}
+                onDrop={(e) => handleDropOnDay(e, day.id)}
+              >
                 <div className="day-header">
                   <span className="day-label">{label}</span>
                   <span className="day-date">{dateStr}</span>
@@ -1183,54 +1324,56 @@ export function TripEditPage() {
                   </button>
                 </div>
                 {items.length === 0 ? (
-                  <div className="timeline-item">
+                  <div
+                    className={`empty-day-drop-zone ${dragOverDay === day.id && draggedItem?.dayId !== day.id ? 'drop-zone-highlight' : ''}`}
+                    onDragOver={(e) => handleDragOverDay(e, day.id)}
+                    onDrop={(e) => handleDropOnDay(e, day.id)}
+                  >
                     <span className="timeline-time">—</span>
                     <div className="timeline-content">
                       <span className="timeline-title" style={{ color: 'var(--color-text-faint)' }}>
-                        予定がありません
+                        {draggedItem && draggedItem.dayId !== day.id
+                          ? 'ここにドロップして移動'
+                          : '予定がありません'}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event) => handleDragEnd(event, day.id)}
-                  >
-                    <SortableContext
-                      items={items.map((item) => item.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {items.map((item) => (
-                        <SortableItem
-                          key={item.id}
-                          item={item}
-                          tripId={trip.id}
-                          editingItem={editingItem}
-                          onStartEdit={startEditItem}
-                          onDelete={deleteItem}
-                          editItemTime={editItemTime}
-                          setEditItemTime={setEditItemTime}
-                          editItemTitle={editItemTitle}
-                          setEditItemTitle={setEditItemTitle}
-                          editItemArea={editItemArea}
-                          setEditItemArea={setEditItemArea}
-                          editItemCost={editItemCost}
-                          setEditItemCost={setEditItemCost}
-                          editItemCostCategory={editItemCostCategory}
-                          setEditItemCostCategory={setEditItemCostCategory}
-                          editItemNote={editItemNote}
-                          setEditItemNote={setEditItemNote}
-                          editItemMapUrl={editItemMapUrl}
-                          setEditItemMapUrl={setEditItemMapUrl}
-                          savingItem={savingItem}
-                          onCancelEdit={() => setEditingItem(null)}
-                          onSubmitEdit={updateItem}
-                          onPhotoUploaded={refreshTrip}
-                        />
-                      ))}
-                    </SortableContext>
-                  </DndContext>
+                  items.map((item) => (
+                    <DraggableItem
+                      key={item.id}
+                      item={item}
+                      dayId={day.id}
+                      tripId={trip.id}
+                      editingItem={editingItem}
+                      onStartEdit={startEditItem}
+                      onDelete={deleteItem}
+                      editItemTime={editItemTime}
+                      setEditItemTime={setEditItemTime}
+                      editItemTitle={editItemTitle}
+                      setEditItemTitle={setEditItemTitle}
+                      editItemArea={editItemArea}
+                      setEditItemArea={setEditItemArea}
+                      editItemCost={editItemCost}
+                      setEditItemCost={setEditItemCost}
+                      editItemCostCategory={editItemCostCategory}
+                      setEditItemCostCategory={setEditItemCostCategory}
+                      editItemNote={editItemNote}
+                      setEditItemNote={setEditItemNote}
+                      editItemMapUrl={editItemMapUrl}
+                      setEditItemMapUrl={setEditItemMapUrl}
+                      savingItem={savingItem}
+                      onCancelEdit={() => setEditingItem(null)}
+                      onSubmitEdit={updateItem}
+                      onPhotoUploaded={refreshTrip}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragEnd={handleDragEnd}
+                      onDrop={handleDrop}
+                      isDragging={draggedItem?.itemId === item.id}
+                      isDragOver={dragOverItem?.itemId === item.id && draggedItem?.itemId !== item.id}
+                    />
+                  ))
                 )}
 
                 {/* Add item form */}

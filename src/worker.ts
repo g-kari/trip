@@ -1138,6 +1138,70 @@ app.put('/api/trips/:tripId/days/:dayId/reorder', async (c) => {
   return c.json({ ok: true });
 });
 
+// Move item to a different day (cross-day reorder)
+app.put('/api/trips/:tripId/items/:itemId/reorder', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{ newDayId: string; newSort: number }>();
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Verify item exists and belongs to this trip
+  const item = await c.env.DB.prepare(
+    'SELECT id, day_id FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; day_id: string }>();
+
+  if (!item) {
+    return c.json({ error: 'アイテムが見つかりません' }, 404);
+  }
+
+  // Verify target day exists and belongs to this trip
+  const targetDay = await c.env.DB.prepare(
+    'SELECT id FROM days WHERE id = ? AND trip_id = ?'
+  ).bind(body.newDayId, tripId).first<{ id: string }>();
+
+  if (!targetDay) {
+    return c.json({ error: '移動先の日程が見つかりません' }, 404);
+  }
+
+  const oldDayId = item.day_id;
+  const newDayId = body.newDayId;
+  const newSort = body.newSort;
+
+  // Move item to new day and set sort value
+  await c.env.DB.prepare(
+    `UPDATE items SET day_id = ?, sort = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+     WHERE id = ?`
+  ).bind(newDayId, newSort, itemId).run();
+
+  // Re-sort items in the old day (shift down items after the removed one)
+  const { results: oldDayItems } = await c.env.DB.prepare(
+    'SELECT id FROM items WHERE trip_id = ? AND day_id = ? ORDER BY sort ASC'
+  ).bind(tripId, oldDayId).all<{ id: string }>();
+
+  for (let i = 0; i < oldDayItems.length; i++) {
+    await c.env.DB.prepare(
+      'UPDATE items SET sort = ? WHERE id = ?'
+    ).bind(i, oldDayItems[i].id).run();
+  }
+
+  // Re-sort items in the new day (shift up items after the inserted position)
+  const { results: newDayItems } = await c.env.DB.prepare(
+    'SELECT id FROM items WHERE trip_id = ? AND day_id = ? ORDER BY sort ASC'
+  ).bind(tripId, newDayId).all<{ id: string }>();
+
+  for (let i = 0; i < newDayItems.length; i++) {
+    await c.env.DB.prepare(
+      'UPDATE items SET sort = ? WHERE id = ?'
+    ).bind(i, newDayItems[i].id).run();
+  }
+
+  return c.json({ ok: true });
+});
+
 // ============ Share Tokens ============
 
 // Create share token for a trip
