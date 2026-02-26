@@ -60,6 +60,25 @@
   overflow-y: auto;
 }
 
+.collaborator-invite-section {
+  padding: var(--space-4);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-4);
+}
+
+.collaborator-invite-desc {
+  margin: 0 0 var(--space-3) 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.collaborator-invite-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
 .collaborator-invite-form {
   display: flex;
   flex-direction: column;
@@ -203,6 +222,11 @@
   .collaborator-modal {
     max-height: 90vh;
     margin: var(--space-3);
+  }
+
+  .collaborator-invite-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .collaborator-invite-form .form-row {

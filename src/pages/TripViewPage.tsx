@@ -12,7 +12,7 @@ import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon } from '../components/Icons'
+import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -931,11 +931,12 @@ export function TripViewPage() {
                   </span>
                   {canDeleteFeedback(feedback) && (
                     <button
-                      className="btn-text btn-small btn-danger"
+                      className="btn-icon btn-danger"
                       onClick={() => deleteFeedback(feedback.id)}
                       disabled={deletingFeedbackId === feedback.id}
+                      title="削除"
                     >
-                      {deletingFeedbackId === feedback.id ? '...' : '削除'}
+                      {deletingFeedbackId === feedback.id ? '...' : <TrashIcon size={14} />}
                     </button>
                   )}
                 </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { TrashIcon, CopyIcon } from './Icons'
 
 type Collaborator = {
   id: string
@@ -6,14 +7,12 @@ type Collaborator = {
   role: string
   createdAt: string
   userName: string | null
-  userEmail: string | null
   userAvatarUrl: string | null
   invitedByName: string | null
 }
 
 type PendingInvite = {
   id: string
-  email: string
   role: string
   token: string
   createdAt: string
@@ -32,9 +31,8 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [email, setEmail] = useState('')
   const [role, setRole] = useState<'editor' | 'viewer'>('editor')
-  const [inviting, setInviting] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
 
@@ -58,38 +56,35 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
     fetchCollaborators()
   }, [fetchCollaborators])
 
-  async function inviteCollaborator(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim()) return
-
-    setInviting(true)
+  async function createInviteLink() {
+    setCreating(true)
     setError(null)
 
     try {
       const res = await fetch(`/api/trips/${tripId}/collaborators`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), role }),
+        body: JSON.stringify({ role }),
       })
 
-      const data = await res.json() as { error?: string; addedDirectly?: boolean }
+      const data = await res.json() as { error?: string; inviteToken?: string }
 
       if (!res.ok) {
-        setError(data.error || '招待に失敗しました')
+        setError(data.error || '招待リンクの作成に失敗しました')
         return
       }
 
-      setEmail('')
       await fetchCollaborators()
 
-      if (data.addedDirectly) {
-        // User was added directly
+      // Auto-copy the new invite link
+      if (data.inviteToken) {
+        copyInviteLink(data.inviteToken)
       }
     } catch (err) {
-      console.error('Error inviting collaborator:', err)
-      setError('招待に失敗しました')
+      console.error('Error creating invite link:', err)
+      setError('招待リンクの作成に失敗しました')
     } finally {
-      setInviting(false)
+      setCreating(false)
     }
   }
 
@@ -105,7 +100,7 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
   }
 
   async function cancelInvite(inviteId: string) {
-    if (!confirm('この招待を取り消しますか？')) return
+    if (!confirm('この招待リンクを無効にしますか？')) return
 
     try {
       await fetch(`/api/trips/${tripId}/invites/${inviteId}`, { method: 'DELETE' })
@@ -140,35 +135,29 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
           </button>
         </div>
 
-        {/* Invite form */}
-        <form className="collaborator-invite-form" onSubmit={inviteCollaborator}>
-          <div className="form-row">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="メールアドレス"
-              className="input"
-              disabled={inviting}
-            />
+        {/* Create invite link */}
+        <div className="collaborator-invite-section">
+          <p className="collaborator-invite-desc">招待リンクを作成して共有しましょう</p>
+          <div className="collaborator-invite-row">
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}
               className="input collaborator-role-select"
-              disabled={inviting}
+              disabled={creating}
             >
               <option value="editor">編集者</option>
               <option value="viewer">閲覧者</option>
             </select>
+            <button
+              type="button"
+              className="btn-filled"
+              onClick={createInviteLink}
+              disabled={creating}
+            >
+              {creating ? '作成中...' : '招待リンクを作成'}
+            </button>
           </div>
-          <button
-            type="submit"
-            className="btn-filled"
-            disabled={inviting || !email.trim()}
-          >
-            {inviting ? '招待中...' : '招待する'}
-          </button>
-        </form>
+        </div>
 
         {error && (
           <div className="collaborator-error">{error}</div>
@@ -181,29 +170,32 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
             {/* Pending invites */}
             {pendingInvites.length > 0 && (
               <div className="collaborator-section">
-                <h3 className="collaborator-section-title">招待中</h3>
+                <h3 className="collaborator-section-title">有効な招待リンク</h3>
                 <ul className="collaborator-list">
                   {pendingInvites.map((invite) => (
                     <li key={invite.id} className="collaborator-item pending">
                       <div className="collaborator-info">
-                        <span className="collaborator-email">{invite.email}</span>
-                        <span className="collaborator-role">{invite.role === 'editor' ? '編集者' : '閲覧者'}</span>
+                        <span className="collaborator-role-badge">
+                          {invite.role === 'editor' ? '編集者' : '閲覧者'}
+                        </span>
                         <span className="collaborator-expiry">
                           {formatDate(invite.expiresAt)}まで有効
                         </span>
                       </div>
                       <div className="collaborator-actions">
                         <button
-                          className="btn-text btn-small"
+                          className="btn-icon"
                           onClick={() => copyInviteLink(invite.token)}
+                          title={copiedToken === invite.token ? 'コピー済み' : 'リンクをコピー'}
                         >
-                          {copiedToken === invite.token ? 'コピー済み' : 'リンクをコピー'}
+                          <CopyIcon size={16} />
                         </button>
                         <button
-                          className="btn-text btn-small btn-danger"
+                          className="btn-icon btn-danger"
                           onClick={() => cancelInvite(invite.id)}
+                          title="無効にする"
                         >
-                          取り消す
+                          <TrashIcon size={16} />
                         </button>
                       </div>
                     </li>
@@ -229,7 +221,7 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
                         )}
                         <div className="collaborator-details">
                           <span className="collaborator-name">
-                            {collab.userName || collab.userEmail || '名前なし'}
+                            {collab.userName || 'ユーザー'}
                           </span>
                           <span className="collaborator-role">
                             {collab.role === 'editor' ? '編集者' : '閲覧者'}
@@ -237,10 +229,11 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
                         </div>
                       </div>
                       <button
-                        className="btn-text btn-small btn-danger"
+                        className="btn-icon btn-danger"
                         onClick={() => removeCollaborator(collab.userId)}
+                        title="削除"
                       >
-                        削除
+                        <TrashIcon size={16} />
                       </button>
                     </li>
                   ))}
@@ -251,7 +244,7 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
             {collaborators.length === 0 && pendingInvites.length === 0 && (
               <div className="collaborator-empty">
                 共同編集者はまだいません。<br />
-                メールアドレスで招待してみましょう。
+                招待リンクを作成して共有しましょう。
               </div>
             )}
           </>

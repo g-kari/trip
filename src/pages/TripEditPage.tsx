@@ -12,6 +12,7 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon } from '../components/Icons'
 import type { TripMember } from '../types'
 
 // Active editor type for collaborative editing
@@ -284,31 +285,32 @@ function DraggableItem({
               </div>
             )}
             <div className="item-actions no-print">
-              <button className="btn-text btn-small" onClick={() => onStartEdit(item)}>
-                編集
+              <button className="btn-icon" onClick={() => onStartEdit(item)} title="編集">
+                <EditIcon size={16} />
               </button>
               {item.photoUrl ? (
-                <button className="btn-text btn-small" onClick={deleteItemPhoto}>
-                  写真削除
+                <button className="btn-icon btn-danger" onClick={deleteItemPhoto} title="写真削除">
+                  <TrashIcon size={16} />
                 </button>
               ) : (
                 <button
-                  className="btn-text btn-small"
+                  className="btn-icon"
                   onClick={() => photoInputRef.current?.click()}
                   disabled={uploadingPhoto}
+                  title="写真追加"
                 >
-                  {uploadingPhoto ? '...' : '写真追加'}
+                  {uploadingPhoto ? '...' : <ImageIcon size={16} />}
                 </button>
               )}
               <button
-                className="btn-text btn-small"
+                className="btn-icon"
                 onClick={() => onSaveAsTemplate(item)}
                 title="テンプレートとして保存"
               >
-                保存
+                <SaveIcon size={16} />
               </button>
-              <button className="btn-text btn-small btn-danger" onClick={() => onDelete(item.id)}>
-                削除
+              <button className="btn-icon btn-danger" onClick={() => onDelete(item.id)} title="削除">
+                <TrashIcon size={16} />
               </button>
               <input
                 ref={photoInputRef}
@@ -1542,13 +1544,23 @@ export function TripEditPage() {
           </p>
         )}
         <div className="hero-actions-row no-print" style={{ marginTop: 'var(--space-3)' }}>
-          <Link to={`/trips/${trip.id}`} className="btn-text">プレビュー</Link>
-          <button className="btn-text" onClick={duplicateTrip}>複製</button>
-          <button className="btn-text" onClick={() => setShowReminderModal(true)}>リマインダー</button>
+          <Link to={`/trips/${trip.id}`} className="btn-icon" title="プレビュー">
+            <EyeIcon size={16} />
+          </Link>
+          <button className="btn-icon" onClick={duplicateTrip} title="複製">
+            <CopyIcon size={16} />
+          </button>
+          <button className="btn-icon" onClick={() => setShowReminderModal(true)} title="リマインダー">
+            <BellIcon size={16} />
+          </button>
           {currentUserRole === 'owner' && (
-            <button className="btn-text" onClick={() => setShowCollaboratorModal(true)}>共同編集者</button>
+            <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
+              <UsersIcon size={16} />
+            </button>
           )}
-          <button className="btn-text btn-danger" onClick={deleteTrip}>削除</button>
+          <button className="btn-icon btn-danger" onClick={deleteTrip} title="削除">
+            <TrashIcon size={16} />
+          </button>
         </div>
 
         {/* Active editors indicator */}
@@ -1607,10 +1619,11 @@ export function TripEditPage() {
                   <span className="day-label">{label}</span>
                   <span className="day-date">{dateStr}</span>
                   <button
-                    className="btn-text btn-small btn-danger no-print"
+                    className="btn-icon btn-danger no-print"
                     onClick={() => deleteDay(day.id)}
+                    title="削除"
                   >
-                    削除
+                    <TrashIcon size={14} />
                   </button>
                 </div>
                 {items.length === 0 ? (

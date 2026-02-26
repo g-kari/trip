@@ -5,7 +5,7 @@ import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
-import { PinIcon, PinFilledIcon } from '../components/Icons'
+import { PinIcon, PinFilledIcon, CopyIcon } from '../components/Icons'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -887,11 +887,12 @@ export function TripListPage() {
                 </button>
                 <button
                   type="button"
-                  className="btn-text btn-small duplicate-btn"
+                  className="btn-icon duplicate-btn"
                   onClick={(e) => duplicateTrip(trip.id, e)}
                   disabled={duplicatingId === trip.id}
+                  title="複製"
                 >
-                  {duplicatingId === trip.id ? '複製中...' : '複製'}
+                  {duplicatingId === trip.id ? '...' : <CopyIcon size={16} />}
                 </button>
                 <button
                   type="button"
