@@ -10,6 +10,7 @@ import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
+import { PackingList } from '../components/PackingList'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -836,6 +837,11 @@ export function TripViewPage() {
       {/* Settlement Summary */}
       {trip && (
         <SettlementSummary tripId={trip.id} />
+      )}
+
+      {/* Packing List (read-only for viewers) */}
+      {trip && (
+        <PackingList tripId={trip.id} readOnly={!isOwner} />
       )}
 
       {/* Feedback Section */}

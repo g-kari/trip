@@ -34,6 +34,7 @@
 @import './components/collaborative.css';
 @import './components/comments.css';
 @import './components/expense.css';
+@import './components/packing-list.css';
 @import './components/offline.css';
 @import './components/error-boundary.css';
 @import './components/print.css';

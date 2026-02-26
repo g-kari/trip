@@ -11,6 +11,7 @@ import { ReminderSettings } from '../components/ReminderSettings'
 import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
+import { PackingList } from '../components/PackingList'
 import type { TripMember } from '../types'
 
 // Active editor type for collaborative editing
@@ -1627,6 +1628,9 @@ export function TripEditPage() {
             <SettlementSummary tripId={trip.id} />
           </div>
         )}
+
+        {/* Packing List */}
+        {trip && <PackingList tripId={trip.id} />}
       </div>
 
       {/* Add day form */}
