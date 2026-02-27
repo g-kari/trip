@@ -55,10 +55,11 @@ npm run lint       # Run ESLint
 
 1. **Check TodoWrite** for pending tasks at session start
 2. **Process tasks** using subagents (`Task` tool, `subagent_type=general-purpose`)
-3. **Commit after each task** with standard format (see below)
-4. **Apply migrations** if DB changes: `npx wrangler d1 migrations apply trip-itinerary --remote`
-5. **Push and deploy** after 2-4 tasks: `git push && npm run deploy`
-6. **Propose new features** when task list is empty (4 features, validate with `/project-manager` skill)
+3. **コミット前に `/review` でコードレビュー** — レビュー結果を確認し、指摘があれば修正してからコミット
+4. **Commit after each task** with standard format (see below)
+5. **Apply migrations** if DB changes: `npx wrangler d1 migrations apply trip-itinerary --remote`
+6. **Push and deploy** after 2-4 tasks: `git push && npm run deploy`
+7. **Propose new features** when task list is empty (4 features, validate with `/project-manager` skill)
 
 ### Commit Format
 
@@ -76,7 +77,7 @@ Co-Authored-By: Happy <yesreply@happy.engineering>
 
 - `/review` — Codex によるコードレビュー（手動呼び出しのみ）
 - `/designer` — デザインレビュー・修正・作成・テーマ・監査（自動/手動）
-- `/project-manager` — 新機能提案の評価・コンセプト適合性判定（手動呼び出しのみ、fork実行）
+- `/project-manager` — 新機能提案の評価・コンセプト適合性判定（fork実行）
 
 ## Architecture
 
@@ -90,7 +91,7 @@ Co-Authored-By: Happy <yesreply@happy.engineering>
 ### Frontend (`src/`)
 
 - React 19 + Vite, built to `dist/`
-- 3テーマ: 「しずか」/ 「写真映え」/ 「レトロ」+ ダークモード
+- 4テーマ: 「しずか」/ 「写真映え」/ 「レトロ」/ 「ナチュラル」+ ダークモード
 - デザインガイドラインは `/designer` スキルを参照
 
 ### Database
