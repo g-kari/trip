@@ -1,0 +1,190 @@
+/* ========================================
+   Countdown Widget — trip countdown display
+   ======================================== */
+
+.countdown-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ========================================
+   Compact Mode (for trip cards)
+   ======================================== */
+
+.countdown-compact {
+  font-size: 0.75rem;
+}
+
+.countdown-text-compact {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.countdown-text-compact .countdown-number {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  margin: 0 2px;
+}
+
+.countdown-text-small {
+  color: var(--color-text-faint);
+  font-size: 0.6875rem;
+}
+
+/* ========================================
+   Full Mode (for trip detail page)
+   ======================================== */
+
+.countdown-full {
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  margin-top: var(--space-3);
+}
+
+.countdown-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.countdown-values {
+  display: flex;
+  gap: var(--space-4);
+  justify-content: center;
+}
+
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+}
+
+.countdown-value {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown-unit-label {
+  font-size: 0.6875rem;
+  color: var(--color-text-faint);
+  margin-top: 2px;
+}
+
+/* ========================================
+   Badges
+   ======================================== */
+
+.countdown-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-s);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.countdown-badge-traveling {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.countdown-badge-ended {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.countdown-badge-imminent {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* Text after badge in full mode */
+.countdown-ended .countdown-text-muted {
+  color: var(--color-text-faint);
+  font-size: 0.75rem;
+  margin-left: var(--space-2);
+}
+
+/* ========================================
+   State Variations
+   ======================================== */
+
+/* When trip is today/imminent */
+.countdown-today .countdown-text-compact {
+  color: var(--color-text);
+}
+
+.countdown-today .countdown-number {
+  color: var(--color-success);
+}
+
+.countdown-imminent .countdown-badge {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ========================================
+   Dark Mode Adjustments
+   ======================================== */
+
+[data-color-mode="dark"] .countdown-badge-traveling {
+  background: var(--color-success);
+}
+
+[data-color-mode="dark"] .countdown-badge-ended {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+[data-color-mode="dark"] .countdown-badge-imminent {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .countdown-badge-traveling,
+  :root:not([data-color-mode]) .countdown-badge-traveling {
+    background: var(--color-success);
+  }
+
+  [data-color-mode="system"] .countdown-badge-ended,
+  :root:not([data-color-mode]) .countdown-badge-ended {
+    background: var(--color-border);
+    color: var(--color-text-muted);
+  }
+
+  [data-color-mode="system"] .countdown-badge-imminent,
+  :root:not([data-color-mode]) .countdown-badge-imminent {
+    background: var(--color-accent);
+    color: var(--color-bg);
+  }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+  .countdown-widget {
+    display: none;
+  }
+}

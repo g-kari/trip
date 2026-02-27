@@ -21,6 +21,7 @@ import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 import { TravelModeIndicator } from '../components/TravelModeIndicator'
 import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
 import { OptimizeButton } from '../components/OptimizeButton'
+import { CountdownWidget } from '../components/CountdownWidget'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -768,6 +769,10 @@ export function TripViewPage() {
             {formatDateRange(trip.startDate, trip.endDate)}
           </p>
         )}
+        <CountdownWidget
+          startDate={trip.startDate}
+          endDate={trip.endDate}
+        />
         <div className="hero-actions-row no-print">
           {isOwner && (
             <>

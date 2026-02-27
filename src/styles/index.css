@@ -54,6 +54,7 @@
 @import './components/travel-mode.css';
 @import './components/optimize.css';
 @import './components/qrcode.css';
+@import './components/countdown.css';
 
 /* Pages */
 @import './pages/login.css';

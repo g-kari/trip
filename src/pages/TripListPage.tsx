@@ -10,6 +10,7 @@ import { TemplateListModal } from '../components/TemplateListModal'
 import { CompareSelectionBar } from '../components/CompareSelectionBar'
 import { AdBanner } from '../components/AdBanner'
 import { shouldShowAd } from '../utils/adUtils'
+import { CountdownWidget } from '../components/CountdownWidget'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -1030,10 +1031,17 @@ export function TripListPage() {
                   )}
                 </div>
                 {(trip.startDate || trip.endDate) && (
-                  <div className="trip-card-date">
-                    {trip.startDate && trip.endDate
-                      ? formatDateRange(trip.startDate, trip.endDate)
-                      : trip.startDate || trip.endDate}
+                  <div className="trip-card-date-row">
+                    <div className="trip-card-date">
+                      {trip.startDate && trip.endDate
+                        ? formatDateRange(trip.startDate, trip.endDate)
+                        : trip.startDate || trip.endDate}
+                    </div>
+                    <CountdownWidget
+                      startDate={trip.startDate}
+                      endDate={trip.endDate}
+                      compact
+                    />
                   </div>
                 )}
                 {trip.tags && trip.tags.length > 0 && (
