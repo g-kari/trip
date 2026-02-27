@@ -14,7 +14,6 @@ import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
-import { PdfExportButton } from '../components/PdfExportButton'
 import { MarkdownText } from '../components/MarkdownText'
 import { ItemInsightsButton } from '../components/ItemInsights'
 import { WeatherIcon } from '../components/WeatherIcon'
@@ -788,7 +787,6 @@ export function TripViewPage() {
           <button className="btn-icon" onClick={printTrip} title="印刷">
             <PrintIcon size={16} />
           </button>
-          <PdfExportButton tripId={trip.id} tripTitle={trip.title} />
           {user && (
             <button className="btn-icon" onClick={duplicateTrip} title="複製">
               <CopyIcon size={16} />

@@ -14,7 +14,6 @@ import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon, MoreVerticalIcon } from '../components/Icons'
 import { VoiceInputButton } from '../components/VoiceInputButton'
-import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
@@ -1867,7 +1866,6 @@ export function TripEditPage() {
                 <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowHistoryModal(true) }}>
                   <HistoryIcon size={14} /> 変更履歴
                 </button>
-                <PdfExportButton tripId={trip.id} tripTitle={trip.title} asMenuItem onComplete={() => setShowMoreMenu(false)} />
                 <hr className="more-menu-divider" />
                 <button className="more-menu-item more-menu-item-danger" onClick={() => { setShowMoreMenu(false); deleteTrip() }}>
                   <TrashIcon size={14} /> 削除
