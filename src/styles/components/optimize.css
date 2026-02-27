@@ -2,21 +2,6 @@
    Route Optimization - AI-powered route optimization
    ======================================== */
 
-/* Optimize button in day header */
-.optimize-btn {
-  @apply inline-flex items-center gap-[var(--space-1)] text-[0.6875rem] text-text-muted bg-bg border border-border-light cursor-pointer transition-all duration-150 ml-auto;
-  padding: var(--space-1) var(--space-2);
-  border-radius: 6px;
-
-  &:hover {
-    @apply text-text border-border bg-bg-elevated;
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-}
-
 /* Modal styles */
 .optimize-modal {
   @apply w-[95%];
@@ -228,7 +213,6 @@
 
 /* Print: hide optimization UI */
 @media print {
-  .optimize-btn,
   .optimize-modal {
     @apply hidden;
   }

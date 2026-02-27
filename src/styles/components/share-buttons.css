@@ -7,27 +7,18 @@
 }
 
 .share-btn {
-  @apply inline-flex items-center gap-[var(--space-2)] py-[var(--space-2)] px-[var(--space-4)] text-[0.8125rem] font-medium text-text bg-bg-elevated border border-border rounded-m cursor-pointer;
+  @apply inline-flex items-center justify-center size-10 text-text bg-bg-elevated border border-border rounded-full cursor-pointer p-0;
   font-family: inherit;
-  min-height: 40px;
   transition: all var(--transition-fast);
 
   &:hover {
-    @apply border-border bg-bg;
+    @apply bg-bg;
     border-color: var(--color-text-muted);
   }
-}
-
-.share-btn-icon {
-  @apply flex items-center justify-center w-4 h-4;
 
   & svg {
-    @apply w-4 h-4;
+    @apply w-[18px] h-[18px];
   }
-}
-
-.share-btn-text {
-  @apply whitespace-nowrap;
 }
 
 /* Copy button states */
@@ -84,21 +75,10 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Mobile responsive for share buttons */
-@media (max-width: 480px) {
-  .share-buttons {
-    @apply flex-col w-full gap-[var(--space-2)];
-  }
-
-  .share-btn {
-    @apply w-full justify-center;
-    max-width: 280px;
-  }
-}
-
+/* Touch friendly */
 @media (pointer: coarse) {
   .share-btn {
-    min-height: 44px;
+    @apply size-11;
   }
 }
 

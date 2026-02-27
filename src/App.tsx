@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import { MarkdownText } from './components/MarkdownText'
+import { DatePicker } from './components/DatePicker'
 
 // API response types
 type Trip = {
@@ -552,18 +553,16 @@ function App() {
                     autoFocus
                   />
                   <div className="date-inputs">
-                    <input
-                      type="date"
+                    <DatePicker
                       value={editTripStartDate}
-                      onChange={(e) => setEditTripStartDate(e.target.value)}
-                      className="input"
+                      onChange={setEditTripStartDate}
+                      max={editTripEndDate}
                     />
                     <span className="date-separator">〜</span>
-                    <input
-                      type="date"
+                    <DatePicker
                       value={editTripEndDate}
-                      onChange={(e) => setEditTripEndDate(e.target.value)}
-                      className="input"
+                      onChange={setEditTripEndDate}
+                      min={editTripStartDate}
                     />
                   </div>
                   <div className="form-actions" style={{ justifyContent: 'center', marginTop: 'var(--space-3)' }}>
@@ -843,12 +842,9 @@ function App() {
                 {showDayForm ? (
                   <form className="inline-form" onSubmit={createDay}>
                     <div className="form-row">
-                      <input
-                        type="date"
+                      <DatePicker
                         value={newDayDate}
-                        onChange={(e) => setNewDayDate(e.target.value)}
-                        className="input"
-                        autoFocus
+                        onChange={setNewDayDate}
                       />
                       <div className="form-actions">
                         <button
@@ -926,18 +922,16 @@ function App() {
                   autoFocus
                 />
                 <div className="date-inputs">
-                  <input
-                    type="date"
+                  <DatePicker
                     value={newTripStartDate}
-                    onChange={(e) => setNewTripStartDate(e.target.value)}
-                    className="input"
+                    onChange={setNewTripStartDate}
+                    max={newTripEndDate}
                   />
                   <span className="date-separator">〜</span>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={newTripEndDate}
-                    onChange={(e) => setNewTripEndDate(e.target.value)}
-                    className="input"
+                    onChange={setNewTripEndDate}
+                    min={newTripStartDate}
                   />
                 </div>
                 <button

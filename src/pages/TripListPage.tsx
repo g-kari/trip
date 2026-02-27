@@ -12,6 +12,7 @@ import { AdBanner } from '../components/AdBanner'
 import { shouldShowAd } from '../utils/adUtils'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { ColorLabelFilter, ColorLabelIndicator } from '../components/ColorLabelPicker'
+import { DatePicker } from '../components/DatePicker'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -707,18 +708,17 @@ export function TripListPage() {
                 autoFocus
               />
           <div className="date-inputs">
-            <input
-              type="date"
+            <DatePicker
               value={aiStartDate}
-              onChange={(e) => setAiStartDate(e.target.value)}
-              className="input"
+              onChange={setAiStartDate}
+              placeholder="開始日"
             />
             <span className="date-separator">〜</span>
-            <input
-              type="date"
+            <DatePicker
               value={aiEndDate}
-              onChange={(e) => setAiEndDate(e.target.value)}
-              className="input"
+              onChange={setAiEndDate}
+              placeholder="終了日"
+              min={aiStartDate}
             />
           </div>
           <div className="style-selector">
@@ -832,18 +832,17 @@ export function TripListPage() {
             autoFocus
           />
           <div className="date-inputs">
-            <input
-              type="date"
+            <DatePicker
               value={newTripStartDate}
-              onChange={(e) => setNewTripStartDate(e.target.value)}
-              className="input"
+              onChange={setNewTripStartDate}
+              placeholder="開始日"
             />
             <span className="date-separator">〜</span>
-            <input
-              type="date"
+            <DatePicker
               value={newTripEndDate}
-              onChange={(e) => setNewTripEndDate(e.target.value)}
-              className="input"
+              onChange={setNewTripEndDate}
+              placeholder="終了日"
+              min={newTripStartDate}
             />
           </div>
           <div className="theme-selector">
@@ -985,18 +984,17 @@ export function TripListPage() {
             <div className="filter-row">
               <label className="filter-label">期間</label>
               <div className="date-inputs filter-date-inputs">
-                <input
-                  type="date"
+                <DatePicker
                   value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="input"
+                  onChange={setFilterStartDate}
+                  placeholder="開始日"
                 />
                 <span className="date-separator">〜</span>
-                <input
-                  type="date"
+                <DatePicker
                   value={filterEndDate}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="input"
+                  onChange={setFilterEndDate}
+                  placeholder="終了日"
+                  min={filterStartDate}
                 />
               </div>
             </div>

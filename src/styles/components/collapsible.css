@@ -1,0 +1,44 @@
+/* ========================================
+   Collapsible Section
+   ======================================== */
+
+.collapsible-section {
+  @apply mt-[var(--space-5)] border-t border-border-light;
+}
+
+.collapsible-header {
+  @apply flex items-center w-full
+         py-[var(--space-3)] px-0
+         bg-transparent border-none
+         cursor-pointer text-left;
+  font-family: inherit;
+}
+
+.collapsible-title {
+  @apply text-[0.8125rem] font-medium text-text-muted;
+}
+
+.collapsible-subtitle {
+  @apply text-xs text-text-faint ml-[var(--space-2)];
+}
+
+.collapsible-toggle {
+  @apply ml-auto text-text-faint text-sm leading-none;
+  min-width: 1rem;
+  text-align: center;
+}
+
+.collapsible-content {
+  @apply pb-[var(--space-4)];
+}
+
+/* Remove inner borders when inside collapsible */
+.collapsible-content .feedback-section {
+  @apply mt-0 pt-0 border-t-0;
+}
+
+@media print {
+  .collapsible-section {
+    display: none !important;
+  }
+}

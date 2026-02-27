@@ -21,6 +21,8 @@ import { TravelModeIndicator } from '../components/TravelModeIndicator'
 import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
 import { OptimizeButton } from '../components/OptimizeButton'
 import { CountdownWidget } from '../components/CountdownWidget'
+import { CollapsibleSection } from '../components/CollapsibleSection'
+import { FallbackImage } from '../components/FallbackImage'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -931,7 +933,7 @@ export function TripViewPage() {
                         )}
                         {item.photoUrl && (
                           <div className="item-photo">
-                            <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                            <FallbackImage src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
                             {canDeleteItemPhoto(item) && (
                               <button
                                 className="item-photo-delete no-print"
@@ -966,7 +968,7 @@ export function TripViewPage() {
                       <div className="day-photos-grid">
                         {day.photos.map((photo) => (
                           <div key={photo.id} className="day-photo-item">
-                            <img src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                            <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
                             {canDeleteDayPhoto(photo) && !photo.id.startsWith('legacy-') && (
                               <button
                                 className="day-photo-delete no-print"
@@ -1021,127 +1023,129 @@ export function TripViewPage() {
           })
       )}
 
-      {/* Budget Summary */}
-      {getBudgetSummary() && (getBudgetSummary()!.totalSpent > 0 || getBudgetSummary()!.totalBudget) && (
-        <BudgetSummaryCard summary={getBudgetSummary()!} />
+      {/* Budget Summary (collapsible) */}
+      {(getBudgetSummary() && (getBudgetSummary()!.totalSpent > 0 || getBudgetSummary()!.totalBudget)) && (
+        <CollapsibleSection title="予算・費用" subtitle={`合計 ${formatCost(getTotalCost())}`}>
+          <BudgetSummaryCard summary={getBudgetSummary()!} />
+        </CollapsibleSection>
       )}
 
-      {getTotalCost() > 0 && !trip?.budget && (
-        <div className="total-cost">
-          <span className="total-cost-label">合計費用</span>
-          <span className="total-cost-value">{formatCost(getTotalCost())}</span>
-        </div>
+      {getTotalCost() > 0 && !trip?.budget && !getBudgetSummary()?.totalBudget && (
+        <CollapsibleSection title="費用" subtitle={formatCost(getTotalCost())}>
+          <div className="total-cost">
+            <span className="total-cost-label">合計費用</span>
+            <span className="total-cost-value">{formatCost(getTotalCost())}</span>
+          </div>
+        </CollapsibleSection>
       )}
 
-      {/* Settlement Summary */}
+      {/* Settlement Summary (collapsible) */}
       {trip && (
-        <SettlementSummary tripId={trip.id} />
+        <CollapsibleSection title="精算">
+          <SettlementSummary tripId={trip.id} />
+        </CollapsibleSection>
       )}
 
-      {/* Packing List (read-only for viewers) */}
+      {/* Packing List (collapsible, read-only for viewers) */}
       {trip && (
-        <PackingList tripId={trip.id} readOnly={!isOwner} />
+        <CollapsibleSection title="持ち物リスト">
+          <PackingList tripId={trip.id} readOnly={!isOwner} />
+        </CollapsibleSection>
       )}
 
-      {/* Feedback Section */}
-      <section className="feedback-section no-print">
-        <div className="feedback-header">
-          <h2 className="feedback-title">フィードバック</h2>
-          {feedbackStats.count > 0 && (
-            <div className="feedback-summary">
-              <StarRating rating={Math.round(feedbackStats.averageRating)} readonly />
-              <span className="feedback-average">{feedbackStats.averageRating}</span>
-              <span className="feedback-count">({feedbackStats.count}件)</span>
-            </div>
-          )}
-        </div>
+      {/* Feedback Section (collapsible) */}
+      <CollapsibleSection
+        title="フィードバック"
+        subtitle={feedbackStats.count > 0 ? `★ ${feedbackStats.averageRating}（${feedbackStats.count}件）` : undefined}
+      >
+        <section className="feedback-section">
+          {/* Feedback Form */}
+          {!hasSubmittedFeedback && (
+            <form className="feedback-form" onSubmit={submitFeedback}>
+              <div className="feedback-form-rating">
+                <label className="feedback-form-label">評価</label>
+                <StarRating rating={feedbackRating} onRate={setFeedbackRating} />
+              </div>
 
-        {/* Feedback Form */}
-        {!hasSubmittedFeedback && (
-          <form className="feedback-form" onSubmit={submitFeedback}>
-            <div className="feedback-form-rating">
-              <label className="feedback-form-label">評価</label>
-              <StarRating rating={feedbackRating} onRate={setFeedbackRating} />
-            </div>
+              {!user && (
+                <div className="feedback-form-field">
+                  <label className="feedback-form-label">お名前</label>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="お名前（必須）"
+                    value={feedbackName}
+                    onChange={(e) => setFeedbackName(e.target.value)}
+                    maxLength={50}
+                  />
+                </div>
+              )}
 
-            {!user && (
               <div className="feedback-form-field">
-                <label className="feedback-form-label">お名前</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="お名前（必須）"
-                  value={feedbackName}
-                  onChange={(e) => setFeedbackName(e.target.value)}
-                  maxLength={50}
+                <label className="feedback-form-label">コメント（任意）</label>
+                <textarea
+                  className="input textarea"
+                  placeholder="旅程の感想を書いてください..."
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  rows={3}
+                  maxLength={500}
                 />
               </div>
-            )}
 
-            <div className="feedback-form-field">
-              <label className="feedback-form-label">コメント（任意）</label>
-              <textarea
-                className="input textarea"
-                placeholder="旅程の感想を書いてください..."
-                value={feedbackComment}
-                onChange={(e) => setFeedbackComment(e.target.value)}
-                rows={3}
-                maxLength={500}
-              />
-            </div>
+              <button
+                type="submit"
+                className="btn-filled"
+                disabled={submittingFeedback || feedbackRating === 0}
+              >
+                {submittingFeedback ? '送信中...' : 'フィードバックを送信'}
+              </button>
+            </form>
+          )}
 
-            <button
-              type="submit"
-              className="btn-filled"
-              disabled={submittingFeedback || feedbackRating === 0}
-            >
-              {submittingFeedback ? '送信中...' : 'フィードバックを送信'}
-            </button>
-          </form>
-        )}
+          {hasSubmittedFeedback && (
+            <p className="feedback-submitted-message">
+              フィードバックを送信済みです
+            </p>
+          )}
 
-        {hasSubmittedFeedback && (
-          <p className="feedback-submitted-message">
-            フィードバックを送信済みです
-          </p>
-        )}
-
-        {/* Feedback List */}
-        {feedbackList.length > 0 && (
-          <div className="feedback-list">
-            {feedbackList.map((feedback) => (
-              <div key={feedback.id} className="feedback-card">
-                <div className="feedback-card-header">
-                  <span className="feedback-card-name">{feedback.name}</span>
-                  <StarRating rating={feedback.rating} readonly />
-                  <span className="feedback-card-date">
-                    {formatFeedbackDate(feedback.createdAt)}
-                  </span>
-                  {canDeleteFeedback(feedback) && (
-                    <button
-                      className="btn-icon btn-danger"
-                      onClick={() => deleteFeedback(feedback.id)}
-                      disabled={deletingFeedbackId === feedback.id}
-                      title="削除"
-                    >
-                      {deletingFeedbackId === feedback.id ? '...' : <TrashIcon size={14} />}
-                    </button>
+          {/* Feedback List */}
+          {feedbackList.length > 0 && (
+            <div className="feedback-list">
+              {feedbackList.map((feedback) => (
+                <div key={feedback.id} className="feedback-card">
+                  <div className="feedback-card-header">
+                    <span className="feedback-card-name">{feedback.name}</span>
+                    <StarRating rating={feedback.rating} readonly />
+                    <span className="feedback-card-date">
+                      {formatFeedbackDate(feedback.createdAt)}
+                    </span>
+                    {canDeleteFeedback(feedback) && (
+                      <button
+                        className="btn-icon btn-danger"
+                        onClick={() => deleteFeedback(feedback.id)}
+                        disabled={deletingFeedbackId === feedback.id}
+                        title="削除"
+                      >
+                        {deletingFeedbackId === feedback.id ? '...' : <TrashIcon size={14} />}
+                      </button>
+                    )}
+                  </div>
+                  {feedback.comment && (
+                    <p className="feedback-card-comment">{feedback.comment}</p>
                   )}
                 </div>
-                {feedback.comment && (
-                  <p className="feedback-card-comment">{feedback.comment}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {feedbackList.length === 0 && !hasSubmittedFeedback && (
-          <p className="feedback-empty">
-            まだフィードバックがありません。最初のフィードバックを投稿してみてください。
-          </p>
-        )}
-      </section>
+          {feedbackList.length === 0 && !hasSubmittedFeedback && (
+            <p className="feedback-empty">
+              まだフィードバックがありません。最初のフィードバックを投稿してみてください。
+            </p>
+          )}
+        </section>
+      </CollapsibleSection>
 
       <button
         className="btn-text back-btn no-print"

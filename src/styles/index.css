@@ -57,6 +57,8 @@
 @import './components/voice-input.css';
 @import './components/color-label.css';
 @import './components/trip-history.css';
+@import './components/collapsible.css';
+@import './components/fallback-image.css';
 
 /* Pages */
 @import './pages/login.css';

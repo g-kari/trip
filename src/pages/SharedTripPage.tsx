@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
 import { COST_CATEGORIES } from '../types'
-import { formatDateRange, formatCost, formatDayDate } from '../utils'
+import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
@@ -10,6 +10,26 @@ import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { MarkdownText } from '../components/MarkdownText'
 import { formatCheckinTime } from '../hooks/useTravelMode'
+import { WeatherIcon } from '../components/WeatherIcon'
+import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
+import { TravelModeIndicator } from '../components/TravelModeIndicator'
+import { CountdownWidget } from '../components/CountdownWidget'
+import { SettlementSummary } from '../components/SettlementSummary'
+import { PackingList } from '../components/PackingList'
+import { CollapsibleSection } from '../components/CollapsibleSection'
+import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
+
+// Day weather component
+function DayWeather({ date, items }: { date: string; items: Item[] }) {
+  const location = getFirstLocationForDay(items)
+  const { weather, loading } = useWeather(location, date)
+
+  if (!location) {
+    return null
+  }
+
+  return <WeatherIcon weather={weather} loading={loading} size="medium" />
+}
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -110,6 +130,14 @@ function formatFeedbackDate(dateStr: string): string {
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
 }
 
+function isDayToday(dateStr: string): boolean {
+  const now = new Date()
+  const jstOffset = 9 * 60 * 60 * 1000
+  const jstNow = new Date(now.getTime() + jstOffset + now.getTimezoneOffset() * 60 * 1000)
+  const today = jstNow.toISOString().split('T')[0]
+  return dateStr === today
+}
+
 export function SharedTripPage() {
   const { token } = useParams<{ token: string }>()
   const navigate = useNavigate()
@@ -125,6 +153,8 @@ export function SharedTripPage() {
   const [deletingItemPhoto, setDeletingItemPhoto] = useState<string | null>(null)
   const [deletingDayPhoto, setDeletingDayPhoto] = useState<string | null>(null)
   const itemPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const [showExportDropdown, setShowExportDropdown] = useState(false)
+  const exportDropdownRef = useRef<HTMLDivElement>(null)
   // Feedback state
   const [feedbackList, setFeedbackList] = useState<TripFeedback[]>([])
   const [feedbackStats, setFeedbackStats] = useState<FeedbackStats>({ count: 0, averageRating: 0 })
@@ -200,7 +230,6 @@ export function SharedTripPage() {
           const data = await res.json() as { feedback: TripFeedback[]; stats: FeedbackStats }
           setFeedbackList(data.feedback)
           setFeedbackStats(data.stats)
-          // Check if current user has already submitted
           if (user) {
             const userFeedback = data.feedback.find(fb => fb.userId === user.id)
             setHasSubmittedFeedback(!!userFeedback)
@@ -212,6 +241,19 @@ export function SharedTripPage() {
     }
     fetchFeedback()
   }, [token, user])
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setShowExportDropdown(false)
+      }
+    }
+    if (showExportDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showExportDropdown])
 
   // Upload photo for item
   async function uploadItemPhoto(itemId: string, file: File) {
@@ -253,7 +295,6 @@ export function SharedTripPage() {
   async function uploadDayPhotos(dayId: string, files: FileList) {
     if (!trip || !user) return
 
-    // Validate all files first
     const validFiles: File[] = []
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) {
@@ -273,7 +314,6 @@ export function SharedTripPage() {
     setUploadingDayPhotoCount(validFiles.length)
 
     try {
-      // Upload all files in parallel
       const uploadPromises = validFiles.map(async (file) => {
         const res = await fetch(`/api/trips/${trip.id}/days/${dayId}/photos`, {
           method: 'POST',
@@ -377,16 +417,13 @@ export function SharedTripPage() {
     }
   }
 
-  // Check if user can delete a photo
   function canDeleteItemPhoto(item: Item): boolean {
     if (!user) return false
-    // User can delete if they are the uploader or the trip owner
     return item.photoUploadedBy === user.id || tripOwnerId === user.id
   }
 
   function canDeleteDayPhoto(photo: { uploadedBy: string | null }): boolean {
     if (!user) return false
-    // User can delete if they are the uploader or the trip owner
     return photo.uploadedBy === user.id || tripOwnerId === user.id
   }
 
@@ -430,7 +467,6 @@ export function SharedTripPage() {
     itemsByDay.set(item.dayId, dayItems)
   }
 
-  // Sort items by time and sort order
   for (const dayItems of itemsByDay.values()) {
     dayItems.sort((a, b) => {
       if (a.timeStart && b.timeStart) {
@@ -440,17 +476,14 @@ export function SharedTripPage() {
     })
   }
 
-  // Calculate total cost
   const totalCost = items.reduce((sum, item) => sum + (item.cost || 0), 0)
 
-  // Calculate budget summary
   function getBudgetSummary(): BudgetSummary | null {
     if (!trip) return null
 
     const totalSpent = items.reduce((sum, item) => sum + (item.cost || 0), 0)
     const totalBudget = trip.budget
 
-    // Calculate category breakdown
     const categoryTotals = new Map<CostCategory, number>()
     for (const cat of COST_CATEGORIES) {
       categoryTotals.set(cat, 0)
@@ -481,6 +514,10 @@ export function SharedTripPage() {
   }
 
   const budgetSummary = getBudgetSummary()
+
+  function printTrip() {
+    window.print()
+  }
 
   async function duplicateTrip() {
     if (!trip) return
@@ -578,7 +615,6 @@ export function SharedTripPage() {
       const newList = feedbackList.filter(fb => fb.id !== feedbackId)
       setFeedbackList(newList)
 
-      // Recalculate stats
       if (deletedFeedback && feedbackStats.count > 1) {
         const newTotal = (feedbackStats.averageRating * feedbackStats.count) - deletedFeedback.rating
         setFeedbackStats({
@@ -602,10 +638,8 @@ export function SharedTripPage() {
     }
   }
 
-  // Check if user can delete feedback
   function canDeleteFeedback(feedback: TripFeedback): boolean {
     if (!user) return false
-    // User can delete their own feedback or trip owner can delete any
     return feedback.userId === user.id || tripOwnerId === user.id
   }
 
@@ -624,12 +658,30 @@ export function SharedTripPage() {
           {(trip.startDate || trip.endDate) && (
             <p className="hero-subtitle">{formatDateRange(trip.startDate, trip.endDate)}</p>
           )}
+          <CountdownWidget startDate={trip.startDate} endDate={trip.endDate} />
           <div className="hero-actions-row no-print">
-            <button className="btn-text" onClick={() => window.print()}>印刷</button>
-            <button className="btn-text" onClick={() => window.open(`/api/shared/${token}/calendar.ics`, '_blank')}>カレンダー</button>
-            <button className="btn-text" onClick={duplicateTrip}>
-              {user ? '複製' : '複製してログイン'}
-            </button>
+            <div className="more-menu-wrapper" ref={exportDropdownRef}>
+              <button
+                className="btn-icon"
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                title="メニュー"
+              >
+                <MoreVerticalIcon size={16} />
+              </button>
+              {showExportDropdown && (
+                <div className="more-menu-dropdown">
+                  <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); printTrip() }}>
+                    <PrintIcon size={14} /> 印刷
+                  </button>
+                  <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); window.open(`/api/shared/${token}/calendar.ics`, '_blank') }}>
+                    <DownloadIcon size={14} /> カレンダー
+                  </button>
+                  <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); duplicateTrip() }}>
+                    <CopyIcon size={14} /> {user ? '複製' : '複製してログイン'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="hero-share-section no-print">
             <p className="share-section-title">この旅程を共有</p>
@@ -643,13 +695,20 @@ export function SharedTripPage() {
         {/* Map section */}
         <MapEmbed items={items} />
 
+        {/* Travel mode indicator */}
+        <TravelModeIndicator trip={trip} />
+
         {days.map((day, index) => {
           const dayItems = itemsByDay.get(day.id) || []
+          const { label, dateStr } = formatDayLabel(day.date, index)
+          const isToday = isDayToday(day.date)
           return (
-            <section key={day.id} className="day-section">
+            <section key={day.id} className={`day-section ${isToday ? 'is-today' : ''}`}>
               <div className="day-header">
-                <span className="day-label">Day {index + 1}</span>
-                <span className="day-date">{formatDayDate(day.date)}</span>
+                <span className="day-label">{label}</span>
+                <span className="day-date">{dateStr}</span>
+                {isToday && <span className="today-badge">今日</span>}
+                <DayWeather date={day.date} items={dayItems} />
               </div>
 
               {dayItems.length === 0 ? (
@@ -660,7 +719,7 @@ export function SharedTripPage() {
                 dayItems.map((item) => (
                   <div key={item.id} className="timeline-item">
                     <span className="timeline-time">
-                      {item.timeStart || ''}
+                      {item.timeStart || '—'}
                       {item.timeEnd && <span className="timeline-time-end">〜{item.timeEnd}</span>}
                     </span>
                     <div className="timeline-item-checkin">
@@ -686,7 +745,7 @@ export function SharedTripPage() {
                               rel="noopener noreferrer"
                               className="map-link"
                             >
-                              地図
+                              地図を見る
                             </a>
                           )}
                         </div>
@@ -808,116 +867,129 @@ export function SharedTripPage() {
           )
         })}
 
-        {/* Budget Summary */}
+        {/* Budget Summary (collapsible) */}
         {budgetSummary && (budgetSummary.totalSpent > 0 || budgetSummary.totalBudget) && (
-          <BudgetSummaryCard summary={budgetSummary} />
+          <CollapsibleSection title="予算・費用" subtitle={`合計 ${formatCost(totalCost)}`}>
+            <BudgetSummaryCard summary={budgetSummary} />
+          </CollapsibleSection>
         )}
 
-        {totalCost > 0 && !trip?.budget && (
-          <div className="total-cost">
-            <span className="total-cost-label">合計</span>
-            <span className="total-cost-value">{formatCost(totalCost)}</span>
-          </div>
+        {totalCost > 0 && !trip?.budget && !budgetSummary?.totalBudget && (
+          <CollapsibleSection title="費用" subtitle={formatCost(totalCost)}>
+            <div className="total-cost">
+              <span className="total-cost-label">合計費用</span>
+              <span className="total-cost-value">{formatCost(totalCost)}</span>
+            </div>
+          </CollapsibleSection>
         )}
 
-        {/* Feedback Section */}
-        <section className="feedback-section no-print">
-          <div className="feedback-header">
-            <h2 className="feedback-title">フィードバック</h2>
-            {feedbackStats.count > 0 && (
-              <div className="feedback-summary">
-                <StarRating rating={Math.round(feedbackStats.averageRating)} readonly />
-                <span className="feedback-average">{feedbackStats.averageRating}</span>
-                <span className="feedback-count">({feedbackStats.count}件)</span>
-              </div>
-            )}
-          </div>
+        {/* Settlement Summary (collapsible) */}
+        {trip && (
+          <CollapsibleSection title="精算">
+            <SettlementSummary tripId={trip.id} shareToken={token} />
+          </CollapsibleSection>
+        )}
 
-          {/* Feedback Form */}
-          {!hasSubmittedFeedback && (
-            <form className="feedback-form" onSubmit={submitFeedback}>
-              <div className="feedback-form-rating">
-                <label className="feedback-form-label">評価</label>
-                <StarRating rating={feedbackRating} onRate={setFeedbackRating} />
-              </div>
+        {/* Packing List (collapsible, read-only) - only for authenticated users */}
+        {trip && user && (
+          <CollapsibleSection title="持ち物リスト">
+            <PackingList tripId={trip.id} readOnly />
+          </CollapsibleSection>
+        )}
 
-              {!user && (
+        {/* Feedback Section (collapsible) */}
+        <CollapsibleSection
+          title="フィードバック"
+          subtitle={feedbackStats.count > 0 ? `★ ${feedbackStats.averageRating}（${feedbackStats.count}件）` : undefined}
+        >
+          <section className="feedback-section">
+            {/* Feedback Form */}
+            {!hasSubmittedFeedback && (
+              <form className="feedback-form" onSubmit={submitFeedback}>
+                <div className="feedback-form-rating">
+                  <label className="feedback-form-label">評価</label>
+                  <StarRating rating={feedbackRating} onRate={setFeedbackRating} />
+                </div>
+
+                {!user && (
+                  <div className="feedback-form-field">
+                    <label className="feedback-form-label">お名前</label>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder="お名前（必須）"
+                      value={feedbackName}
+                      onChange={(e) => setFeedbackName(e.target.value)}
+                      maxLength={50}
+                    />
+                  </div>
+                )}
+
                 <div className="feedback-form-field">
-                  <label className="feedback-form-label">お名前</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="お名前（必須）"
-                    value={feedbackName}
-                    onChange={(e) => setFeedbackName(e.target.value)}
-                    maxLength={50}
+                  <label className="feedback-form-label">コメント（任意）</label>
+                  <textarea
+                    className="input textarea"
+                    placeholder="旅程の感想を書いてください..."
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    rows={3}
+                    maxLength={500}
                   />
                 </div>
-              )}
 
-              <div className="feedback-form-field">
-                <label className="feedback-form-label">コメント（任意）</label>
-                <textarea
-                  className="input textarea"
-                  placeholder="旅程の感想を書いてください..."
-                  value={feedbackComment}
-                  onChange={(e) => setFeedbackComment(e.target.value)}
-                  rows={3}
-                  maxLength={500}
-                />
-              </div>
+                <button
+                  type="submit"
+                  className="btn-filled"
+                  disabled={submittingFeedback || feedbackRating === 0}
+                >
+                  {submittingFeedback ? '送信中...' : 'フィードバックを送信'}
+                </button>
+              </form>
+            )}
 
-              <button
-                type="submit"
-                className="btn-filled"
-                disabled={submittingFeedback || feedbackRating === 0}
-              >
-                {submittingFeedback ? '送信中...' : 'フィードバックを送信'}
-              </button>
-            </form>
-          )}
+            {hasSubmittedFeedback && (
+              <p className="feedback-submitted-message">
+                フィードバックを送信済みです
+              </p>
+            )}
 
-          {hasSubmittedFeedback && (
-            <p className="feedback-submitted-message">
-              フィードバックを送信済みです
-            </p>
-          )}
-
-          {/* Feedback List */}
-          {feedbackList.length > 0 && (
-            <div className="feedback-list">
-              {feedbackList.map((feedback) => (
-                <div key={feedback.id} className="feedback-card">
-                  <div className="feedback-card-header">
-                    <span className="feedback-card-name">{feedback.name}</span>
-                    <StarRating rating={feedback.rating} readonly />
-                    <span className="feedback-card-date">
-                      {formatFeedbackDate(feedback.createdAt)}
-                    </span>
-                    {canDeleteFeedback(feedback) && (
-                      <button
-                        className="btn-text btn-small btn-danger"
-                        onClick={() => deleteFeedback(feedback.id)}
-                        disabled={deletingFeedbackId === feedback.id}
-                      >
-                        {deletingFeedbackId === feedback.id ? '...' : '削除'}
-                      </button>
+            {/* Feedback List */}
+            {feedbackList.length > 0 && (
+              <div className="feedback-list">
+                {feedbackList.map((feedback) => (
+                  <div key={feedback.id} className="feedback-card">
+                    <div className="feedback-card-header">
+                      <span className="feedback-card-name">{feedback.name}</span>
+                      <StarRating rating={feedback.rating} readonly />
+                      <span className="feedback-card-date">
+                        {formatFeedbackDate(feedback.createdAt)}
+                      </span>
+                      {canDeleteFeedback(feedback) && (
+                        <button
+                          className="btn-icon btn-danger"
+                          onClick={() => deleteFeedback(feedback.id)}
+                          disabled={deletingFeedbackId === feedback.id}
+                          title="削除"
+                        >
+                          {deletingFeedbackId === feedback.id ? '...' : <TrashIcon size={14} />}
+                        </button>
+                      )}
+                    </div>
+                    {feedback.comment && (
+                      <p className="feedback-card-comment">{feedback.comment}</p>
                     )}
                   </div>
-                  {feedback.comment && (
-                    <p className="feedback-card-comment">{feedback.comment}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {feedbackList.length === 0 && !hasSubmittedFeedback && (
-            <p className="feedback-empty">
-              まだフィードバックがありません。最初のフィードバックを投稿してみてください。
-            </p>
-          )}
-        </section>
+            {feedbackList.length === 0 && !hasSubmittedFeedback && (
+              <p className="feedback-empty">
+                まだフィードバックがありません。最初のフィードバックを投稿してみてください。
+              </p>
+            )}
+          </section>
+        </CollapsibleSection>
 
       </main>
 

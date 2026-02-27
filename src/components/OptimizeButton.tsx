@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { OptimizeModal } from './OptimizeModal'
+import { RouteIcon } from './Icons'
 import type { Item, Day } from '../types'
 
 type OptimizeButtonProps = {
@@ -21,11 +22,11 @@ export function OptimizeButton({ tripId, day, items, onOptimized, isOwner }: Opt
   return (
     <>
       <button
-        className="optimize-btn no-print"
+        className="btn-icon no-print"
         onClick={() => setShowModal(true)}
-        title="AIがルートを最適化します"
+        title="ルート最適化"
       >
-        ルート最適化（1クレジット）
+        <RouteIcon size={14} />
       </button>
       {showModal && (
         <OptimizeModal

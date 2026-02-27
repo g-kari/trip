@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { TripTemplate, TripTheme } from '../types'
 import { useToast } from '../hooks/useToast'
 import { TrashIcon } from './Icons'
+import { DatePicker } from './DatePicker'
 
 type TemplateWithOwnership = TripTemplate & {
   isOwn?: boolean
@@ -144,11 +145,10 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
                 className="input"
                 autoFocus
               />
-              <input
-                type="date"
+              <DatePicker
                 value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="input"
+                onChange={setStartDate}
+                placeholder="開始日"
               />
             </div>
 
