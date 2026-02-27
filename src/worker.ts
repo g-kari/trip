@@ -3263,6 +3263,306 @@ app.post('/api/trips/:tripId/items/:itemId/suggestions', async (c) => {
   }
 });
 
+// ============ Route Optimization (AI-powered) ============
+
+// Type for optimized item
+type OptimizedItem = {
+  id: string;
+  title: string;
+  area: string | null;
+  timeStart: string | null;
+  reason: string;
+};
+
+// Optimize route for a day
+app.post('/api/trips/:tripId/days/:dayId/optimize', async (c) => {
+  const { tripId, dayId } = c.req.param();
+  const user = c.get('user');
+  const ip = getClientIp(c);
+
+  // Require login for AI route optimization
+  if (!user) {
+    return c.json({ error: 'ルート最適化にはログインが必要です' }, 401);
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Check user rate limit (shares limit with spot suggestions)
+  const userUsageResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(user.id, today).first<{ count: number }>();
+
+  const userUsedToday = userUsageResult?.count || 0;
+  if (userUsedToday >= AI_DAILY_LIMIT_USER) {
+    return c.json({
+      error: `本日の利用上限（${AI_DAILY_LIMIT_USER}回）に達しました。明日また利用できます。`,
+      limitReached: true,
+      remaining: 0,
+    }, 429);
+  }
+
+  // Check IP rate limit
+  const ipUsageResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(ip, today).first<{ count: number }>();
+
+  const ipUsedToday = ipUsageResult?.count || 0;
+  if (ipUsedToday >= AI_DAILY_LIMIT_IP) {
+    return c.json({
+      error: 'このIPアドレスからの利用上限に達しました。明日また利用できます。',
+      limitReached: true,
+      remaining: 0,
+    }, 429);
+  }
+
+  // Check if user can edit this trip
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Verify day exists and belongs to this trip
+  const day = await c.env.DB.prepare(
+    'SELECT id, date FROM days WHERE id = ? AND trip_id = ?'
+  ).bind(dayId, tripId).first<{ id: string; date: string }>();
+
+  if (!day) {
+    return c.json({ error: 'Day not found' }, 404);
+  }
+
+  // Get all items for this day
+  const { results: items } = await c.env.DB.prepare(
+    `SELECT id, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, sort
+     FROM items WHERE day_id = ? AND trip_id = ?
+     ORDER BY sort ASC`
+  ).bind(dayId, tripId).all<{
+    id: string;
+    title: string;
+    area: string | null;
+    timeStart: string | null;
+    timeEnd: string | null;
+    mapUrl: string | null;
+    sort: number;
+  }>();
+
+  if (items.length < 2) {
+    return c.json({
+      error: 'ルート最適化には2つ以上のスポットが必要です',
+    }, 400);
+  }
+
+  // Build item info for AI
+  const itemsInfo = items.map((item, index) => {
+    let locationHint = item.area || '';
+    // Try to extract location from map_url
+    if (item.mapUrl) {
+      const match = item.mapUrl.match(/[?&]q=([^&]+)/);
+      if (match) {
+        locationHint = decodeURIComponent(match[1]) || locationHint;
+      }
+    }
+    return {
+      index: index + 1,
+      id: item.id,
+      title: item.title,
+      area: item.area,
+      locationHint,
+      timeStart: item.timeStart,
+      timeEnd: item.timeEnd,
+      hasFixedTime: !!item.timeStart, // Items with time_start are considered fixed
+    };
+  });
+
+  // Find items with fixed times that shouldn't be moved
+  const fixedItems = itemsInfo.filter(item => item.hasFixedTime);
+
+  const prompt = `あなたは旅行ルートの最適化エキスパートです。以下のスポットリストを、移動時間を最小化する効率的な順序に並び替えてください。
+
+## 現在のスポット順序:
+${itemsInfo.map(item => `${item.index}. ${item.title}${item.area ? ` (${item.area})` : ''}${item.timeStart ? ` [${item.timeStart}〜${item.timeEnd || ''}固定]` : ''}`).join('\n')}
+
+## 制約条件:
+${fixedItems.length > 0 ? `- 以下のスポットは時間が固定されているため、その時間帯に訪問できる位置に配置: ${fixedItems.map(i => i.title).join(', ')}` : '- 時間固定のスポットはありません'}
+- 日本での移動（電車、徒歩）を想定
+- 開店・閉店時間を考慮（一般的な営業時間を推測）
+
+以下のJSON形式のみで出力してください。他の説明は不要です:
+{
+  "optimizedOrder": [
+    {
+      "id": "アイテムID",
+      "title": "スポット名",
+      "area": "エリア名またはnull",
+      "timeStart": "推奨開始時刻（HH:MM形式）またはnull",
+      "reason": "この順番にした理由（20文字程度）"
+    }
+  ],
+  "totalSavings": "最適化による改善点（例: 約30分短縮）",
+  "warnings": ["注意事項があれば配列で。なければ空配列"]
+}
+
+重要:
+- optimizedOrderには全てのスポットを含めてください
+- idは入力で与えられたものをそのまま使用
+- 理由は簡潔に、日本語で`;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (c.env.AI as any).run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 2048,
+    });
+
+    // Extract JSON from response
+    const responseText = typeof response === 'object' && 'response' in response
+      ? (response as { response: string }).response
+      : String(response);
+
+    // Try to parse JSON from the response
+    let optimizationData: {
+      optimizedOrder: OptimizedItem[];
+      totalSavings: string;
+      warnings: string[];
+    };
+
+    try {
+      // Find JSON in the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      optimizationData = JSON.parse(jsonMatch[0]);
+    } catch {
+      console.error('Failed to parse AI response:', responseText);
+      return c.json({ error: 'AIの応答を解析できませんでした' }, 500);
+    }
+
+    // Validate that all item IDs are present
+    const returnedIds = new Set(optimizationData.optimizedOrder.map(item => item.id));
+    const originalIds = new Set(items.map(item => item.id));
+
+    // Check if returned IDs match original IDs
+    const missingIds = [...originalIds].filter(id => !returnedIds.has(id));
+    const extraIds = [...returnedIds].filter(id => !originalIds.has(id));
+
+    if (missingIds.length > 0 || extraIds.length > 0) {
+      // Try to fix by ensuring all original items are included
+      const fixedOrder: OptimizedItem[] = [];
+      const usedIds = new Set<string>();
+
+      for (const optimizedItem of optimizationData.optimizedOrder) {
+        if (originalIds.has(optimizedItem.id) && !usedIds.has(optimizedItem.id)) {
+          fixedOrder.push(optimizedItem);
+          usedIds.add(optimizedItem.id);
+        }
+      }
+
+      // Add any missing items at the end
+      for (const item of items) {
+        if (!usedIds.has(item.id)) {
+          fixedOrder.push({
+            id: item.id,
+            title: item.title,
+            area: item.area,
+            timeStart: item.timeStart,
+            reason: '順序維持',
+          });
+        }
+      }
+
+      optimizationData.optimizedOrder = fixedOrder;
+    }
+
+    // Record AI usage
+    const usageId = generateId();
+    await c.env.DB.prepare(
+      'INSERT INTO ai_usage (id, user_id, ip_address) VALUES (?, ?, ?)'
+    ).bind(usageId, user.id, ip).run();
+
+    // Calculate remaining uses
+    const userRemaining = AI_DAILY_LIMIT_USER - userUsedToday - 1;
+    const ipRemaining = AI_DAILY_LIMIT_IP - ipUsedToday - 1;
+    const remaining = Math.min(userRemaining, ipRemaining);
+
+    return c.json({
+      originalOrder: items.map(item => ({
+        id: item.id,
+        title: item.title,
+        area: item.area,
+      })),
+      optimizedOrder: optimizationData.optimizedOrder,
+      totalSavings: optimizationData.totalSavings || '移動効率が向上します',
+      warnings: optimizationData.warnings || [],
+      remaining,
+    });
+  } catch (error) {
+    console.error('AI optimization error:', error);
+    return c.json({ error: 'ルートの最適化に失敗しました' }, 500);
+  }
+});
+
+// Apply optimized route
+app.post('/api/trips/:tripId/days/:dayId/apply-optimization', async (c) => {
+  const { tripId, dayId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{ itemIds: string[] }>();
+
+  // Check if user can edit this trip
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Verify day exists and belongs to this trip
+  const day = await c.env.DB.prepare(
+    'SELECT id FROM days WHERE id = ? AND trip_id = ?'
+  ).bind(dayId, tripId).first<{ id: string }>();
+
+  if (!day) {
+    return c.json({ error: 'Day not found' }, 404);
+  }
+
+  if (!body.itemIds || !Array.isArray(body.itemIds) || body.itemIds.length === 0) {
+    return c.json({ error: 'itemIds is required' }, 400);
+  }
+
+  // Verify all items exist and belong to this day
+  const placeholders = body.itemIds.map(() => '?').join(',');
+  const { results: existingItems } = await c.env.DB.prepare(
+    `SELECT id FROM items WHERE id IN (${placeholders}) AND day_id = ? AND trip_id = ?`
+  ).bind(...body.itemIds, dayId, tripId).all<{ id: string }>();
+
+  const existingIds = new Set(existingItems.map(item => item.id));
+  const invalidIds = body.itemIds.filter(id => !existingIds.has(id));
+
+  if (invalidIds.length > 0) {
+    return c.json({ error: `Invalid item IDs: ${invalidIds.join(', ')}` }, 400);
+  }
+
+  // Update sort order for each item
+  const updates = body.itemIds.map((id, index) =>
+    c.env.DB.prepare(
+      'UPDATE items SET sort = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+    ).bind(index, id)
+  );
+
+  await c.env.DB.batch(updates);
+
+  // Return updated items
+  const { results: updatedItems } = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+            map_url as mapUrl, note, cost, cost_category as costCategory, sort
+     FROM items WHERE day_id = ? AND trip_id = ?
+     ORDER BY sort ASC`
+  ).bind(dayId, tripId).all();
+
+  return c.json({ items: updatedItems });
+});
+
 // Get item photo
 app.get('/api/photos/items/:key', async (c) => {
   const key = `photos/items/${c.req.param('key')}`;

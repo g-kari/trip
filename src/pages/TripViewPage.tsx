@@ -19,6 +19,7 @@ import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 import { TravelModeIndicator } from '../components/TravelModeIndicator'
 import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
+import { OptimizeButton } from '../components/OptimizeButton'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -858,6 +859,13 @@ export function TripViewPage() {
                   <span className="day-date">{dateStr}</span>
                   {isToday && <span className="today-badge">今日</span>}
                   <DayWeather date={day.date} items={items} />
+                  <OptimizeButton
+                    tripId={trip.id}
+                    day={day}
+                    items={items}
+                    onOptimized={() => { if (id) fetchTrip(id) }}
+                    isOwner={isOwner}
+                  />
                 </div>
                 {items.length === 0 ? (
                   <div className="timeline-item">

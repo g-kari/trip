@@ -52,6 +52,7 @@
 @import './components/purchase.css';
 @import './components/spot-suggestions.css';
 @import './components/travel-mode.css';
+@import './components/optimize.css';
 
 /* Pages */
 @import './pages/login.css';
