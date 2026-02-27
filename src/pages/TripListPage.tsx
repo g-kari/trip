@@ -1111,7 +1111,7 @@ export function TripListPage() {
                 <ColorLabelIndicator color={trip.colorLabel} />
                 <div className="trip-card-header">
                   <div className="trip-card-title-row">
-                    {trip.pinned && (
+                    {!!trip.pinned && (
                       <span className="trip-card-pin-indicator" title="ピン留め中">
                         <PinFilledIcon size={14} />
                       </span>
@@ -1182,7 +1182,7 @@ export function TripListPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn-icon duplicate-btn"
+                      className="btn-icon"
                       onClick={(e) => duplicateTrip(trip.id, e)}
                       disabled={duplicatingId === trip.id}
                       title="複製"
@@ -1191,7 +1191,7 @@ export function TripListPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn-icon archive-btn"
+                      className="btn-icon"
                       onClick={(e) => toggleArchive(trip.id, e)}
                       disabled={archivingId === trip.id}
                       title={trip.isArchived ? 'アーカイブ解除' : 'アーカイブ'}

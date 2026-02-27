@@ -33,34 +33,17 @@
   }
 }
 
-/* Archive button on trip card */
-.archive-btn {
-  @apply mt-[var(--space-2)] text-text-faint;
-
-  &:hover {
-    @apply text-text-muted;
-  }
-
-  &:disabled {
-    @apply opacity-50 cursor-not-allowed;
-  }
-}
-
 /* Trip card actions container */
 .trip-card-actions {
   @apply flex items-center gap-[var(--space-1)] mt-[var(--space-2)] flex-wrap;
 }
 
-/* Duplicate button on trip card */
-.duplicate-btn {
+/* Trip card action buttons — override btn-icon color to faint */
+.trip-card-actions .btn-icon {
   @apply text-text-faint;
 
   &:hover {
     @apply text-text-muted;
-  }
-
-  &:disabled {
-    @apply opacity-50 cursor-not-allowed;
   }
 }
 

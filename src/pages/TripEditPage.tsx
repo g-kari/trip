@@ -2156,41 +2156,6 @@ export function TripEditPage() {
         </div>
       )}
 
-      {/* Expense Splitting Section */}
-      <div className="expense-section-wrapper no-print">
-        <div className="expense-button-row">
-          <button
-            type="button"
-            className="btn btn-outline expense-modal-btn"
-            onClick={() => setShowExpenseModal(true)}
-          >
-            <WalletIcon size={16} />
-            <span>割り勘計算</span>
-          </button>
-          <button
-            type="button"
-            className="btn-outline expense-toggle-btn"
-            onClick={() => setShowMemberManager(!showMemberManager)}
-          >
-            {showMemberManager ? '− 詳細を閉じる' : '+ 詳細を表示'}
-          </button>
-        </div>
-
-        {showMemberManager && trip && (
-          <div className="expense-management">
-            <TripMemberManager
-              tripId={trip.id}
-              members={tripMembers}
-              onMembersChange={() => fetchMembers(trip.id)}
-            />
-            <SettlementSummary tripId={trip.id} />
-          </div>
-        )}
-
-        {/* Packing List */}
-        {trip && <PackingList tripId={trip.id} />}
-      </div>
-
       {/* Add day form */}
       <div className="add-day-section no-print">
         {showDayForm ? (
@@ -2302,6 +2267,41 @@ export function TripEditPage() {
                 {generatingDays ? '生成中...' : '日程を自動生成'}
               </button>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Packing List */}
+      {trip && <PackingList tripId={trip.id} />}
+
+      {/* Expense Splitting Section */}
+      <div className="expense-section-wrapper no-print">
+        <div className="expense-button-row">
+          <button
+            type="button"
+            className="btn btn-outline expense-modal-btn"
+            onClick={() => setShowExpenseModal(true)}
+          >
+            <WalletIcon size={16} />
+            <span>割り勘計算</span>
+          </button>
+          <button
+            type="button"
+            className="btn-outline expense-toggle-btn"
+            onClick={() => setShowMemberManager(!showMemberManager)}
+          >
+            {showMemberManager ? '− 詳細を閉じる' : '+ 詳細を表示'}
+          </button>
+        </div>
+
+        {showMemberManager && trip && (
+          <div className="expense-management">
+            <TripMemberManager
+              tripId={trip.id}
+              members={tripMembers}
+              onMembersChange={() => fetchMembers(trip.id)}
+            />
+            <SettlementSummary tripId={trip.id} />
           </div>
         )}
       </div>
