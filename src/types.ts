@@ -101,6 +101,34 @@ export type ItemTemplate = {
   createdAt: string
 }
 
+// Trip template item (for trip templates)
+export type TripTemplateItem = {
+  title: string
+  area?: string | null
+  time_start?: string | null
+  time_end?: string | null
+  cost?: number | null
+  note?: string | null
+  map_url?: string | null
+  cost_category?: string | null
+}
+
+// Trip template day (for trip templates)
+export type TripTemplateDay = {
+  day_offset: number
+  items: TripTemplateItem[]
+}
+
+// Trip template for saving itinerary patterns
+export type TripTemplate = {
+  id: string
+  name: string
+  description: string | null
+  theme: TripTheme
+  daysData: TripTemplateDay[]
+  createdAt: string
+}
+
 export type TripFeedback = {
   id: string
   userId: string | null
@@ -179,4 +207,28 @@ export type SettlementSummary = {
   balances: MemberBalance[]
   settlements: Settlement[]
   totalExpenses: number
+}
+
+// Standalone expense (not tied to a specific item)
+export type StandaloneExpense = {
+  id: string
+  tripId: string
+  itemId: string | null
+  payerId: string
+  payerName: string | null
+  amount: number
+  description: string | null
+  itemTitle: string | null
+  createdAt: string
+  splits: StandaloneExpenseSplit[]
+}
+
+// Split for standalone expense
+export type StandaloneExpenseSplit = {
+  id: string
+  expenseId: string
+  memberId: string
+  memberName: string | null
+  shareType: ShareType
+  shareValue: number | null
 }

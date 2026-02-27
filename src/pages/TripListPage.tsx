@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
 import { PinIcon, PinFilledIcon, CopyIcon } from '../components/Icons'
+import { TemplateListModal } from '../components/TemplateListModal'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -67,6 +68,10 @@ export function TripListPage() {
   // Import state
   const [importing, setImporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  // Template modal state
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
 
   const fetchAiUsage = useCallback(async () => {
     try {
@@ -360,6 +365,33 @@ export function TripListPage() {
     }
   }
 
+  async function createFromTemplate(templateId: string, title: string, startDate: string) {
+    setCreatingFromTemplate(true)
+    try {
+      const res = await fetch(`/api/trips/from-template/${templateId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, startDate }),
+      })
+      const data = (await res.json()) as { tripId?: string; error?: string }
+
+      if (!res.ok) {
+        showError(data.error || 'テンプレートからの作成に失敗しました')
+        return
+      }
+
+      if (data.tripId) {
+        setShowTemplateModal(false)
+        navigate(`/trips/${data.tripId}/edit`)
+      }
+    } catch (err) {
+      console.error('Failed to create from template:', err)
+      showError('テンプレートからの作成に失敗しました')
+    } finally {
+      setCreatingFromTemplate(false)
+    }
+  }
+
   async function handleImport(file: File) {
     if (!file) return
 
@@ -464,13 +496,22 @@ export function TripListPage() {
             {showCreateForm ? 'キャンセル' : '手動で作成'}
           </button>
           {user && (
-            <button
-              className="btn-outline"
-              onClick={() => importInputRef.current?.click()}
-              disabled={importing}
-            >
-              {importing ? 'インポート中...' : 'インポート'}
-            </button>
+            <>
+              <button
+                className="btn-outline"
+                onClick={() => setShowTemplateModal(true)}
+                disabled={creatingFromTemplate}
+              >
+                テンプレートから
+              </button>
+              <button
+                className="btn-outline"
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing}
+              >
+                {importing ? 'インポート中...' : 'インポート'}
+              </button>
+            </>
           )}
           <input
             ref={importInputRef}
@@ -980,6 +1021,13 @@ export function TripListPage() {
             )}
           </div>
         ))
+      )}
+
+      {showTemplateModal && (
+        <TemplateListModal
+          onClose={() => setShowTemplateModal(false)}
+          onSelect={createFromTemplate}
+        />
       )}
     </div>
   )

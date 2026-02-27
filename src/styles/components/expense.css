@@ -9,8 +9,22 @@
   border-top: 1px solid var(--color-border-light);
 }
 
+.expense-button-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.expense-modal-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  justify-content: center;
+}
+
 .expense-toggle-btn {
-  width: 100%;
+  flex: 1;
   text-align: center;
 }
 
@@ -585,4 +599,355 @@
   font-size: var(--font-size-small);
   color: #22c55e;
   text-align: center;
+}
+
+/* ========================================
+   Expense Modal Styles
+   ======================================== */
+
+.expense-modal {
+  max-width: 500px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.expense-modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 0 var(--space-4);
+}
+
+.expense-modal-tab {
+  flex: 1;
+  padding: var(--space-3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.expense-modal-tab:hover {
+  color: var(--color-text);
+}
+
+.expense-modal-tab.active {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+.expense-modal-loading {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.expense-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) 0;
+}
+
+.expense-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.expense-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.expense-section-title {
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.expense-empty-text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+/* Participant List */
+.expense-participant-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.expense-participant-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-s);
+  margin-bottom: var(--space-2);
+}
+
+.expense-participant-name {
+  font-size: var(--font-size-small);
+  color: var(--color-text);
+}
+
+.expense-add-participant {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.expense-add-participant .input {
+  flex: 1;
+}
+
+/* Expense Form */
+.expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.expense-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.expense-form-label {
+  font-size: var(--font-size-caption);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.expense-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Expense List */
+.expense-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.expense-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-s);
+  margin-bottom: var(--space-2);
+}
+
+.expense-list-item-main {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.expense-list-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expense-list-item-payer {
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.expense-list-item-desc {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.expense-list-item-amount {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.expense-delete-btn {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+/* Settlement Styles */
+.expense-settlement-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border-radius: var(--radius-s);
+}
+
+.expense-settlement-total-label {
+  font-size: var(--font-size-small);
+  color: var(--color-text);
+}
+
+.expense-settlement-total-amount {
+  font-size: var(--font-size-large);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.expense-settlement-actions {
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border-radius: var(--radius-s);
+}
+
+.expense-settlement-subtitle {
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  color: var(--color-text);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.expense-settlement-description {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.expense-settlement-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.expense-settlement-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-s);
+  margin-bottom: var(--space-2);
+}
+
+.expense-settlement-item:last-child {
+  margin-bottom: 0;
+}
+
+.expense-settlement-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-small);
+}
+
+.expense-settlement-from,
+.expense-settlement-to {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.expense-settlement-arrow {
+  color: var(--color-text-muted);
+}
+
+.expense-settlement-amount {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.expense-settlement-settled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: var(--radius-s);
+  color: #22c55e;
+  font-size: var(--font-size-small);
+}
+
+.expense-settlement-settled-icon {
+  font-weight: 600;
+}
+
+.expense-settlement-balances {
+  margin-top: var(--space-4);
+}
+
+.expense-balance-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0 0;
+}
+
+.expense-balance-item {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-s);
+  margin-bottom: var(--space-2);
+}
+
+.expense-balance-item:last-child {
+  margin-bottom: 0;
+}
+
+.expense-balance-name {
+  display: block;
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.expense-balance-details {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.expense-balance-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expense-balance-label {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.expense-balance-value {
+  font-size: var(--font-size-small);
+  color: var(--color-text);
+}
+
+.expense-balance-detail.balance .expense-balance-value {
+  font-weight: 600;
+}
+
+.expense-balance-detail.balance.positive .expense-balance-value {
+  color: #22c55e;
+}
+
+.expense-balance-detail.balance.negative .expense-balance-value {
+  color: #ef4444;
 }

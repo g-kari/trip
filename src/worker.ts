@@ -3337,6 +3337,280 @@ app.get('/api/trips/:id/template', async (c) => {
   });
 });
 
+// ============ User Trip Templates ============
+
+// Types for trip templates
+type TripTemplateItem = {
+  title: string;
+  area?: string | null;
+  time_start?: string | null;
+  time_end?: string | null;
+  cost?: number | null;
+  note?: string | null;
+  map_url?: string | null;
+  cost_category?: string | null;
+};
+
+type TripTemplateDay = {
+  day_offset: number;
+  items: TripTemplateItem[];
+};
+
+// Get user's trip templates
+app.get('/api/trip-templates', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, name, description, theme, days_data as daysData, created_at as createdAt
+     FROM trip_templates
+     WHERE user_id = ?
+     ORDER BY created_at DESC`
+  ).bind(user.id).all<{
+    id: string;
+    name: string;
+    description: string | null;
+    theme: string;
+    daysData: string;
+    createdAt: string;
+  }>();
+
+  // Parse days_data JSON for each template
+  const templates = results.map(t => ({
+    ...t,
+    daysData: JSON.parse(t.daysData || '[]') as TripTemplateDay[],
+  }));
+
+  return c.json({ templates });
+});
+
+// Create trip template from existing trip
+app.post('/api/trip-templates', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{
+    tripId: string;
+    name: string;
+    description?: string;
+  }>();
+
+  if (!body.tripId || !body.name?.trim()) {
+    return c.json({ error: '旅程IDとテンプレート名は必須です' }, 400);
+  }
+
+  // Get the trip
+  const trip = await c.env.DB.prepare(
+    `SELECT id, theme, user_id as userId FROM trips WHERE id = ?`
+  ).bind(body.tripId).first<{ id: string; theme: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅程が見つかりません' }, 404);
+  }
+
+  // Check ownership or collaborator access
+  if (trip.userId !== user.id) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(body.tripId, user.id).first();
+    if (!collab) {
+      return c.json({ error: 'アクセスが拒否されました' }, 403);
+    }
+  }
+
+  // Get days with items for this trip
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(body.tripId).all<{ id: string; date: string; sort: number }>();
+
+  const { results: items } = await c.env.DB.prepare(
+    `SELECT day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(body.tripId).all<{
+    day_id: string;
+    title: string;
+    area: string | null;
+    time_start: string | null;
+    time_end: string | null;
+    map_url: string | null;
+    note: string | null;
+    cost: number | null;
+    cost_category: string | null;
+    sort: number;
+  }>();
+
+  // Build days_data JSON structure
+  const daysData: TripTemplateDay[] = days.map((day, index) => {
+    const dayItems = items
+      .filter(item => item.day_id === day.id)
+      .map(item => ({
+        title: item.title,
+        area: item.area,
+        time_start: item.time_start,
+        time_end: item.time_end,
+        cost: item.cost,
+        note: item.note,
+        map_url: item.map_url,
+        cost_category: item.cost_category,
+      }));
+
+    return {
+      day_offset: index,
+      items: dayItems,
+    };
+  });
+
+  const templateId = generateId();
+
+  await c.env.DB.prepare(
+    `INSERT INTO trip_templates (id, user_id, name, description, theme, days_data)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(
+    templateId,
+    user.id,
+    body.name.trim(),
+    body.description?.trim() || null,
+    trip.theme || 'quiet',
+    JSON.stringify(daysData)
+  ).run();
+
+  return c.json({
+    template: {
+      id: templateId,
+      name: body.name.trim(),
+      description: body.description?.trim() || null,
+      theme: trip.theme || 'quiet',
+      daysData,
+    }
+  }, 201);
+});
+
+// Delete trip template
+app.delete('/api/trip-templates/:id', async (c) => {
+  const templateId = c.req.param('id');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const template = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trip_templates WHERE id = ?'
+  ).bind(templateId).first<{ id: string; userId: string }>();
+
+  if (!template) {
+    return c.json({ error: 'テンプレートが見つかりません' }, 404);
+  }
+
+  if (template.userId !== user.id) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  await c.env.DB.prepare('DELETE FROM trip_templates WHERE id = ?').bind(templateId).run();
+
+  return c.json({ ok: true });
+});
+
+// Create trip from user's trip template
+app.post('/api/trips/from-template/:templateId', async (c) => {
+  const templateId = c.req.param('templateId');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{
+    title: string;
+    startDate: string;
+  }>();
+
+  if (!body.title?.trim() || !body.startDate) {
+    return c.json({ error: 'タイトルと開始日は必須です' }, 400);
+  }
+
+  // Get the template
+  const template = await c.env.DB.prepare(
+    `SELECT id, user_id as userId, name, theme, days_data as daysData
+     FROM trip_templates WHERE id = ?`
+  ).bind(templateId).first<{
+    id: string;
+    userId: string;
+    name: string;
+    theme: string;
+    daysData: string;
+  }>();
+
+  if (!template) {
+    return c.json({ error: 'テンプレートが見つかりません' }, 404);
+  }
+
+  // Only owner can use their templates
+  if (template.userId !== user.id) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  const daysData = JSON.parse(template.daysData || '[]') as TripTemplateDay[];
+
+  // Calculate end date based on number of days
+  const startDate = new Date(body.startDate);
+  const dayCount = daysData.length || 1;
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + dayCount - 1);
+  const endDateStr = endDate.toISOString().split('T')[0];
+
+  // Create new trip
+  const tripId = generateId();
+
+  await c.env.DB.prepare(
+    `INSERT INTO trips (id, title, start_date, end_date, theme, user_id, is_template, template_uses)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 0)`
+  ).bind(tripId, body.title.trim(), body.startDate, endDateStr, template.theme, user.id).run();
+
+  // Create days and items
+  for (let i = 0; i < daysData.length; i++) {
+    const dayTemplate = daysData[i];
+    const dayId = generateId();
+    const dayDate = new Date(startDate);
+    dayDate.setDate(dayDate.getDate() + (dayTemplate.day_offset ?? i));
+    const dayDateStr = dayDate.toISOString().split('T')[0];
+
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+    ).bind(dayId, tripId, dayDateStr, i).run();
+
+    // Create items for this day
+    for (let j = 0; j < (dayTemplate.items || []).length; j++) {
+      const itemTemplate = dayTemplate.items[j];
+      const itemId = generateId();
+
+      await c.env.DB.prepare(
+        `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, note, cost, cost_category, sort)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        itemId,
+        tripId,
+        dayId,
+        itemTemplate.title,
+        itemTemplate.area || null,
+        itemTemplate.time_start || null,
+        itemTemplate.time_end || null,
+        itemTemplate.map_url || null,
+        itemTemplate.note || null,
+        itemTemplate.cost || null,
+        itemTemplate.cost_category || null,
+        j
+      ).run();
+    }
+  }
+
+  return c.json({ tripId }, 201);
+});
+
 // ============ Feedback ============
 
 // Submit feedback (public endpoint)
@@ -4534,6 +4808,656 @@ app.get('/api/trips/:tripId/settlement', async (c) => {
   });
 });
 
+// ============ Standalone Expenses ============
+
+// Get all expenses for a trip (combined item-based and standalone)
+app.get('/api/trips/:tripId/expenses', async (c) => {
+  const { tripId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    const shareToken = c.req.query('token');
+    if (shareToken) {
+      const share = await c.env.DB.prepare(
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ?'
+      ).bind(shareToken, tripId).first();
+      hasAccess = !!share;
+    }
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Get standalone expenses
+  const { results: standaloneExpenses } = await c.env.DB.prepare(
+    `SELECT e.id, e.trip_id as tripId, e.item_id as itemId, e.payer_id as payerId,
+            e.amount, e.description, e.created_at as createdAt,
+            m.name as payerName, i.title as itemTitle
+     FROM standalone_expenses e
+     LEFT JOIN trip_members m ON e.payer_id = m.id
+     LEFT JOIN items i ON e.item_id = i.id
+     WHERE e.trip_id = ?
+     ORDER BY e.created_at DESC`
+  ).bind(tripId).all<{
+    id: string;
+    tripId: string;
+    itemId: string | null;
+    payerId: string;
+    amount: number;
+    description: string | null;
+    createdAt: string;
+    payerName: string | null;
+    itemTitle: string | null;
+  }>();
+
+  // Get splits for standalone expenses
+  const expenseIds = standaloneExpenses.map(e => e.id);
+  let expenseSplits: {
+    id: string;
+    expenseId: string;
+    memberId: string;
+    shareType: string;
+    shareValue: number | null;
+    memberName: string | null;
+  }[] = [];
+
+  if (expenseIds.length > 0) {
+    const placeholders = expenseIds.map(() => '?').join(',');
+    const { results } = await c.env.DB.prepare(
+      `SELECT s.id, s.expense_id as expenseId, s.member_id as memberId,
+              s.share_type as shareType, s.share_value as shareValue,
+              m.name as memberName
+       FROM standalone_expense_splits s
+       LEFT JOIN trip_members m ON s.member_id = m.id
+       WHERE s.expense_id IN (${placeholders})`
+    ).bind(...expenseIds).all<{
+      id: string;
+      expenseId: string;
+      memberId: string;
+      shareType: string;
+      shareValue: number | null;
+      memberName: string | null;
+    }>();
+    expenseSplits = results;
+  }
+
+  // Attach splits to expenses
+  const expensesWithSplits = standaloneExpenses.map(expense => ({
+    ...expense,
+    splits: expenseSplits.filter(s => s.expenseId === expense.id),
+  }));
+
+  return c.json({ expenses: expensesWithSplits });
+});
+
+// Add a standalone expense
+app.post('/api/trips/:tripId/expenses', async (c) => {
+  const { tripId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access (must be owner or collaborator)
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  const body = await c.req.json<{
+    payerId: string;
+    amount: number;
+    description?: string;
+    itemId?: string;
+    splits?: { memberId: string; shareType: 'equal' | 'percentage' | 'amount'; shareValue?: number }[];
+  }>();
+
+  if (!body.payerId || typeof body.amount !== 'number' || body.amount <= 0) {
+    return c.json({ error: '支払者と金額は必須です' }, 400);
+  }
+
+  // Verify payer is a member
+  const payer = await c.env.DB.prepare(
+    'SELECT id FROM trip_members WHERE id = ? AND trip_id = ?'
+  ).bind(body.payerId, tripId).first();
+
+  if (!payer) {
+    return c.json({ error: '支払者が見つかりません' }, 400);
+  }
+
+  // Verify item belongs to trip if provided
+  if (body.itemId) {
+    const item = await c.env.DB.prepare(
+      'SELECT id FROM items WHERE id = ? AND trip_id = ?'
+    ).bind(body.itemId, tripId).first();
+
+    if (!item) {
+      return c.json({ error: 'アイテムが見つかりません' }, 400);
+    }
+  }
+
+  const expenseId = crypto.randomUUID();
+
+  // Insert expense
+  await c.env.DB.prepare(
+    `INSERT INTO standalone_expenses (id, trip_id, item_id, payer_id, amount, description)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(expenseId, tripId, body.itemId || null, body.payerId, body.amount, body.description || null).run();
+
+  // Insert splits if provided
+  if (body.splits && body.splits.length > 0) {
+    for (const split of body.splits) {
+      const splitId = crypto.randomUUID();
+      await c.env.DB.prepare(
+        `INSERT INTO standalone_expense_splits (id, expense_id, member_id, share_type, share_value)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind(splitId, expenseId, split.memberId, split.shareType, split.shareValue ?? null).run();
+    }
+  }
+
+  // Fetch the created expense with payer name
+  const expense = await c.env.DB.prepare(
+    `SELECT e.id, e.trip_id as tripId, e.item_id as itemId, e.payer_id as payerId,
+            e.amount, e.description, e.created_at as createdAt,
+            m.name as payerName
+     FROM standalone_expenses e
+     LEFT JOIN trip_members m ON e.payer_id = m.id
+     WHERE e.id = ?`
+  ).bind(expenseId).first();
+
+  return c.json({ expense }, 201);
+});
+
+// Update a standalone expense
+app.put('/api/trips/:tripId/expenses/:expenseId', async (c) => {
+  const { tripId, expenseId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Verify expense exists and belongs to this trip
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM standalone_expenses WHERE id = ? AND trip_id = ?'
+  ).bind(expenseId, tripId).first();
+
+  if (!existing) {
+    return c.json({ error: '費用が見つかりません' }, 404);
+  }
+
+  const body = await c.req.json<{
+    payerId?: string;
+    amount?: number;
+    description?: string;
+    itemId?: string | null;
+    splits?: { memberId: string; shareType: 'equal' | 'percentage' | 'amount'; shareValue?: number }[];
+  }>();
+
+  // Build update query
+  const updates: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  if (body.payerId) {
+    // Verify payer is a member
+    const payer = await c.env.DB.prepare(
+      'SELECT id FROM trip_members WHERE id = ? AND trip_id = ?'
+    ).bind(body.payerId, tripId).first();
+    if (!payer) {
+      return c.json({ error: '支払者が見つかりません' }, 400);
+    }
+    updates.push('payer_id = ?');
+    values.push(body.payerId);
+  }
+
+  if (typeof body.amount === 'number') {
+    if (body.amount <= 0) {
+      return c.json({ error: '金額は正の数である必要があります' }, 400);
+    }
+    updates.push('amount = ?');
+    values.push(body.amount);
+  }
+
+  if (body.description !== undefined) {
+    updates.push('description = ?');
+    values.push(body.description || null);
+  }
+
+  if (body.itemId !== undefined) {
+    if (body.itemId) {
+      const item = await c.env.DB.prepare(
+        'SELECT id FROM items WHERE id = ? AND trip_id = ?'
+      ).bind(body.itemId, tripId).first();
+      if (!item) {
+        return c.json({ error: 'アイテムが見つかりません' }, 400);
+      }
+    }
+    updates.push('item_id = ?');
+    values.push(body.itemId || null);
+  }
+
+  if (updates.length > 0) {
+    values.push(expenseId);
+    await c.env.DB.prepare(
+      `UPDATE standalone_expenses SET ${updates.join(', ')} WHERE id = ?`
+    ).bind(...values).run();
+  }
+
+  // Update splits if provided
+  if (body.splits !== undefined) {
+    // Delete existing splits
+    await c.env.DB.prepare(
+      'DELETE FROM standalone_expense_splits WHERE expense_id = ?'
+    ).bind(expenseId).run();
+
+    // Insert new splits
+    for (const split of body.splits) {
+      const splitId = crypto.randomUUID();
+      await c.env.DB.prepare(
+        `INSERT INTO standalone_expense_splits (id, expense_id, member_id, share_type, share_value)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind(splitId, expenseId, split.memberId, split.shareType, split.shareValue ?? null).run();
+    }
+  }
+
+  return c.json({ success: true });
+});
+
+// Delete a standalone expense
+app.delete('/api/trips/:tripId/expenses/:expenseId', async (c) => {
+  const { tripId, expenseId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Verify expense exists
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM standalone_expenses WHERE id = ? AND trip_id = ?'
+  ).bind(expenseId, tripId).first();
+
+  if (!existing) {
+    return c.json({ error: '費用が見つかりません' }, 404);
+  }
+
+  // Delete expense (cascade will delete splits)
+  await c.env.DB.prepare(
+    'DELETE FROM standalone_expenses WHERE id = ?'
+  ).bind(expenseId).run();
+
+  return c.json({ success: true });
+});
+
+// Get combined settlement (including standalone expenses)
+app.get('/api/trips/:tripId/combined-settlement', async (c) => {
+  const { tripId } = c.req.param();
+  const user = c.get('user');
+
+  // Check access
+  const trip = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
+
+  if (!trip) {
+    return c.json({ error: '旅行が見つかりません' }, 404);
+  }
+
+  let hasAccess = !trip.userId || (user && trip.userId === user.id);
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+
+  if (!hasAccess) {
+    const shareToken = c.req.query('token');
+    if (shareToken) {
+      const share = await c.env.DB.prepare(
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ?'
+      ).bind(shareToken, tripId).first();
+      hasAccess = !!share;
+    }
+  }
+
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
+  }
+
+  // Get all members
+  const { results: members } = await c.env.DB.prepare(
+    `SELECT id, trip_id as tripId, user_id as userId, name, created_at as createdAt
+     FROM trip_members WHERE trip_id = ? ORDER BY created_at ASC`
+  ).bind(tripId).all<{
+    id: string;
+    tripId: string;
+    userId: string | null;
+    name: string;
+    createdAt: string;
+  }>();
+
+  if (members.length === 0) {
+    return c.json({
+      members: [],
+      balances: [],
+      settlements: [],
+      totalExpenses: 0,
+    });
+  }
+
+  // Get item-based payments
+  const { results: itemPayments } = await c.env.DB.prepare(
+    `SELECT p.id, p.item_id as itemId, p.paid_by as paidBy, p.amount,
+            i.cost, i.title
+     FROM expense_payments p
+     INNER JOIN items i ON p.item_id = i.id
+     WHERE i.trip_id = ?`
+  ).bind(tripId).all<{
+    id: string;
+    itemId: string;
+    paidBy: string;
+    amount: number;
+    cost: number | null;
+    title: string;
+  }>();
+
+  // Get item-based splits
+  const { results: itemSplits } = await c.env.DB.prepare(
+    `SELECT s.id, s.item_id as itemId, s.member_id as memberId, s.share_type as shareType, s.share_value as shareValue,
+            i.cost
+     FROM expense_splits s
+     INNER JOIN items i ON s.item_id = i.id
+     WHERE i.trip_id = ?`
+  ).bind(tripId).all<{
+    id: string;
+    itemId: string;
+    memberId: string;
+    shareType: string;
+    shareValue: number | null;
+    cost: number | null;
+  }>();
+
+  // Get standalone expenses
+  const { results: standaloneExpenses } = await c.env.DB.prepare(
+    `SELECT id, payer_id as payerId, amount, description
+     FROM standalone_expenses WHERE trip_id = ?`
+  ).bind(tripId).all<{
+    id: string;
+    payerId: string;
+    amount: number;
+    description: string | null;
+  }>();
+
+  // Get standalone expense splits
+  const standaloneIds = standaloneExpenses.map(e => e.id);
+  let standaloneSplits: {
+    id: string;
+    expenseId: string;
+    memberId: string;
+    shareType: string;
+    shareValue: number | null;
+  }[] = [];
+
+  if (standaloneIds.length > 0) {
+    const placeholders = standaloneIds.map(() => '?').join(',');
+    const { results } = await c.env.DB.prepare(
+      `SELECT id, expense_id as expenseId, member_id as memberId, share_type as shareType, share_value as shareValue
+       FROM standalone_expense_splits WHERE expense_id IN (${placeholders})`
+    ).bind(...standaloneIds).all<{
+      id: string;
+      expenseId: string;
+      memberId: string;
+      shareType: string;
+      shareValue: number | null;
+    }>();
+    standaloneSplits = results;
+  }
+
+  // Calculate total paid by each member
+  const totalPaidByMember = new Map<string, number>();
+
+  // Item-based payments
+  for (const payment of itemPayments) {
+    const current = totalPaidByMember.get(payment.paidBy) || 0;
+    totalPaidByMember.set(payment.paidBy, current + payment.amount);
+  }
+
+  // Standalone payments
+  for (const expense of standaloneExpenses) {
+    const current = totalPaidByMember.get(expense.payerId) || 0;
+    totalPaidByMember.set(expense.payerId, current + expense.amount);
+  }
+
+  // Calculate total expenses
+  const itemTotal = itemPayments.reduce((sum, p) => sum + p.amount, 0);
+  const standaloneTotal = standaloneExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = itemTotal + standaloneTotal;
+
+  // Calculate what each member owes
+  const totalOwedByMember = new Map<string, number>();
+
+  // Process item-based expenses
+  const splitsByItem = new Map<string, typeof itemSplits>();
+  for (const split of itemSplits) {
+    const existing = splitsByItem.get(split.itemId) || [];
+    existing.push(split);
+    splitsByItem.set(split.itemId, existing);
+  }
+
+  const itemsWithPayments = new Set(itemPayments.map(p => p.itemId));
+  for (const itemId of itemsWithPayments) {
+    const payments = itemPayments.filter(p => p.itemId === itemId);
+    const itemAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+    const splits = splitsByItem.get(itemId) || [];
+
+    if (splits.length === 0) {
+      const sharePerMember = itemAmount / members.length;
+      for (const member of members) {
+        const current = totalOwedByMember.get(member.id) || 0;
+        totalOwedByMember.set(member.id, current + sharePerMember);
+      }
+    } else {
+      const equalSplits = splits.filter(s => s.shareType === 'equal');
+      const percentageSplits = splits.filter(s => s.shareType === 'percentage');
+      const amountSplits = splits.filter(s => s.shareType === 'amount');
+
+      let remaining = itemAmount;
+      for (const split of amountSplits) {
+        const amount = split.shareValue || 0;
+        const current = totalOwedByMember.get(split.memberId) || 0;
+        totalOwedByMember.set(split.memberId, current + amount);
+        remaining -= amount;
+      }
+
+      for (const split of percentageSplits) {
+        const percentage = split.shareValue || 0;
+        const amount = (itemAmount * percentage) / 100;
+        const current = totalOwedByMember.get(split.memberId) || 0;
+        totalOwedByMember.set(split.memberId, current + amount);
+        remaining -= amount;
+      }
+
+      if (equalSplits.length > 0 && remaining > 0) {
+        const sharePerMember = remaining / equalSplits.length;
+        for (const split of equalSplits) {
+          const current = totalOwedByMember.get(split.memberId) || 0;
+          totalOwedByMember.set(split.memberId, current + sharePerMember);
+        }
+      }
+    }
+  }
+
+  // Process standalone expenses
+  const splitsByExpense = new Map<string, typeof standaloneSplits>();
+  for (const split of standaloneSplits) {
+    const existing = splitsByExpense.get(split.expenseId) || [];
+    existing.push(split);
+    splitsByExpense.set(split.expenseId, existing);
+  }
+
+  for (const expense of standaloneExpenses) {
+    const splits = splitsByExpense.get(expense.id) || [];
+
+    if (splits.length === 0) {
+      // Default: split equally among all members
+      const sharePerMember = expense.amount / members.length;
+      for (const member of members) {
+        const current = totalOwedByMember.get(member.id) || 0;
+        totalOwedByMember.set(member.id, current + sharePerMember);
+      }
+    } else {
+      const equalSplits = splits.filter(s => s.shareType === 'equal');
+      const percentageSplits = splits.filter(s => s.shareType === 'percentage');
+      const amountSplits = splits.filter(s => s.shareType === 'amount');
+
+      let remaining = expense.amount;
+      for (const split of amountSplits) {
+        const amount = split.shareValue || 0;
+        const current = totalOwedByMember.get(split.memberId) || 0;
+        totalOwedByMember.set(split.memberId, current + amount);
+        remaining -= amount;
+      }
+
+      for (const split of percentageSplits) {
+        const percentage = split.shareValue || 0;
+        const amount = (expense.amount * percentage) / 100;
+        const current = totalOwedByMember.get(split.memberId) || 0;
+        totalOwedByMember.set(split.memberId, current + amount);
+        remaining -= amount;
+      }
+
+      if (equalSplits.length > 0 && remaining > 0) {
+        const sharePerMember = remaining / equalSplits.length;
+        for (const split of equalSplits) {
+          const current = totalOwedByMember.get(split.memberId) || 0;
+          totalOwedByMember.set(split.memberId, current + sharePerMember);
+        }
+      }
+    }
+  }
+
+  // Calculate balances
+  const balances = members.map(member => {
+    const totalPaid = totalPaidByMember.get(member.id) || 0;
+    const totalOwed = totalOwedByMember.get(member.id) || 0;
+    return {
+      memberId: member.id,
+      memberName: member.name,
+      totalPaid: Math.round(totalPaid),
+      totalOwed: Math.round(totalOwed),
+      balance: Math.round(totalPaid - totalOwed),
+    };
+  });
+
+  // Calculate optimal settlements
+  const settlements: { from: string; fromName: string; to: string; toName: string; amount: number }[] = [];
+  const debtors = balances.filter(b => b.balance < 0).map(b => ({ ...b }));
+  const creditors = balances.filter(b => b.balance > 0).map(b => ({ ...b }));
+
+  debtors.sort((a, b) => a.balance - b.balance);
+  creditors.sort((a, b) => b.balance - a.balance);
+
+  let debtorIndex = 0;
+  let creditorIndex = 0;
+
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+    const debtor = debtors[debtorIndex];
+    const creditor = creditors[creditorIndex];
+
+    const debtAmount = Math.abs(debtor.balance);
+    const creditAmount = creditor.balance;
+    const settlementAmount = Math.min(debtAmount, creditAmount);
+
+    if (settlementAmount > 0) {
+      settlements.push({
+        from: debtor.memberId,
+        fromName: debtor.memberName,
+        to: creditor.memberId,
+        toName: creditor.memberName,
+        amount: settlementAmount,
+      });
+    }
+
+    debtor.balance += settlementAmount;
+    creditor.balance -= settlementAmount;
+
+    if (Math.abs(debtor.balance) < 1) debtorIndex++;
+    if (creditor.balance < 1) creditorIndex++;
+  }
+
+  return c.json({
+    members,
+    balances,
+    settlements,
+    totalExpenses: Math.round(totalExpenses),
+  });
+});
+
 // ============ Packing List ============
 
 // Get packing items for a trip
@@ -5019,6 +5943,171 @@ app.delete('/api/trips/:tripId/tags/:tag', async (c) => {
   ).bind(tripId).all<{ tag: string }>();
 
   return c.json({ tags: results.map(r => r.tag) });
+});
+
+// ============ Weather API ============
+
+// Weather code descriptions and icons based on WMO codes
+type WeatherInfo = {
+  description: string;
+  icon: string;
+};
+
+function getWeatherInfo(code: number): WeatherInfo {
+  if (code === 0) return { description: '快晴', icon: 'clear' };
+  if (code >= 1 && code <= 3) return { description: '晴れ時々曇り', icon: 'partly_cloudy' };
+  if (code === 45 || code === 48) return { description: '霧', icon: 'fog' };
+  if (code >= 51 && code <= 55) return { description: '霧雨', icon: 'drizzle' };
+  if (code >= 56 && code <= 57) return { description: '凍結霧雨', icon: 'drizzle' };
+  if (code >= 61 && code <= 65) return { description: '雨', icon: 'rain' };
+  if (code >= 66 && code <= 67) return { description: '凍結雨', icon: 'rain' };
+  if (code >= 71 && code <= 77) return { description: '雪', icon: 'snow' };
+  if (code >= 80 && code <= 82) return { description: 'にわか雨', icon: 'showers' };
+  if (code >= 85 && code <= 86) return { description: '雪嵐', icon: 'snow' };
+  if (code >= 95 && code <= 99) return { description: '雷雨', icon: 'thunderstorm' };
+  return { description: '不明', icon: 'unknown' };
+}
+
+// Get weather forecast for a specific location and date
+app.get('/api/weather', async (c) => {
+  const lat = c.req.query('lat');
+  const lon = c.req.query('lon');
+  const date = c.req.query('date');
+
+  if (!lat || !lon || !date) {
+    return c.json({ error: 'lat, lon, date parameters are required' }, 400);
+  }
+
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lon);
+
+  if (isNaN(latitude) || isNaN(longitude)) {
+    return c.json({ error: 'Invalid latitude or longitude' }, 400);
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return c.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, 400);
+  }
+
+  try {
+    // Calculate if date is within forecast range (past 7 days to future 7 days)
+    const targetDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.floor((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Open-Meteo provides up to 16 days forecast
+    if (diffDays < -7 || diffDays > 16) {
+      return c.json({
+        available: false,
+        reason: 'Date is outside the available forecast range (past 7 days to future 16 days)'
+      });
+    }
+
+    // Use Open-Meteo API
+    const apiUrl = new URL('https://api.open-meteo.com/v1/forecast');
+    apiUrl.searchParams.set('latitude', latitude.toString());
+    apiUrl.searchParams.set('longitude', longitude.toString());
+    apiUrl.searchParams.set('daily', 'weather_code,temperature_2m_max,temperature_2m_min');
+    apiUrl.searchParams.set('timezone', 'Asia/Tokyo');
+    apiUrl.searchParams.set('start_date', date);
+    apiUrl.searchParams.set('end_date', date);
+
+    // For past dates, use archive API
+    if (diffDays < 0) {
+      apiUrl.hostname = 'archive-api.open-meteo.com';
+    }
+
+    const response = await fetch(apiUrl.toString());
+
+    if (!response.ok) {
+      console.error('Open-Meteo API error:', response.status, await response.text());
+      return c.json({ available: false, reason: 'Weather data not available' });
+    }
+
+    const data = await response.json() as {
+      daily?: {
+        weather_code?: number[];
+        temperature_2m_max?: number[];
+        temperature_2m_min?: number[];
+      };
+    };
+
+    if (!data.daily || !data.daily.weather_code || data.daily.weather_code.length === 0) {
+      return c.json({ available: false, reason: 'No weather data for this date' });
+    }
+
+    const weatherCode = data.daily.weather_code[0];
+    const tempMax = data.daily.temperature_2m_max?.[0];
+    const tempMin = data.daily.temperature_2m_min?.[0];
+    const weatherInfo = getWeatherInfo(weatherCode);
+
+    return c.json({
+      available: true,
+      date,
+      weatherCode,
+      description: weatherInfo.description,
+      icon: weatherInfo.icon,
+      temperatureMax: tempMax,
+      temperatureMin: tempMin,
+    });
+  } catch (error) {
+    console.error('Weather API error:', error);
+    return c.json({ available: false, reason: 'Failed to fetch weather data' });
+  }
+});
+
+// Geocode API - Convert location name to coordinates
+app.get('/api/geocode', async (c) => {
+  const query = c.req.query('q');
+
+  if (!query) {
+    return c.json({ error: 'q parameter is required' }, 400);
+  }
+
+  try {
+    // Use Nominatim API for geocoding
+    const apiUrl = new URL('https://nominatim.openstreetmap.org/search');
+    apiUrl.searchParams.set('q', query);
+    apiUrl.searchParams.set('format', 'json');
+    apiUrl.searchParams.set('limit', '1');
+    apiUrl.searchParams.set('accept-language', 'ja');
+
+    const response = await fetch(apiUrl.toString(), {
+      headers: {
+        'User-Agent': 'TripItinerary/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('Nominatim API error:', response.status);
+      return c.json({ found: false, reason: 'Geocoding service error' });
+    }
+
+    const data = await response.json() as Array<{
+      lat: string;
+      lon: string;
+      display_name: string;
+    }>;
+
+    if (!data || data.length === 0) {
+      return c.json({ found: false, reason: 'Location not found' });
+    }
+
+    const result = data[0];
+    return c.json({
+      found: true,
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+      displayName: result.display_name,
+    });
+  } catch (error) {
+    console.error('Geocode API error:', error);
+    return c.json({ found: false, reason: 'Failed to geocode location' });
+  }
 });
 
 // SPA routes - serve index.html for client-side routing

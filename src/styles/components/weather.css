@@ -1,0 +1,152 @@
+/* Weather Component Styles */
+
+/* Weather color tokens */
+:root {
+  --color-weather-sun: #f59e0b;
+  --color-weather-cloud: #94a3b8;
+  --color-weather-rain: #3b82f6;
+  --color-weather-snow: #60a5fa;
+  --color-weather-lightning: #fbbf24;
+}
+
+/* Dark mode adjustments */
+[data-color-mode="dark"] {
+  --color-weather-sun: #fbbf24;
+  --color-weather-cloud: #64748b;
+  --color-weather-rain: #60a5fa;
+  --color-weather-snow: #93c5fd;
+  --color-weather-lightning: #fcd34d;
+}
+
+/* Weather badge container */
+.weather-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+/* Size variants */
+.weather-badge-small {
+  gap: 2px;
+}
+
+.weather-badge-small .weather-icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.weather-badge-medium {
+  gap: var(--space-1);
+}
+
+.weather-badge-medium .weather-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.weather-badge-large {
+  gap: var(--space-2);
+  font-size: 0.875rem;
+}
+
+.weather-badge-large .weather-icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Weather icon SVG */
+.weather-icon-svg {
+  flex-shrink: 0;
+}
+
+/* Temperature display */
+.weather-temp {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Loading animation */
+.weather-loading {
+  animation: weather-spin 1s linear infinite;
+}
+
+@keyframes weather-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Weather in day header */
+.day-header .weather-badge {
+  margin-left: var(--space-2);
+}
+
+/* Weather tooltip on hover */
+.weather-badge[title] {
+  cursor: help;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .weather-badge-medium .weather-icon-svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .weather-badge-large .weather-icon-svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .weather-badge {
+    font-size: 0.6875rem;
+  }
+}
+
+/* Weather summary for trip overview */
+.weather-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  margin-bottom: var(--space-4);
+}
+
+.weather-summary-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.weather-summary-date {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Inline weather display in timeline */
+.timeline-weather {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-1);
+}
+
+/* Print styles - hide weather or show as text only */
+@media print {
+  .weather-badge {
+    display: none;
+  }
+}
