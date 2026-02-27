@@ -4,7 +4,6 @@
 
 /* Ensure minimum touch target sizes (44px) */
 @media (pointer: coarse) {
-  /* Larger touch targets for touch devices */
   .btn-outline,
   .btn-filled,
   .btn-text,
@@ -17,46 +16,37 @@
 
   .btn-small {
     min-height: 36px;
-    padding: var(--space-2) var(--space-3);
+    @apply py-[var(--space-2)] px-[var(--space-3)];
   }
 
-  /* Larger drag handle touch area */
   .drag-handle {
     min-width: 56px;
     min-height: 44px;
-    display: flex;
-    align-items: center;
+    @apply flex items-center;
   }
 
-  /* Larger close button for lightbox */
   .album-lightbox-close {
     min-width: 48px;
     min-height: 48px;
     font-size: 1.75rem;
   }
 
-  /* Larger lightbox navigation buttons */
   .album-lightbox-nav {
     min-width: 48px;
     min-height: 64px;
-    padding: var(--space-4);
+    @apply p-[var(--space-4)];
   }
 
-  /* Photo delete buttons more accessible */
   .item-photo-delete,
   .day-photo-delete {
-    width: 32px;
-    height: 32px;
+    @apply size-8 opacity-100;
     font-size: 18px;
-    opacity: 1; /* Always visible on touch */
   }
 
-  /* Inputs with adequate height */
   .input {
     min-height: 44px;
   }
 
-  /* Modal close button */
   .modal-close {
     min-height: 44px;
   }
@@ -64,47 +54,40 @@
 
 /* Small screen adjustments (under 480px) */
 @media (max-width: 480px) {
-  /* Reduce padding on main content */
   .main {
-    padding: var(--space-5) var(--space-4);
+    @apply py-[var(--space-5)] px-[var(--space-4)];
   }
 
-  /* Header adjustments */
   .header {
-    padding: var(--space-4);
+    @apply p-[var(--space-4)];
   }
 
-  /* Hero section adjustments */
   .hero {
     padding: var(--space-6) 0 var(--space-5);
   }
 
   .hero-title {
-    font-size: 1.25rem;
+    @apply text-xl;
   }
 
   .hero-subtitle {
     font-size: 0.8125rem;
   }
 
-  /* Hero actions tighter gap on small screens */
   .hero-actions-row {
-    gap: var(--space-2);
+    @apply gap-[var(--space-2)];
   }
 
   .hero-actions-row .btn-text {
-    padding: var(--space-2);
-    font-size: 0.75rem;
+    @apply p-[var(--space-2)] text-xs;
   }
 
   .hero-actions-row .btn-icon {
-    width: 36px;
-    height: 36px;
+    @apply size-9;
   }
 
-  /* Landing page adjustments */
   .landing-title {
-    font-size: 2rem;
+    @apply text-[2rem];
   }
 
   .landing-tagline {
@@ -112,142 +95,115 @@
   }
 
   .landing-btn {
-    width: 100%;
-    max-width: 280px;
+    @apply w-full max-w-[280px];
   }
 
-  /* Form adjustments */
   .form-row {
-    flex-direction: column;
-    gap: var(--space-2);
+    @apply flex-col gap-[var(--space-2)];
   }
 
   .form-row .input {
-    width: 100%;
+    @apply w-full;
   }
 
   .input-small {
-    max-width: none;
-    width: 100%;
+    @apply max-w-none w-full;
   }
 
   .form-actions {
-    width: 100%;
-    justify-content: flex-end;
-    margin-left: 0;
-    margin-top: var(--space-2);
+    @apply w-full justify-end ml-0 mt-[var(--space-2)];
   }
 
-  /* Date inputs stack on mobile */
   .date-inputs {
-    flex-direction: column;
-    gap: var(--space-2);
+    @apply flex-col gap-[var(--space-2)];
   }
 
   .date-inputs .input {
-    width: 100%;
+    @apply w-full;
   }
 
   .date-separator {
-    display: none;
+    @apply hidden;
   }
 
-  /* Edit trip form full width */
   .edit-trip-form {
-    max-width: 100%;
-    width: 100%;
+    @apply max-w-full w-full;
   }
 
-  /* Theme selector buttons */
   .theme-selector {
-    width: 100%;
-    justify-content: center;
+    @apply w-full justify-center;
   }
 
   .theme-btn {
-    flex: 1;
-    max-width: 140px;
+    @apply flex-1 max-w-[140px];
   }
 
-  /* Timeline adjustments */
   .timeline-item {
     grid-template-columns: 48px 1fr;
-    gap: var(--space-2);
+    @apply gap-[var(--space-2)];
   }
 
   .timeline-time {
-    font-size: 0.75rem;
+    @apply text-xs;
   }
 
   .timeline-title {
-    font-size: 0.875rem;
+    @apply text-sm;
   }
 
   .timeline-meta {
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    @apply flex-wrap gap-[var(--space-2)];
   }
 
-  /* Item actions wrap */
   .item-actions {
-    flex-wrap: wrap;
+    @apply flex-wrap;
   }
 
-  /* Modal full width on mobile */
   .modal {
-    max-width: 100%;
-    margin: var(--space-3);
-    padding: var(--space-5);
+    @apply max-w-full m-[var(--space-3)] p-[var(--space-5)];
   }
 
   .modal-actions {
-    flex-direction: column-reverse;
-    gap: var(--space-2);
+    @apply flex-col-reverse gap-[var(--space-2)];
   }
 
   .modal-actions button {
-    width: 100%;
+    @apply w-full;
   }
 
-  /* Share URL box scroll */
   .share-url-box {
-    max-width: 100%;
+    @apply max-w-full;
   }
 
   .share-url {
-    font-size: 0.75rem;
+    @apply text-xs;
   }
 
-  /* Album grid single column on very small screens */
   .album-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-2);
+    @apply grid-cols-2 gap-[var(--space-2)];
   }
 
   .album-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
+    @apply flex-col items-start gap-[var(--space-3)];
   }
 
   .album-title {
-    font-size: 1rem;
+    @apply text-base;
   }
 
-  /* Lightbox full screen on mobile */
   .album-lightbox {
-    padding: var(--space-3);
+    @apply p-[var(--space-3)];
   }
 
   .album-lightbox-caption {
-    font-size: 0.75rem;
+    @apply text-xs;
     bottom: var(--space-3);
     left: var(--space-3);
     right: var(--space-3);
   }
 
   .album-lightbox-nav {
-    padding: var(--space-2) var(--space-3);
+    @apply py-[var(--space-2)] px-[var(--space-3)];
   }
 
   .album-lightbox-nav.prev {
@@ -258,110 +214,92 @@
     right: var(--space-1);
   }
 
-  /* Day photos grid smaller */
   .day-photos-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: var(--space-2);
+    @apply gap-[var(--space-2)];
   }
 
   .day-photo {
-    height: 80px;
+    @apply h-20;
   }
 
-  /* Total cost */
   .total-cost {
-    padding: var(--space-3);
+    @apply p-[var(--space-3)];
   }
 
-  /* Toast positioning */
   .toast-container {
     bottom: var(--space-4);
     left: var(--space-3);
     right: var(--space-3);
-    transform: none;
-    max-width: none;
+    @apply transform-none max-w-none;
   }
 
-  /* Login container */
   .login-container {
-    padding: var(--space-6) var(--space-4);
+    @apply py-[var(--space-6)] px-[var(--space-4)];
   }
 
   .login-logo {
-    font-size: 1.25rem;
-    margin-bottom: var(--space-6);
+    @apply text-xl mb-[var(--space-6)];
   }
 
-  /* Filter section */
   .search-bar {
-    flex-direction: column;
-    gap: var(--space-2);
+    @apply flex-col gap-[var(--space-2)];
   }
 
   .filter-toggle {
-    width: 100%;
-    text-align: center;
+    @apply w-full text-center;
   }
 
-  /* Section header wrap */
   .section-header {
-    flex-wrap: wrap;
+    @apply flex-wrap;
   }
 
-  /* Trip card */
   .trip-card {
-    padding: var(--space-4);
+    @apply p-[var(--space-4)];
   }
 
   .trip-card-title {
     font-size: 0.9375rem;
   }
 
-  /* AI form */
   .ai-form {
-    padding: var(--space-4);
+    @apply p-[var(--space-4)];
   }
 
   .style-options {
-    flex-direction: column;
+    @apply flex-col;
   }
 
   .style-btn {
-    width: 100%;
-    min-width: auto;
+    @apply w-full min-w-0;
   }
 
-  /* Add day buttons */
   .add-day-buttons {
-    flex-direction: column;
-    align-items: stretch;
+    @apply flex-col items-stretch;
   }
 
   .add-day-buttons .btn-outline,
   .add-day-buttons .btn-text {
-    width: 100%;
-    text-align: center;
+    @apply w-full text-center;
   }
 
-  /* Feature cards */
   .feature {
-    padding: var(--space-3);
+    @apply p-[var(--space-3)];
   }
 
   .feature-icon {
-    font-size: 1.25rem;
+    @apply text-xl;
   }
 
-  /* Footer */
   .footer {
-    padding: var(--space-5) var(--space-4);
+    @apply py-[var(--space-5)] px-[var(--space-4)];
   }
 }
 
 /* Very small screens (under 360px) */
 @media (max-width: 360px) {
   .main {
-    padding: var(--space-4) var(--space-3);
+    @apply py-[var(--space-4)] px-[var(--space-3)];
   }
 
   .hero-title {
@@ -369,15 +307,15 @@
   }
 
   .landing-title {
-    font-size: 1.75rem;
+    @apply text-[1.75rem];
   }
 
   .album-grid {
-    grid-template-columns: 1fr;
+    @apply grid-cols-1;
   }
 
   .day-photos-grid {
-    grid-template-columns: repeat(2, 1fr);
+    @apply grid-cols-2;
   }
 
   .timeline-item {
