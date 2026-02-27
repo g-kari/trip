@@ -16,6 +16,7 @@ import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon,
 import { VoiceInputButton } from '../components/VoiceInputButton'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
+import { CollapsibleSection } from '../components/CollapsibleSection'
 import { SpotSuggestions } from '../components/SpotSuggestions'
 import { TripHistory } from '../components/TripHistory'
 import { MarkdownText } from '../components/MarkdownText'
@@ -666,7 +667,6 @@ export function TripEditPage() {
 
   // Trip members for expense splitting
   const [tripMembers, setTripMembers] = useState<TripMember[]>([])
-  const [showMemberManager, setShowMemberManager] = useState(false)
 
   // Auto-generate days state
   const [generatingDays, setGeneratingDays] = useState(false)
@@ -2270,36 +2270,26 @@ export function TripEditPage() {
       {trip && <PackingList tripId={trip.id} />}
 
       {/* Expense Splitting Section */}
-      <div className="expense-section-wrapper no-print">
-        <div className="expense-button-row">
-          <button
-            type="button"
-            className="btn btn-outline expense-modal-btn"
-            onClick={() => setShowExpenseModal(true)}
-          >
-            <WalletIcon size={16} />
-            <span>割り勘計算</span>
-          </button>
-          <button
-            type="button"
-            className="btn-outline expense-toggle-btn"
-            onClick={() => setShowMemberManager(!showMemberManager)}
-          >
-            {showMemberManager ? '− 詳細を閉じる' : '+ 詳細を表示'}
-          </button>
-        </div>
-
-        {showMemberManager && trip && (
+      {trip && (
+        <CollapsibleSection title="精算・割り勘" defaultOpen={false}>
           <div className="expense-management">
             <TripMemberManager
               tripId={trip.id}
               members={tripMembers}
               onMembersChange={() => fetchMembers(trip.id)}
             />
+            <button
+              type="button"
+              className="btn-filled expense-modal-btn"
+              onClick={() => setShowExpenseModal(true)}
+            >
+              <WalletIcon size={16} />
+              <span>費用を記録する</span>
+            </button>
             <SettlementSummary tripId={trip.id} />
           </div>
-        )}
-      </div>
+        </CollapsibleSection>
+      )}
 
       <button
         className="btn-text back-btn no-print"
