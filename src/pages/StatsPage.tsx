@@ -31,6 +31,7 @@ function getThemeLabel(theme: string): string {
   switch (theme) {
     case 'photo': return '写真映え'
     case 'retro': return 'レトロ'
+    case 'natural': return 'ナチュラル'
     default: return 'しずか'
   }
 }
