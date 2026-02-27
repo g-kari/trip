@@ -6257,7 +6257,7 @@ app.post('/api/payment/webhook', async (c) => {
     };
   };
 
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const session = event.data.object;
 
     if (session.payment_status === 'paid') {
@@ -6266,20 +6266,30 @@ app.post('/api/payment/webhook', async (c) => {
       const amount = session.amount_total;
 
       try {
-        // Record purchase
-        const purchaseId = crypto.randomUUID();
-        await c.env.DB.prepare(
-          `INSERT INTO purchases (id, user_id, amount, trip_slots, payment_method, payment_id)
-           VALUES (?, ?, ?, ?, 'stripe', ?)`
-        ).bind(purchaseId, userId, amount, slots, session.id).run();
+        // Check if this payment was already processed (idempotency)
+        const existing = await c.env.DB.prepare(
+          'SELECT id FROM purchases WHERE payment_id = ?'
+        ).bind(session.id).first();
 
-        // Update user's slots and premium status
-        await c.env.DB.prepare(
-          `UPDATE users
-           SET is_premium = 1,
-               purchased_slots = purchased_slots + ?
-           WHERE id = ?`
-        ).bind(slots, userId).run();
+        if (existing) {
+          console.log(`Payment already processed: session=${session.id}`);
+          return c.json({ received: true });
+        }
+
+        // Record purchase and update user in batch
+        const purchaseId = crypto.randomUUID();
+        await c.env.DB.batch([
+          c.env.DB.prepare(
+            `INSERT INTO purchases (id, user_id, amount, trip_slots, payment_method, payment_id)
+             VALUES (?, ?, ?, ?, 'stripe', ?)`
+          ).bind(purchaseId, userId, amount, slots, session.id),
+          c.env.DB.prepare(
+            `UPDATE users
+             SET is_premium = 1,
+                 purchased_slots = purchased_slots + ?
+             WHERE id = ?`
+          ).bind(slots, userId),
+        ]);
 
         console.log(`Payment completed: user=${userId}, slots=${slots}, amount=${amount}`);
       } catch (err) {
