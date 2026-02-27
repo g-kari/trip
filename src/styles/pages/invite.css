@@ -3,58 +3,41 @@
    ======================================== */
 
 .invite-accept-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  text-align: center;
+  @apply flex flex-col items-center justify-center min-h-[60vh] text-center;
 }
 
 .invite-status {
-  padding: var(--space-6);
-  max-width: 400px;
+  @apply p-[var(--space-6)] max-w-[400px];
 }
 
 .invite-loading {
-  color: var(--color-text-muted);
-  font-size: 1rem;
+  @apply text-text-muted text-base;
 }
 
 .invite-title {
-  font-size: 1.25rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  margin-bottom: var(--space-3);
+  @apply text-xl font-[var(--font-weight-medium)] text-text mb-[var(--space-3)];
 }
 
 .invite-trip-title {
-  color: var(--color-text);
-  margin-bottom: var(--space-3);
+  @apply text-text mb-[var(--space-3)];
 }
 
 .invite-redirect {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-  margin-bottom: var(--space-4);
+  @apply text-text-muted text-sm mb-[var(--space-4)];
 }
 
 .invite-message {
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-4);
+  @apply text-text-muted mb-[var(--space-4)];
 }
 
 .invite-success .invite-title {
-  color: var(--color-text);
+  @apply text-text;
 }
 
 .invite-error .invite-title {
-  color: var(--color-danger);
+  @apply text-danger;
 }
 
 .invite-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  align-items: center;
+  @apply flex flex-col gap-[var(--space-3)] items-center;
 }

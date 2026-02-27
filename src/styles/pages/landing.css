@@ -3,80 +3,71 @@
    ======================================== */
 
 .landing-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: var(--space-9) 0 var(--space-7);
+  @apply flex flex-col items-center
+         text-center
+         pt-[var(--space-9)] pb-[var(--space-7)];
 }
 
 .landing-title {
-  font-size: 2.5rem;
-  font-weight: var(--font-weight-normal);
-  letter-spacing: 0.15em;
-  color: var(--color-text);
-  margin-bottom: var(--space-4);
+  @apply text-[2.5rem] font-[var(--font-weight-normal)]
+         tracking-[0.15em]
+         text-text
+         mb-[var(--space-4)];
 }
 
 .landing-tagline {
-  font-size: 1rem;
-  color: var(--color-text-muted);
-  line-height: 2;
+  @apply text-base
+         text-text-muted
+         leading-[2];
 }
 
 .landing-features {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-6) 0;
+  @apply flex flex-col
+         gap-[var(--space-6)]
+         py-[var(--space-6)];
 }
 
 .feature {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: var(--space-4);
+  @apply flex flex-col items-center
+         text-center
+         p-[var(--space-4)];
 }
 
 .feature-icon {
-  font-size: 1.5rem;
-  margin-bottom: var(--space-3);
+  @apply text-2xl
+         mb-[var(--space-3)];
 }
 
 .feature-title {
-  font-size: 0.9375rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  margin-bottom: var(--space-2);
+  @apply text-[0.9375rem] font-medium
+         text-text
+         mb-[var(--space-2)];
 }
 
 .feature-desc {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  line-height: 1.8;
+  @apply text-[0.8125rem]
+         text-text-muted
+         leading-[1.8];
 }
 
 .landing-cta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-7) 0;
+  @apply flex flex-col items-center
+         py-[var(--space-7)];
 }
 
 .landing-btn {
-  min-width: 200px;
-  padding: var(--space-4) var(--space-6);
-  font-size: 1rem;
+  @apply min-w-[200px]
+         py-[var(--space-4)] px-[var(--space-6)]
+         text-base;
 }
 
 .landing-note {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  margin-top: var(--space-3);
+  @apply text-xs
+         text-text-faint
+         mt-[var(--space-3)];
 }
 
 .landing-loading {
-  font-size: 0.875rem;
-  color: var(--color-text-faint);
+  @apply text-sm
+         text-text-faint;
 }
