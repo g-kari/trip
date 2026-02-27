@@ -84,6 +84,9 @@ app.get('/api/auth/me', (c) => {
       id: user.id,
       name: user.name,
       avatarUrl: user.avatarUrl,
+      isPremium: !!user.isPremium,
+      freeSlots: user.freeSlots ?? 3,
+      purchasedSlots: user.purchasedSlots ?? 0,
     },
   });
 });

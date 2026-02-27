@@ -64,7 +64,9 @@ export async function getUserBySession(
   const user = await db
     .prepare(
       `SELECT id, provider, provider_id as providerId, email, name,
-              avatar_url as avatarUrl, created_at as createdAt
+              avatar_url as avatarUrl, created_at as createdAt,
+              is_premium as isPremium, free_slots as freeSlots,
+              purchased_slots as purchasedSlots
        FROM users WHERE id = ?`
     )
     .bind(session.userId)

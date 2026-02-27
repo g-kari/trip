@@ -7,6 +7,8 @@ import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
 import { PinIcon, PinFilledIcon, CopyIcon } from '../components/Icons'
 import { TemplateListModal } from '../components/TemplateListModal'
+import { AdBanner } from '../components/AdBanner'
+import { shouldShowAd } from '../utils/adUtils'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -938,89 +940,99 @@ export function TripListPage() {
           </button>
         </div>
       ) : (
-        trips.map((trip) => (
-          <div
-            key={trip.id}
-            className={`trip-card ${trip.isArchived ? 'trip-card-archived' : ''} ${trip.pinned ? 'trip-card-pinned' : ''}`}
-            onClick={() => navigate(`/trips/${trip.id}`)}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="trip-card-header">
-              <div className="trip-card-title-row">
-                {trip.pinned && (
-                  <span className="trip-card-pin-indicator" title="ピン留め中">
-                    <PinFilledIcon size={14} />
-                  </span>
+        <>
+          {trips.map((trip, index) => (
+            <div key={trip.id}>
+              <div
+                className={`trip-card ${trip.isArchived ? 'trip-card-archived' : ''} ${trip.pinned ? 'trip-card-pinned' : ''}`}
+                onClick={() => navigate(`/trips/${trip.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="trip-card-header">
+                  <div className="trip-card-title-row">
+                    {trip.pinned && (
+                      <span className="trip-card-pin-indicator" title="ピン留め中">
+                        <PinFilledIcon size={14} />
+                      </span>
+                    )}
+                    <div className="trip-card-title">{trip.title}</div>
+                  </div>
+                  {trip.theme && (
+                    <span className={`trip-card-theme trip-card-theme-${trip.theme}`}>
+                      {trip.theme === 'quiet' ? 'しずか' : '写真映え'}
+                    </span>
+                  )}
+                </div>
+                {(trip.startDate || trip.endDate) && (
+                  <div className="trip-card-date">
+                    {trip.startDate && trip.endDate
+                      ? formatDateRange(trip.startDate, trip.endDate)
+                      : trip.startDate || trip.endDate}
+                  </div>
                 )}
-                <div className="trip-card-title">{trip.title}</div>
+                {trip.tags && trip.tags.length > 0 && (
+                  <div className="trip-card-tags">
+                    {trip.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="trip-card-tag"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setFilterTag(tag)
+                          setShowFilters(true)
+                        }}
+                        title={`「${tag}」で絞り込み`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {user && (
+                  <div className="trip-card-actions">
+                    <button
+                      type="button"
+                      className={`btn-icon pin-btn ${trip.pinned ? 'pin-btn-active' : ''}`}
+                      onClick={(e) => togglePin(trip.id, e)}
+                      disabled={pinningId === trip.id}
+                      title={trip.pinned ? 'ピン留め解除' : 'ピン留め'}
+                    >
+                      {trip.pinned ? <PinFilledIcon size={16} /> : <PinIcon size={16} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-icon duplicate-btn"
+                      onClick={(e) => duplicateTrip(trip.id, e)}
+                      disabled={duplicatingId === trip.id}
+                      title="複製"
+                    >
+                      {duplicatingId === trip.id ? '...' : <CopyIcon size={16} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-text btn-small archive-btn"
+                      onClick={(e) => toggleArchive(trip.id, e)}
+                      disabled={archivingId === trip.id}
+                    >
+                      {archivingId === trip.id
+                        ? '処理中...'
+                        : trip.isArchived
+                          ? 'アーカイブ解除'
+                          : 'アーカイブ'}
+                    </button>
+                  </div>
+                )}
               </div>
-              {trip.theme && (
-                <span className={`trip-card-theme trip-card-theme-${trip.theme}`}>
-                  {trip.theme === 'quiet' ? 'しずか' : '写真映え'}
-                </span>
+              {/* Show ad after every 3rd trip card for free users */}
+              {index === 2 && shouldShowAd({ isLoggedIn: !!user, isPremium: user?.isPremium }) && (
+                <AdBanner
+                  slot={{ id: 'trip-list-1', type: 'native', position: 'list-inline' }}
+                  className="trip-list-ad"
+                />
               )}
             </div>
-            {(trip.startDate || trip.endDate) && (
-              <div className="trip-card-date">
-                {trip.startDate && trip.endDate
-                  ? formatDateRange(trip.startDate, trip.endDate)
-                  : trip.startDate || trip.endDate}
-              </div>
-            )}
-            {trip.tags && trip.tags.length > 0 && (
-              <div className="trip-card-tags">
-                {trip.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="trip-card-tag"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setFilterTag(tag)
-                      setShowFilters(true)
-                    }}
-                    title={`「${tag}」で絞り込み`}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            {user && (
-              <div className="trip-card-actions">
-                <button
-                  type="button"
-                  className={`btn-icon pin-btn ${trip.pinned ? 'pin-btn-active' : ''}`}
-                  onClick={(e) => togglePin(trip.id, e)}
-                  disabled={pinningId === trip.id}
-                  title={trip.pinned ? 'ピン留め解除' : 'ピン留め'}
-                >
-                  {trip.pinned ? <PinFilledIcon size={16} /> : <PinIcon size={16} />}
-                </button>
-                <button
-                  type="button"
-                  className="btn-icon duplicate-btn"
-                  onClick={(e) => duplicateTrip(trip.id, e)}
-                  disabled={duplicatingId === trip.id}
-                  title="複製"
-                >
-                  {duplicatingId === trip.id ? '...' : <CopyIcon size={16} />}
-                </button>
-                <button
-                  type="button"
-                  className="btn-text btn-small archive-btn"
-                  onClick={(e) => toggleArchive(trip.id, e)}
-                  disabled={archivingId === trip.id}
-                >
-                  {archivingId === trip.id
-                    ? '処理中...'
-                    : trip.isArchived
-                      ? 'アーカイブ解除'
-                      : 'アーカイブ'}
-                </button>
-              </div>
-            )}
-          </div>
-        ))
+          ))}
+        </>
       )}
 
       {showTemplateModal && (

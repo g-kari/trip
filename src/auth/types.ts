@@ -6,6 +6,9 @@ export type User = {
   name: string | null
   avatarUrl: string | null
   createdAt: string
+  isPremium?: number       // 1 if user has ever purchased trip slots
+  freeSlots?: number       // remaining free trip slots (default 3)
+  purchasedSlots?: number  // total purchased slots
 }
 
 export type Session = {

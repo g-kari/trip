@@ -1,0 +1,203 @@
+/* ========================================
+   Advertisement Styles
+   Design principle: Native, non-intrusive ads
+   that match the design system
+   ======================================== */
+
+/* Common ad elements */
+.ad-label {
+  display: inline-block;
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  background-color: var(--color-bg);
+  border-radius: 3px;
+}
+
+.ad-dismiss {
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-faint);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.ad-dismiss:hover {
+  color: var(--color-text-muted);
+}
+
+.ad-sponsor {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--color-text-faint);
+  margin-top: var(--space-2);
+}
+
+/* Native inline ad (for trip list) */
+.ad-native-inline {
+  margin: var(--space-3) 0;
+  padding: var(--space-4);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  transition: border-color var(--transition-fast);
+}
+
+.ad-native-inline:hover {
+  border-color: var(--color-border);
+}
+
+.ad-native-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.ad-native-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-decoration: none;
+  gap: var(--space-3);
+}
+
+.ad-native-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.ad-native-title {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.ad-native-description {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.ad-native-cta {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.ad-native-link:hover .ad-native-cta {
+  text-decoration: underline;
+}
+
+/* Banner ad style */
+.ad-banner {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-m);
+  text-align: center;
+}
+
+.ad-banner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.ad-banner-link {
+  display: block;
+  text-decoration: none;
+}
+
+.ad-banner-title {
+  display: block;
+  font-size: 1rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.ad-banner-description {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.ad-banner-link:hover .ad-banner-title {
+  text-decoration: underline;
+}
+
+/* AdSense container */
+.adsense-container {
+  margin: var(--space-4) 0;
+  min-height: 50px;
+  overflow: hidden;
+}
+
+.adsense-container ins {
+  display: block;
+  width: 100%;
+}
+
+/* Ad placement in trip list */
+.trip-list-ad {
+  margin: var(--space-2) 0;
+}
+
+/* Dark mode adjustments */
+[data-color-mode="dark"] .ad-label {
+  background-color: var(--color-bg-elevated);
+}
+
+[data-color-mode="dark"] .ad-native-inline,
+[data-color-mode="dark"] .ad-banner {
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .ad-label,
+  :root:not([data-color-mode]) .ad-label {
+    background-color: var(--color-bg-elevated);
+  }
+
+  [data-color-mode="system"] .ad-native-inline,
+  [data-color-mode="system"] .ad-banner,
+  :root:not([data-color-mode]) .ad-native-inline,
+  :root:not([data-color-mode]) .ad-banner {
+    background-color: var(--color-bg);
+    border-color: var(--color-border);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .ad-native-inline {
+    padding: var(--space-3);
+  }
+
+  .ad-native-link {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ad-native-cta {
+    margin-top: var(--space-2);
+  }
+}
