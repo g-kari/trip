@@ -4,66 +4,47 @@
 
 /* Outline button (katasu style) */
 .btn-outline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  color: var(--color-text);
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  transition: border-color var(--transition-fast), background-color var(--transition-fast);
-}
+  @apply inline-flex items-center justify-center
+         gap-[var(--space-2)]
+         py-[var(--space-3)] px-[var(--space-5)]
+         border border-border rounded-m
+         text-text text-sm font-medium
+         transition-colors duration-150;
 
-.btn-outline:hover {
-  border-color: var(--color-text-muted);
-  background-color: var(--color-bg-elevated);
+  &:hover {
+    @apply border-text-muted bg-bg-elevated;
+  }
 }
 
 /* Filled button */
 .btn-filled {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-m);
-  background-color: var(--color-accent);
-  color: var(--color-bg);
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-}
+  @apply inline-flex items-center justify-center
+         gap-[var(--space-2)]
+         py-[var(--space-3)] px-[var(--space-5)]
+         border border-accent rounded-m
+         bg-accent text-bg
+         text-sm font-medium
+         transition-colors duration-150;
 
-.btn-filled:hover {
-  background-color: var(--color-accent-hover);
-  border-color: var(--color-accent-hover);
+  &:hover {
+    @apply bg-accent-hover border-accent-hover;
+  }
 }
 
 /* Icon button - minimal footprint for action icons */
 .btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-s);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: border-color var(--transition-fast), color var(--transition-fast);
-}
+  @apply inline-flex items-center justify-center
+         size-8 p-0
+         border border-border rounded-s
+         bg-bg-elevated text-text-muted
+         cursor-pointer
+         transition-colors duration-150;
 
-.btn-icon:hover {
-  border-color: var(--color-text-muted);
-  color: var(--color-text);
-}
+  &:hover {
+    @apply border-text-muted text-text;
+  }
 
-.btn-icon svg {
-  flex-shrink: 0;
+  & svg {
+    @apply shrink-0;
+  }
 }

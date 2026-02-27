@@ -9,7 +9,7 @@ export function Layout() {
     <div className="app">
       <header className="header no-print">
         <div className="header-content">
-          <Link to="/" className="header-logo" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link to="/" className="header-logo no-underline text-inherit">
             旅程
           </Link>
 

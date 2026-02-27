@@ -3,53 +3,39 @@
    ======================================== */
 
 .create-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-5);
-  margin-bottom: var(--space-5);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  background-color: var(--color-bg-elevated);
+  @apply flex flex-col gap-4
+         p-6 mb-6
+         border border-border-light rounded-m
+         bg-bg-elevated;
 }
 
 .input {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font-size: 0.875rem;
-  font-family: inherit;
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  transition: border-color var(--transition-fast);
-}
+  @apply w-full py-3 px-4
+         text-sm font-sans
+         text-text bg-bg
+         border border-border rounded-m
+         transition-colors duration-150;
 
-.input::placeholder {
-  color: var(--color-text-faint);
-}
+  &::placeholder {
+    @apply text-text-faint;
+  }
 
-.input:focus {
-  outline: none;
-  border-color: var(--color-accent);
+  &:focus {
+    @apply outline-none border-accent;
+  }
 }
 
 /* Select element styling - base select class */
 .select {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font-size: 0.875rem;
-  font-family: inherit;
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  transition: border-color var(--transition-fast);
-}
+  @apply w-full py-3 px-4
+         text-sm font-sans
+         text-text bg-bg
+         border border-border rounded-m
+         transition-colors duration-150;
 
-.select:focus {
-  outline: none;
-  border-color: var(--color-accent);
+  &:focus {
+    @apply outline-none border-accent;
+  }
 }
 
 /* Custom dropdown arrow for all select elements */
@@ -68,7 +54,8 @@ select.collaborator-role-select {
   background-position: right var(--space-3) center;
   background-size: 12px 12px;
   padding-right: calc(var(--space-3) + 12px + var(--space-3));
-  cursor: pointer;
+
+  @apply cursor-pointer;
 }
 
 select.input:focus,
@@ -101,7 +88,7 @@ select.packing-category-select::-ms-expand,
 select.expense-select::-ms-expand,
 select.expense-select-small::-ms-expand,
 select.collaborator-role-select::-ms-expand {
-  display: none;
+  @apply hidden;
 }
 
 /* Dark mode select chevron */
@@ -183,40 +170,31 @@ select.collaborator-role-select::-ms-expand {
 }
 
 .date-inputs {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
+  @apply flex items-center gap-3;
 
-.date-inputs .input {
-  flex: 1;
+  & .input {
+    @apply flex-1;
+  }
 }
 
 .date-separator {
-  font-size: 0.875rem;
-  color: var(--color-text-faint);
+  @apply text-sm text-text-faint;
 }
 
 /* Inline form (for adding days/items) */
 .inline-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  margin-top: var(--space-3);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  background-color: var(--color-bg-elevated);
+  @apply flex flex-col gap-3
+         p-4 mt-3
+         border border-border-light rounded-m
+         bg-bg-elevated;
 }
 
 .form-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
+  @apply flex items-center gap-3;
 
-.form-row .input {
-  flex: 1;
+  & .input {
+    @apply flex-1;
+  }
 }
 
 .input-small {
@@ -225,103 +203,78 @@ select.collaborator-role-select::-ms-expand {
 }
 
 .form-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-left: auto;
+  @apply flex items-center gap-3 ml-auto;
 }
 
 /* Text button */
 .btn-text {
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
+  @apply py-2 px-3
+         text-[0.8125rem] font-sans
+         text-text-muted bg-transparent
+         border-none cursor-pointer
+         transition-colors duration-150;
 
-.btn-text:hover {
-  color: var(--color-text);
+  &:hover {
+    @apply text-text;
+  }
 }
 
 /* Add item button */
 .add-item-btn {
-  margin-top: var(--space-2);
-  padding-left: 0;
-  color: var(--color-text-faint);
-}
+  @apply mt-2 pl-0 text-text-faint;
 
-.add-item-btn:hover {
-  color: var(--color-text-muted);
+  &:hover {
+    @apply text-text-muted;
+  }
 }
 
 /* Add day section */
 .add-day-section {
-  margin-top: var(--space-4);
-  margin-bottom: var(--space-6);
+  @apply mt-4 mb-8;
 }
 
 .add-day-buttons {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  @apply flex items-center gap-3 flex-wrap;
 }
 
 /* Back button */
 .back-btn {
-  margin-top: var(--space-4);
-  padding-left: 0;
+  @apply mt-4 pl-0;
 }
 
 /* Bulk mode toggle */
 .bulk-mode-toggle {
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-light);
-  margin-bottom: var(--space-2);
+  @apply pb-2 mb-2 border-b border-border-light;
 }
 
 .checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
+  @apply flex items-center gap-2
+         text-[0.8125rem] text-text-muted
+         cursor-pointer;
 
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
-  cursor: pointer;
-}
+  & input[type="checkbox"] {
+    @apply size-4 cursor-pointer;
+    accent-color: var(--color-accent);
+  }
 
-.checkbox-label span {
-  user-select: none;
+  & span {
+    @apply select-none;
+  }
 }
 
 /* Date range inputs for bulk add */
 .date-range-inputs {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1;
+  @apply flex items-center gap-2 flex-1;
 }
 
 .bulk-date-row {
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
+  @apply flex-wrap gap-3;
 
-.bulk-date-row .date-range-inputs {
-  flex: 1 1 auto;
-  min-width: 280px;
-}
+  & .date-range-inputs {
+    @apply flex-auto min-w-[280px];
+  }
 
-.bulk-date-row .form-actions {
-  flex-shrink: 0;
+  & .form-actions {
+    @apply shrink-0;
+  }
 }

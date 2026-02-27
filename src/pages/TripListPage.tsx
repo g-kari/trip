@@ -525,7 +525,7 @@ export function TripListPage() {
           ページに。
         </h1>
         <p className="hero-subtitle">旅程を作って、共有しましょう</p>
-        <div className="hero-actions">
+        <div className="flex flex-col gap-[var(--space-3)] w-full max-w-[280px]">
           <Link to="/login" className="btn-filled">
             ログインして始める
           </Link>
@@ -538,8 +538,8 @@ export function TripListPage() {
     <div className="trip-list-section">
       <div className="section-header">
         <span className="section-title">{user ? 'マイ旅程' : 'trips'}</span>
-        <div className="section-actions" ref={menuRef}>
-          <div className="action-menu-wrapper">
+        <div className="flex gap-[var(--space-2)]" ref={menuRef}>
+          <div className="relative">
             <button
               type="button"
               className="btn-icon action-icon-btn"
@@ -575,7 +575,7 @@ export function TripListPage() {
               </div>
             )}
           </div>
-          <div className="action-menu-wrapper">
+          <div className="relative">
             <button
               type="button"
               className="btn-icon action-icon-btn"
@@ -1086,7 +1086,7 @@ export function TripListPage() {
           </button>
         </div>
       ) : (
-        <div className="trip-card-list">
+        <div className="flex flex-col gap-[var(--space-3)]">
           {trips.map((trip, index) => (
             <div key={trip.id}>
               <div
@@ -1111,7 +1111,7 @@ export function TripListPage() {
                   )}
                 </div>
                 {(trip.startDate || trip.endDate) && (
-                  <div className="trip-card-date-row">
+                  <div className="flex items-center justify-between gap-[var(--space-2)]">
                     <div className="trip-card-date">
                       {trip.startDate && trip.endDate
                         ? formatDateRange(trip.startDate, trip.endDate)

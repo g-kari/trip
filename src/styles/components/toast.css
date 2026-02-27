@@ -3,28 +3,21 @@
    ======================================== */
 
 .toast-container {
-  position: fixed;
+  @apply fixed z-[1000]
+         flex flex-col gap-[var(--space-2)]
+         pointer-events-none;
   bottom: var(--space-5);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  pointer-events: none;
   max-width: calc(100vw - var(--space-5) * 2);
 }
 
 .toast {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-text-muted);
-  border-radius: var(--radius-m);
-  pointer-events: auto;
-  cursor: pointer;
+  @apply flex items-center
+         gap-[var(--space-3)]
+         py-[var(--space-3)] px-[var(--space-4)]
+         bg-bg-elevated border border-text-muted rounded-m
+         pointer-events-auto cursor-pointer;
   animation: toast-in 0.2s ease-out;
 }
 
@@ -50,21 +43,16 @@
 }
 
 .toast-message {
-  font-size: 0.875rem;
-  color: var(--color-text);
+  @apply text-sm text-text;
 }
 
 .toast-close {
-  padding: 0;
-  margin-left: auto;
-  font-size: 1rem;
-  color: var(--color-text-faint);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  line-height: 1;
-}
+  @apply p-0 ml-auto
+         text-base leading-none
+         text-text-faint bg-transparent
+         border-none cursor-pointer;
 
-.toast-close:hover {
-  color: var(--color-text-muted);
+  &:hover {
+    @apply text-text-muted;
+  }
 }

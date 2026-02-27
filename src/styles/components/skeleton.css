@@ -4,55 +4,35 @@
 
 /* Base skeleton with shimmer animation */
 .skeleton {
-  background: var(--color-border-light);
-  position: relative;
-  overflow: hidden;
-}
+  @apply relative overflow-hidden bg-border-light;
 
-.skeleton::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 100%
-  );
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-  transform: translateX(-100%);
+  &::after {
+    @apply absolute inset-0 content-[''];
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    transform: translateX(-100%);
+  }
 }
 
 @keyframes skeleton-shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* Skeleton trip card */
 .skeleton-trip-card {
-  padding: var(--space-5);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  background-color: var(--color-bg-elevated);
-}
+  @apply p-[var(--space-5)]
+         border border-border-light rounded-m
+         bg-bg-elevated;
 
-.skeleton-trip-card + .skeleton-trip-card {
-  margin-top: var(--space-3);
+  & + & {
+    @apply mt-[var(--space-3)];
+  }
 }
 
 /* Skeleton hero */
 .skeleton-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+  @apply flex flex-col items-center text-center;
   padding: var(--space-7) 0 var(--space-5);
 }
 
@@ -61,76 +41,69 @@
 }
 
 .skeleton-hero-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
+  @apply flex items-center
+         gap-[var(--space-2)]
+         mt-[var(--space-4)];
 }
 
 /* Skeleton day section */
 .skeleton-day-section {
-  margin-bottom: var(--space-6);
+  @apply mb-[var(--space-6)];
 }
 
 .skeleton-day-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply flex items-center
+         mb-[var(--space-4)]
+         pb-[var(--space-2)]
+         border-b border-border-light;
 }
 
 /* Skeleton timeline item */
 .skeleton-timeline-item {
-  display: grid;
+  @apply grid gap-[var(--space-3)]
+         py-[var(--space-3)];
   grid-template-columns: 56px 1fr;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-}
 
-.skeleton-timeline-item + .skeleton-timeline-item {
-  border-top: 1px solid var(--color-border-light);
+  & + & {
+    @apply border-t border-border-light;
+  }
 }
 
 .skeleton-timeline-content {
-  display: flex;
-  flex-direction: column;
+  @apply flex flex-col;
 }
 
 /* Skeleton album grid */
 .skeleton-album-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
+  @apply grid grid-cols-2 gap-[var(--space-3)];
 }
 
 .skeleton-album-item {
-  aspect-ratio: 1;
+  @apply aspect-square;
 }
 
 /* Skeleton album section */
 .skeleton-album-section {
-  margin-bottom: var(--space-6);
+  @apply mb-[var(--space-6)];
 }
 
 .skeleton-album-section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply flex items-center
+         gap-[var(--space-2)]
+         mb-[var(--space-3)]
+         pb-[var(--space-2)]
+         border-b border-border-light;
 }
 
 /* Mobile responsive skeleton adjustments */
 @media (max-width: 480px) {
   .skeleton-timeline-item {
     grid-template-columns: 48px 1fr;
-    gap: var(--space-2);
+    @apply gap-[var(--space-2)];
   }
 
   .skeleton-album-grid {
-    gap: var(--space-2);
+    @apply gap-[var(--space-2)];
   }
 }
 
@@ -140,6 +113,6 @@
   }
 
   .skeleton-album-grid {
-    grid-template-columns: 1fr;
+    @apply grid-cols-1;
   }
 }
