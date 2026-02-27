@@ -25,9 +25,42 @@
    Item Photos (Memory Photos)
    ======================================== */
 
+/* Auto-layout: adjust grid columns based on photo count */
 .item-photos-grid {
-  @apply grid gap-[var(--space-3)] mt-[var(--space-3)];
+  @apply grid gap-[var(--space-2)] mt-[var(--space-3)];
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+/* 1 photo: single full-width */
+.item-photos-grid:has(> :nth-child(1):last-child) {
+  grid-template-columns: 1fr;
+}
+
+.item-photos-grid:has(> :nth-child(1):last-child) .memory-photo {
+  height: 180px;
+  max-width: 320px;
+}
+
+/* 2 photos: side by side */
+.item-photos-grid:has(> :nth-child(2):last-child) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.item-photos-grid:has(> :nth-child(2):last-child) .memory-photo {
+  height: 140px;
+}
+
+/* 3 photos: 2+1 layout (first two side-by-side, third full width) */
+.item-photos-grid:has(> :nth-child(3):last-child) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.item-photos-grid:has(> :nth-child(3):last-child) > :nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.item-photos-grid:has(> :nth-child(3):last-child) .memory-photo {
+  height: 120px;
 }
 
 .item-photo-item {
