@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { QRCode } from '../components/QRCode'
+import { QRCodeModal } from '../components/QRCodeModal'
 import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
@@ -143,6 +144,7 @@ export function TripViewPage() {
   const [error, setError] = useState<string | null>(null)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showQRModal, setShowQRModal] = useState(false)
   const [deletingItemPhoto, setDeletingItemPhoto] = useState<string | null>(null)
   const [deletingDayPhoto, setDeletingDayPhoto] = useState<string | null>(null)
   const [uploadingDayPhoto, setUploadingDayPhoto] = useState<string | null>(null)
@@ -1154,7 +1156,15 @@ export function TripViewPage() {
             </div>
             <div className="share-qr-section">
               <p className="share-section-title">QRコードをスキャン</p>
-              <QRCode value={`${window.location.origin}/s/${shareToken}`} size={150} />
+              <button
+                type="button"
+                className="share-qr-button"
+                onClick={() => setShowQRModal(true)}
+                title="クリックで拡大・ダウンロード"
+              >
+                <QRCode value={`${window.location.origin}/s/${shareToken}`} size={150} />
+                <span className="share-qr-hint">タップして拡大・ダウンロード</span>
+              </button>
             </div>
             <p className="share-section-title">SNSで共有</p>
             <ShareButtons
@@ -1178,6 +1188,15 @@ export function TripViewPage() {
         <ReminderSettings
           trip={trip}
           onClose={() => setShowReminderModal(false)}
+        />
+      )}
+
+      {/* QR Code modal */}
+      {showQRModal && shareToken && (
+        <QRCodeModal
+          url={`${window.location.origin}/s/${shareToken}`}
+          title={trip.title}
+          onClose={() => setShowQRModal(false)}
         />
       )}
     </>

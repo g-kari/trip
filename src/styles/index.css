@@ -53,6 +53,7 @@
 @import './components/spot-suggestions.css';
 @import './components/travel-mode.css';
 @import './components/optimize.css';
+@import './components/qrcode.css';
 
 /* Pages */
 @import './pages/login.css';
