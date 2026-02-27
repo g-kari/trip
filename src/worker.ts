@@ -3360,7 +3360,12 @@ app.post('/api/trips/:tripId/days/:dayId/optimize', async (c) => {
     if (item.mapUrl) {
       const match = item.mapUrl.match(/[?&]q=([^&]+)/);
       if (match) {
-        locationHint = decodeURIComponent(match[1]) || locationHint;
+        try {
+          locationHint = decodeURIComponent(match[1]) || locationHint;
+        } catch {
+          // Invalid percent-encoding, use as-is or fallback to area
+          locationHint = match[1] || locationHint;
+        }
       }
     }
     return {
@@ -3530,15 +3535,25 @@ app.post('/api/trips/:tripId/days/:dayId/apply-optimization', async (c) => {
     return c.json({ error: 'itemIds is required' }, 400);
   }
 
-  // Verify all items exist and belong to this day
-  const placeholders = body.itemIds.map(() => '?').join(',');
-  const { results: existingItems } = await c.env.DB.prepare(
-    `SELECT id FROM items WHERE id IN (${placeholders}) AND day_id = ? AND trip_id = ?`
-  ).bind(...body.itemIds, dayId, tripId).all<{ id: string }>();
+  // Check for duplicates in itemIds
+  const uniqueIds = new Set(body.itemIds);
+  if (uniqueIds.size !== body.itemIds.length) {
+    return c.json({ error: 'Duplicate item IDs are not allowed' }, 400);
+  }
 
-  const existingIds = new Set(existingItems.map(item => item.id));
-  const invalidIds = body.itemIds.filter(id => !existingIds.has(id));
+  // Get all items for this day to ensure complete permutation
+  const { results: dayItems } = await c.env.DB.prepare(
+    'SELECT id FROM items WHERE day_id = ? AND trip_id = ?'
+  ).bind(dayId, tripId).all<{ id: string }>();
 
+  const dayItemIds = new Set(dayItems.map(item => item.id));
+
+  // Check that itemIds is exactly the same set as day's items
+  if (body.itemIds.length !== dayItems.length) {
+    return c.json({ error: 'itemIds must include all items for this day' }, 400);
+  }
+
+  const invalidIds = body.itemIds.filter(id => !dayItemIds.has(id));
   if (invalidIds.length > 0) {
     return c.json({ error: `Invalid item IDs: ${invalidIds.join(', ')}` }, 400);
   }
