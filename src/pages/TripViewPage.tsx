@@ -887,15 +887,16 @@ export function TripViewPage() {
                   items.map((item) => (
                     <div key={item.id} className="timeline-item">
                       <span className="timeline-time">{item.timeStart || '—'}</span>
-                      {canCheckIn && (isOwner || user) && (
-                        <button
-                          className={`checkin-btn no-print ${item.checkedInAt ? 'checked' : ''} ${checkingInItem === item.id ? 'loading' : ''}`}
-                          onClick={() => item.checkedInAt ? handleRemoveCheckin(item.id) : handleCheckin(item.id)}
-                          disabled={checkingInItem === item.id}
-                          title={item.checkedInAt ? 'チェックイン解除' : 'チェックイン'}
-                        />
-                      )}
-                      <div className="timeline-content">
+                      <div className="timeline-item-checkin">
+                        {canCheckIn && (isOwner || user) && (
+                          <button
+                            className={`checkin-btn no-print ${item.checkedInAt ? 'checked' : ''} ${checkingInItem === item.id ? 'loading' : ''}`}
+                            onClick={() => item.checkedInAt ? handleRemoveCheckin(item.id) : handleCheckin(item.id)}
+                            disabled={checkingInItem === item.id}
+                            title={item.checkedInAt ? 'チェックイン解除' : 'チェックイン'}
+                          />
+                        )}
+                        <div className="timeline-content">
                         <span className="timeline-title">
                           {item.title}
                           {item.checkedInAt && (
@@ -942,6 +943,7 @@ export function TripViewPage() {
                             )}
                           </div>
                         )}
+                      </div>
                       </div>
                     </div>
                   ))
