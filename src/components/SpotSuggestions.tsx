@@ -69,7 +69,7 @@ export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: Spo
 
       if (!res.ok) {
         if (data.limitReached) {
-          setError(`${data.error}`)
+          setError('AIクレジットが不足しています\n毎月1日にリセットされます')
         } else {
           setError(data.error || '周辺スポットの取得に失敗しました')
         }
@@ -144,7 +144,7 @@ export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: Spo
                 className="btn-filled"
                 onClick={fetchSuggestions}
               >
-                周辺スポットを検索（1クレジット）
+                周辺スポットを提案（1クレジット）
               </button>
               {remaining !== null && remaining < 3 && (
                 <p className="spot-suggestions-remaining">
@@ -163,7 +163,9 @@ export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: Spo
 
           {error && (
             <div className="spot-suggestions-error">
-              <p>{error}</p>
+              {error.split('\n').map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
               <button className="btn-text" onClick={() => setError(null)}>
                 戻る
               </button>

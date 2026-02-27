@@ -123,7 +123,7 @@ export function TripListPage() {
       if (res.ok) {
         const data = (await res.json()) as { credits: number; maxCredits: number; costs: { generate: number; suggestions: number; optimize: number }; resetDate: string; loggedIn: boolean }
         setAiRemaining(data.credits)
-        setAiLimitReached(data.credits <= 0)
+        setAiLimitReached(data.credits < 2)
       }
     } catch (err) {
       console.error('Failed to fetch AI usage:', err)
@@ -412,7 +412,7 @@ export function TripListPage() {
       }
       if (data.remaining !== undefined) {
         setAiRemaining(data.remaining)
-        setAiLimitReached(data.remaining <= 0)
+        setAiLimitReached(data.limitReached === true)
       }
       if (data.tripId) {
         navigate(`/trips/${data.tripId}/edit`)
