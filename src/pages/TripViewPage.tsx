@@ -13,7 +13,7 @@ import { MapEmbed } from '../components/MapEmbed'
 import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
+import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon, DownloadIcon } from '../components/Icons'
 import { MarkdownText } from '../components/MarkdownText'
 import { ItemInsightsButton } from '../components/ItemInsights'
 import { WeatherIcon } from '../components/WeatherIcon'
@@ -784,44 +784,47 @@ export function TripViewPage() {
               </button>
             </>
           )}
-          <button className="btn-icon" onClick={printTrip} title="印刷">
-            <PrintIcon size={16} />
-          </button>
-          {user && (
-            <button className="btn-icon" onClick={duplicateTrip} title="複製">
-              <CopyIcon size={16} />
-            </button>
-          )}
           <Link to={`/trips/${trip.id}/album`} className="btn-icon" title="アルバム">
             <ImageIcon size={16} />
           </Link>
-          <button className="btn-icon" onClick={() => setShowReminderModal(true)} title="リマインダー">
-            <BellIcon size={16} />
-          </button>
-          {isOwner && (
-            <div className="export-dropdown-container" ref={exportDropdownRef}>
-              <button
-                className="btn-icon"
-                onClick={() => setShowExportDropdown(!showExportDropdown)}
-                title="その他"
-              >
-                <MoreVerticalIcon size={16} />
-              </button>
-              {showExportDropdown && (
-                <div className="export-dropdown">
-                  <button className="export-dropdown-item" onClick={exportCalendar}>
-                    カレンダー
+          <div className="more-menu-wrapper" ref={exportDropdownRef}>
+            <button
+              className="btn-icon"
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              title="その他"
+            >
+              <MoreVerticalIcon size={16} />
+            </button>
+            {showExportDropdown && (
+              <div className="more-menu-dropdown">
+                <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); printTrip() }}>
+                  <PrintIcon size={14} /> 印刷
+                </button>
+                {user && (
+                  <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); duplicateTrip() }}>
+                    <CopyIcon size={14} /> 複製
                   </button>
-                  <button className="export-dropdown-item" onClick={() => exportData('json')}>
-                    JSON形式
-                  </button>
-                  <button className="export-dropdown-item" onClick={() => exportData('csv')}>
-                    CSV形式（Excel）
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+                <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); setShowReminderModal(true) }}>
+                  <BellIcon size={14} /> リマインダー
+                </button>
+                {isOwner && (
+                  <>
+                    <hr className="more-menu-divider" />
+                    <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); exportCalendar() }}>
+                      <DownloadIcon size={14} /> カレンダー
+                    </button>
+                    <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); exportData('json') }}>
+                      <DownloadIcon size={14} /> JSON形式
+                    </button>
+                    <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); exportData('csv') }}>
+                      <DownloadIcon size={14} /> CSV形式（Excel）
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

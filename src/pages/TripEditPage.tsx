@@ -12,7 +12,7 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon, MoreVerticalIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon, MoreVerticalIcon, CameraIcon } from '../components/Icons'
 import { VoiceInputButton } from '../components/VoiceInputButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
@@ -1697,11 +1697,12 @@ export function TripEditPage() {
             ) : (
               <button
                 type="button"
-                className="btn-outline cover-upload-btn"
+                className="btn-icon"
                 onClick={() => coverInputRef.current?.click()}
                 disabled={uploadingCover}
+                title={uploadingCover ? 'アップロード中...' : 'カバー画像を追加'}
               >
-                {uploadingCover ? 'アップロード中...' : 'カバー画像を追加'}
+                <CameraIcon size={16} />
               </button>
             )}
             <input
@@ -1715,25 +1716,6 @@ export function TripEditPage() {
                 e.target.value = ''
               }}
             />
-          </div>
-          {/* Template toggle */}
-          <div className="template-toggle-section">
-            <label className="template-toggle">
-              <input
-                type="checkbox"
-                checked={isTemplate}
-                onChange={toggleTemplate}
-                disabled={savingTemplate}
-              />
-              <span className="template-toggle-label">
-                テンプレートとして公開
-              </span>
-            </label>
-            {isTemplate && (
-              <span className="template-uses-badge">
-                {templateUses}回使用
-              </span>
-            )}
           </div>
           {/* Tags section */}
           <div className="trip-tags-section">
@@ -1866,6 +1848,17 @@ export function TripEditPage() {
                 <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowHistoryModal(true) }}>
                   <HistoryIcon size={14} /> 変更履歴
                 </button>
+                <hr className="more-menu-divider" />
+                <label className="more-menu-item" style={{ cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isTemplate}
+                    onChange={() => { toggleTemplate(); setShowMoreMenu(false) }}
+                    disabled={savingTemplate}
+                    style={{ accentColor: 'var(--color-accent)' }}
+                  />
+                  テンプレートとして公開{isTemplate ? ` (${templateUses}回使用)` : ''}
+                </label>
                 <hr className="more-menu-divider" />
                 <button className="more-menu-item more-menu-item-danger" onClick={() => { setShowMoreMenu(false); deleteTrip() }}>
                   <TrashIcon size={14} /> 削除
