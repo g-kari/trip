@@ -705,7 +705,7 @@ export function SharedTripPage() {
         <MapEmbed items={items} />
 
         {/* Travel mode indicator */}
-        <TravelModeIndicator trip={trip} />
+        {isTraveling && <TravelModeIndicator trip={trip} />}
 
         {days.map((day, index) => {
           const dayItems = itemsByDay.get(day.id) || []
@@ -764,10 +764,10 @@ export function SharedTripPage() {
                           </p>
                         )}
                         {item.photos && item.photos.length > 0 ? (
-                          <div className="day-photos-grid">
+                          <div className="item-photos-grid">
                             {item.photos.map((photo) => (
-                              <div key={photo.id} className="day-photo-item">
-                                <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                              <div key={photo.id} className="item-photo-item">
+                                <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="memory-photo" />
                                 {canDeleteItemPhoto(item, photo) && (
                                   <button
                                     className="item-photo-delete no-print"
