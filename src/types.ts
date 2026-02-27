@@ -88,6 +88,8 @@ export type Item = {
   photoUploadedBy: string | null
   photoUploadedByName: string | null
   photoUploadedAt: string | null
+  checkedInAt: string | null
+  checkedInLocation: { lat: number; lng: number } | null
 }
 
 // Item template for quick item creation

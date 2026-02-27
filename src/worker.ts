@@ -706,13 +706,15 @@ app.get('/api/trips/:id', async (c) => {
   const { results: items } = await c.env.DB.prepare(
     `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
      map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
-     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt
+     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt,
+     checked_in_at as checkedInAt, checked_in_location as checkedInLocation
      FROM items WHERE trip_id = ? ORDER BY sort ASC`
   ).bind(id).all<{
     id: string; dayId: string; title: string; area: string | null;
     timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
     note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
     photoUploadedBy: string | null; photoUploadedAt: string | null;
+    checkedInAt: string | null; checkedInLocation: string | null;
   }>();
 
   // Get day_photos from the new table
@@ -740,10 +742,11 @@ app.get('/api/trips/:id', async (c) => {
     }
   }
 
-  // Enrich items with uploader names
+  // Enrich items with uploader names and parse check-in location
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
+    checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
   }));
 
   // Group day_photos by day_id
@@ -1655,13 +1658,15 @@ app.get('/api/shared/:token', async (c) => {
   const { results: items } = await c.env.DB.prepare(
     `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
      map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
-     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt
+     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt,
+     checked_in_at as checkedInAt, checked_in_location as checkedInLocation
      FROM items WHERE trip_id = ? ORDER BY sort ASC`
   ).bind(share.trip_id).all<{
     id: string; dayId: string; title: string; area: string | null;
     timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
     note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
     photoUploadedBy: string | null; photoUploadedAt: string | null;
+    checkedInAt: string | null; checkedInLocation: string | null;
   }>();
 
   // Get day_photos from the new table
@@ -1689,10 +1694,11 @@ app.get('/api/shared/:token', async (c) => {
     }
   }
 
-  // Enrich items with uploader names
+  // Enrich items with uploader names and parse check-in location
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
+    checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
   }));
 
   // Group day_photos by day_id
@@ -3009,6 +3015,111 @@ app.delete('/api/trips/:tripId/items/:itemId/photo', async (c) => {
   ).bind(itemId).run();
 
   return c.json({ ok: true });
+});
+
+// ============ Check-in (Travel Mode) ============
+
+// Check-in to an item
+app.post('/api/trips/:tripId/items/:itemId/checkin', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+  const body = await c.req.json<{ location?: { lat: number; lng: number } }>().catch(() => ({ location: undefined }));
+
+  // Check if user can edit the trip
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Verify item exists and belongs to this trip
+  const item = await c.env.DB.prepare(
+    'SELECT id, trip_id FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; trip_id: string }>();
+
+  if (!item) {
+    return c.json({ error: 'アイテムが見つかりません' }, 404);
+  }
+
+  // Get trip dates to verify we're within travel period
+  const trip = await c.env.DB.prepare(
+    'SELECT start_date as startDate, end_date as endDate FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ startDate: string | null; endDate: string | null }>();
+
+  if (!trip || !trip.startDate || !trip.endDate) {
+    return c.json({ error: '旅行の日程が設定されていません' }, 400);
+  }
+
+  // Check if current date is within trip dates (JST)
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60 * 1000;
+  const jstNow = new Date(now.getTime() + jstOffset + now.getTimezoneOffset() * 60 * 1000);
+  const today = jstNow.toISOString().split('T')[0];
+
+  if (today < trip.startDate || today > trip.endDate) {
+    return c.json({ error: '旅行期間外です' }, 400);
+  }
+
+  // Store check-in time and optional location
+  const checkedInAt = new Date().toISOString();
+  const checkedInLocation = body.location ? JSON.stringify(body.location) : null;
+
+  await c.env.DB.prepare(
+    `UPDATE items SET
+      checked_in_at = ?,
+      checked_in_location = ?,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE id = ?`
+  ).bind(checkedInAt, checkedInLocation, itemId).run();
+
+  // Return updated item
+  const updatedItem = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+            map_url as mapUrl, note, cost, cost_category as costCategory, sort,
+            photo_url as photoUrl, checked_in_at as checkedInAt, checked_in_location as checkedInLocation
+     FROM items WHERE id = ?`
+  ).bind(itemId).first();
+
+  return c.json({ item: updatedItem });
+});
+
+// Remove check-in from an item
+app.delete('/api/trips/:tripId/items/:itemId/checkin', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+
+  // Check if user can edit the trip
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Verify item exists and belongs to this trip
+  const item = await c.env.DB.prepare(
+    'SELECT id FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string }>();
+
+  if (!item) {
+    return c.json({ error: 'アイテムが見つかりません' }, 404);
+  }
+
+  // Clear check-in data
+  await c.env.DB.prepare(
+    `UPDATE items SET
+      checked_in_at = NULL,
+      checked_in_location = NULL,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    WHERE id = ?`
+  ).bind(itemId).run();
+
+  // Return updated item
+  const updatedItem = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+            map_url as mapUrl, note, cost, cost_category as costCategory, sort,
+            photo_url as photoUrl, checked_in_at as checkedInAt, checked_in_location as checkedInLocation
+     FROM items WHERE id = ?`
+  ).bind(itemId).first();
+
+  return c.json({ item: updatedItem });
 });
 
 // ============ Spot Suggestions (AI-powered) ============

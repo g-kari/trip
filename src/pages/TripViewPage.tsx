@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { Trip, Item, DayPhoto, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
 import { COST_CATEGORIES } from '../types'
@@ -17,6 +17,8 @@ import { PdfExportButton } from '../components/PdfExportButton'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
+import { TravelModeIndicator } from '../components/TravelModeIndicator'
+import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -159,6 +161,124 @@ export function TripViewPage() {
   const exportDropdownRef = useRef<HTMLDivElement>(null)
   // Reminder modal state
   const [showReminderModal, setShowReminderModal] = useState(false)
+  // Check-in state
+  const [checkingInItem, setCheckingInItem] = useState<string | null>(null)
+  const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+
+  // Travel mode hook
+  const { isTraveling, todayDayId, canCheckIn } = useTravelMode(trip)
+
+  // Jump to today's section
+  const jumpToToday = useCallback(() => {
+    if (todayDayId) {
+      const dayElement = dayRefs.current.get(todayDayId)
+      if (dayElement) {
+        dayElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }, [todayDayId])
+
+  // Check-in to an item
+  async function handleCheckin(itemId: string) {
+    if (!trip || !canCheckIn) return
+
+    setCheckingInItem(itemId)
+    try {
+      // Try to get current location (optional)
+      let location: { lat: number; lng: number } | undefined
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              timeout: 5000,
+              enableHighAccuracy: false
+            })
+          })
+          location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          }
+        } catch {
+          // Location not available, continue without it
+        }
+      }
+
+      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location })
+      })
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        showError(data.error || 'チェックインに失敗しました')
+        return
+      }
+
+      const data = await res.json() as { item: Item }
+      // Update the item in trip state
+      setTrip(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          items: prev.items?.map(item =>
+            item.id === itemId ? { ...item, ...data.item } : item
+          )
+        }
+      })
+      showSuccess('チェックインしました')
+    } catch (err) {
+      console.error('Check-in failed:', err)
+      showError('チェックインに失敗しました')
+    } finally {
+      setCheckingInItem(null)
+    }
+  }
+
+  // Remove check-in from an item
+  async function handleRemoveCheckin(itemId: string) {
+    if (!trip) return
+
+    setCheckingInItem(itemId)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/checkin`, {
+        method: 'DELETE'
+      })
+
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        showError(data.error || 'チェックイン解除に失敗しました')
+        return
+      }
+
+      const data = await res.json() as { item: Item }
+      // Update the item in trip state
+      setTrip(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          items: prev.items?.map(item =>
+            item.id === itemId ? { ...item, ...data.item } : item
+          )
+        }
+      })
+      showSuccess('チェックインを解除しました')
+    } catch (err) {
+      console.error('Remove check-in failed:', err)
+      showError('チェックイン解除に失敗しました')
+    } finally {
+      setCheckingInItem(null)
+    }
+  }
+
+  // Check if a day is today (JST)
+  function isDayToday(dateStr: string): boolean {
+    const now = new Date()
+    const jstOffset = 9 * 60 * 60 * 1000
+    const jstNow = new Date(now.getTime() + jstOffset + now.getTimezoneOffset() * 60 * 1000)
+    const today = jstNow.toISOString().split('T')[0]
+    return dateStr === today
+  }
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -701,6 +821,14 @@ export function TripViewPage() {
       {/* Map section */}
       <MapEmbed items={trip.items || []} />
 
+      {/* Travel mode banner */}
+      {isTraveling && (
+        <TravelModeIndicator
+          trip={trip}
+          onJumpToToday={todayDayId ? jumpToToday : undefined}
+        />
+      )}
+
       {(!trip.days || trip.days.length === 0) ? (
         <div className="empty-state">
           <p className="empty-state-text">
@@ -718,11 +846,17 @@ export function TripViewPage() {
           .map((day, index) => {
             const { label, dateStr } = formatDayLabel(day.date, index)
             const items = getItemsForDay(day.id)
+            const isToday = isDayToday(day.date)
             return (
-              <div key={day.id} className="day-section">
+              <div
+                key={day.id}
+                className={`day-section ${isToday ? 'is-today' : ''}`}
+                ref={(el) => { if (el) dayRefs.current.set(day.id, el) }}
+              >
                 <div className="day-header">
                   <span className="day-label">{label}</span>
                   <span className="day-date">{dateStr}</span>
+                  {isToday && <span className="today-badge">今日</span>}
                   <DayWeather date={day.date} items={items} />
                 </div>
                 {items.length === 0 ? (
@@ -738,8 +872,21 @@ export function TripViewPage() {
                   items.map((item) => (
                     <div key={item.id} className="timeline-item">
                       <span className="timeline-time">{item.timeStart || '—'}</span>
+                      {canCheckIn && (isOwner || user) && (
+                        <button
+                          className={`checkin-btn no-print ${item.checkedInAt ? 'checked' : ''} ${checkingInItem === item.id ? 'loading' : ''}`}
+                          onClick={() => item.checkedInAt ? handleRemoveCheckin(item.id) : handleCheckin(item.id)}
+                          disabled={checkingInItem === item.id}
+                          title={item.checkedInAt ? 'チェックイン解除' : 'チェックイン'}
+                        />
+                      )}
                       <div className="timeline-content">
-                        <span className="timeline-title">{item.title}</span>
+                        <span className="timeline-title">
+                          {item.title}
+                          {item.checkedInAt && (
+                            <span className="checkin-time">{formatCheckinTime(item.checkedInAt)}</span>
+                          )}
+                        </span>
                         <div className="timeline-meta">
                           {item.area && <span>{item.area}</span>}
                           {item.cost != null && item.cost > 0 && (

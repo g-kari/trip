@@ -9,6 +9,7 @@ import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { MarkdownText } from '../components/MarkdownText'
+import { formatCheckinTime } from '../hooks/useTravelMode'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -661,8 +662,16 @@ export function SharedTripPage() {
                     <span className="timeline-time">
                       {item.timeStart || ''}
                     </span>
+                    {item.checkedInAt && (
+                      <span className="checkin-btn checked" title="チェックイン済み" />
+                    )}
                     <div className="timeline-content">
-                      <span className="timeline-title">{item.title}</span>
+                      <span className="timeline-title">
+                        {item.title}
+                        {item.checkedInAt && (
+                          <span className="checkin-time">{formatCheckinTime(item.checkedInAt)}</span>
+                        )}
+                      </span>
                       <div className="timeline-meta">
                         {item.area && <span>{item.area}</span>}
                         {item.cost !== null && item.cost > 0 && (

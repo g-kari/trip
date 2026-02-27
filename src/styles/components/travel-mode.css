@@ -1,0 +1,200 @@
+/* Travel Mode Banner */
+.travel-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+  color: white;
+  border-radius: 10px;
+  margin: var(--space-4) 0;
+}
+
+.travel-mode-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.travel-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.travel-mode-badge::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+.travel-mode-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.travel-mode-progress-text {
+  font-size: 0.8125rem;
+  opacity: 0.9;
+}
+
+.travel-mode-jump-btn {
+  padding: var(--space-1) var(--space-3);
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 150ms ease;
+  white-space: nowrap;
+}
+
+.travel-mode-jump-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Check-in Button */
+.checkin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+  flex-shrink: 0;
+}
+
+.checkin-btn:hover:not(.checked):not(:disabled) {
+  border-color: var(--color-accent);
+  background: rgba(var(--color-accent-rgb, 61, 46, 31), 0.05);
+}
+
+.checkin-btn.checked {
+  border-color: #22c55e;
+  background: #22c55e;
+  color: white;
+}
+
+.checkin-btn.checked::after {
+  content: '\2713';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.checkin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.checkin-btn.loading {
+  opacity: 0.7;
+}
+
+.checkin-btn.loading::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-border);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Check-in Time Display */
+.checkin-time {
+  font-size: 0.75rem;
+  color: #22c55e;
+  margin-left: var(--space-1);
+}
+
+/* Timeline Item with Check-in */
+.timeline-item-checkin {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.timeline-item-checkin .checkin-btn {
+  margin-top: 2px;
+}
+
+.timeline-item-checkin .timeline-content {
+  flex: 1;
+}
+
+/* Today indicator for day sections */
+.day-section.is-today {
+  position: relative;
+}
+
+.day-section.is-today::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+.day-header .today-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-accent);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: var(--space-2);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .travel-mode-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .travel-mode-jump-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Print styles - hide travel mode UI */
+@media print {
+  .travel-mode-banner,
+  .checkin-btn,
+  .checkin-time {
+    display: none !important;
+  }
+}
