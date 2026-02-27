@@ -1,0 +1,57 @@
+{
+  "project": {
+    "name": "trip-itinerary",
+    "type": "fullstack",
+    "framework": ["react", "hono", "cloudflare-workers"]
+  },
+  "review": {
+    "autoReview": {
+      "onCommit": false,
+      "onPush": false
+    },
+    "focus": [
+      "security",
+      "typescript",
+      "accessibility"
+    ],
+    "severity": {
+      "minLevel": "low"
+    },
+    "exclude": [
+      "*.test.ts",
+      "*.spec.ts",
+      "dist/**",
+      "node_modules/**",
+      ".wrangler/**"
+    ]
+  },
+  "rules": {
+    "security": {
+      "checkSqlInjection": true,
+      "checkXss": true,
+      "checkCsrf": true,
+      "checkSecrets": true,
+      "checkAuthBypass": true
+    },
+    "typescript": {
+      "strictNullChecks": true,
+      "noImplicitAny": true,
+      "preferUnknown": true
+    },
+    "react": {
+      "checkHookDeps": true,
+      "checkMemoization": true,
+      "checkAccessibility": true
+    },
+    "cloudflare": {
+      "checkD1Queries": true,
+      "checkR2Usage": true,
+      "checkWorkerLimits": true
+    }
+  },
+  "formatting": {
+    "outputFormat": "markdown",
+    "showLineNumbers": true,
+    "showSuggestions": true
+  }
+}

@@ -3,6 +3,10 @@ import type { TripTemplate, TripTheme } from '../types'
 import { useToast } from '../hooks/useToast'
 import { TrashIcon } from './Icons'
 
+type TemplateWithOwnership = TripTemplate & {
+  isOwn?: boolean
+}
+
 type Props = {
   onClose: () => void
   onSelect: (templateId: string, title: string, startDate: string) => void
@@ -10,9 +14,9 @@ type Props = {
 
 export function TemplateListModal({ onClose, onSelect }: Props) {
   const { showError, showSuccess } = useToast()
-  const [templates, setTemplates] = useState<TripTemplate[]>([])
+  const [templates, setTemplates] = useState<TemplateWithOwnership[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedTemplate, setSelectedTemplate] = useState<TripTemplate | null>(null)
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateWithOwnership | null>(null)
   const [title, setTitle] = useState('')
   const [startDate, setStartDate] = useState('')
   const [creating, setCreating] = useState(false)
@@ -24,7 +28,7 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
         showError('テンプレートの読み込みに失敗しました')
         return
       }
-      const data = (await res.json()) as { templates: TripTemplate[] }
+      const data = (await res.json()) as { templates: TemplateWithOwnership[] }
       setTemplates(data.templates || [])
     } catch (err) {
       console.error('Failed to fetch templates:', err)
@@ -60,7 +64,7 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
     }
   }
 
-  function handleSelectTemplate(template: TripTemplate) {
+  function handleSelectTemplate(template: TemplateWithOwnership) {
     setSelectedTemplate(template)
     setTitle(template.name)
   }
@@ -88,12 +92,16 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
     return template.daysData?.reduce((sum, day) => sum + (day.items?.length || 0), 0) || 0
   }
 
+  // Separate own templates from public templates
+  const ownTemplates = templates.filter(t => t.isOwn)
+  const publicTemplates = templates.filter(t => !t.isOwn && t.isPublic)
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content trip-template-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">テンプレートから作成</h2>
-          <button className="modal-close" onClick={onClose}>x</button>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         {loading ? (
@@ -159,41 +167,79 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
           </div>
         ) : (
           <div className="template-list-container">
-            <ul className="trip-template-list">
-              {templates.map(template => (
-                <li key={template.id} className="trip-template-item">
-                  <div
-                    className="trip-template-item-content"
-                    onClick={() => handleSelectTemplate(template)}
-                  >
-                    <div className="trip-template-item-header">
-                      <span className="trip-template-name">{template.name}</span>
-                      <span className={`trip-template-theme trip-template-theme-${template.theme}`}>
-                        {getThemeLabel(template.theme)}
-                      </span>
-                    </div>
-                    {template.description && (
-                      <p className="trip-template-description">{template.description}</p>
-                    )}
-                    <div className="trip-template-meta">
-                      <span>{getDaysCount(template)}日間</span>
-                      <span>{getTotalItems(template)}件の予定</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-icon btn-danger trip-template-delete"
-                    onClick={e => {
-                      e.stopPropagation()
-                      deleteTemplate(template.id)
-                    }}
-                    title="削除"
-                  >
-                    <TrashIcon size={14} />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {ownTemplates.length > 0 && (
+              <>
+                <div className="template-section-header">マイテンプレート</div>
+                <ul className="trip-template-list">
+                  {ownTemplates.map(template => (
+                    <li key={template.id} className="trip-template-item">
+                      <div
+                        className="trip-template-item-content"
+                        onClick={() => handleSelectTemplate(template)}
+                      >
+                        <div className="trip-template-item-header">
+                          <span className="trip-template-name">{template.name}</span>
+                          <span className={`trip-template-theme trip-template-theme-${template.theme}`}>
+                            {getThemeLabel(template.theme)}
+                          </span>
+                          {template.isPublic && (
+                            <span className="trip-template-public-badge">公開中</span>
+                          )}
+                        </div>
+                        {template.description && (
+                          <p className="trip-template-description">{template.description}</p>
+                        )}
+                        <div className="trip-template-meta">
+                          <span>{getDaysCount(template)}日間</span>
+                          <span>{getTotalItems(template)}件の予定</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-icon btn-danger trip-template-delete"
+                        onClick={e => {
+                          e.stopPropagation()
+                          deleteTemplate(template.id)
+                        }}
+                        title="削除"
+                      >
+                        <TrashIcon size={14} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {publicTemplates.length > 0 && (
+              <>
+                <div className="template-section-header">公開テンプレート</div>
+                <ul className="trip-template-list">
+                  {publicTemplates.map(template => (
+                    <li key={template.id} className="trip-template-item">
+                      <div
+                        className="trip-template-item-content"
+                        onClick={() => handleSelectTemplate(template)}
+                      >
+                        <div className="trip-template-item-header">
+                          <span className="trip-template-name">{template.name}</span>
+                          <span className={`trip-template-theme trip-template-theme-${template.theme}`}>
+                            {getThemeLabel(template.theme)}
+                          </span>
+                        </div>
+                        {template.description && (
+                          <p className="trip-template-description">{template.description}</p>
+                        )}
+                        <div className="trip-template-meta">
+                          <span>{getDaysCount(template)}日間</span>
+                          <span>{getTotalItems(template)}件の予定</span>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
 

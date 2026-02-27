@@ -126,6 +126,7 @@ export type TripTemplate = {
   description: string | null
   theme: TripTheme
   daysData: TripTemplateDay[]
+  isPublic?: boolean
   createdAt: string
 }
 

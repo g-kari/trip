@@ -12,7 +12,27 @@ export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Pro
   const { showError, showSuccess } = useToast()
   const [name, setName] = useState(tripTitle)
   const [description, setDescription] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
+  const [showPublicWarning, setShowPublicWarning] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  function handlePublicChange(checked: boolean) {
+    if (checked) {
+      setShowPublicWarning(true)
+    } else {
+      setIsPublic(false)
+    }
+  }
+
+  function confirmPublic() {
+    setIsPublic(true)
+    setShowPublicWarning(false)
+  }
+
+  function cancelPublic() {
+    setIsPublic(false)
+    setShowPublicWarning(false)
+  }
 
   async function handleSave() {
     if (!name.trim()) return
@@ -26,6 +46,7 @@ export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Pro
           tripId,
           name: name.trim(),
           description: description.trim() || undefined,
+          isPublic,
         }),
       })
 
@@ -46,12 +67,52 @@ export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Pro
     }
   }
 
+  // Public warning confirmation dialog
+  if (showPublicWarning) {
+    return (
+      <div className="modal-overlay" onClick={cancelPublic}>
+        <div className="modal-content save-template-modal" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2 className="modal-title">公開テンプレートの確認</h2>
+            <button className="modal-close" onClick={cancelPublic}>×</button>
+          </div>
+
+          <div className="public-warning">
+            <div className="public-warning-icon">⚠️</div>
+            <p className="public-warning-text">
+              <strong>このテンプレートを全体公開しますか？</strong>
+            </p>
+            <ul className="public-warning-list">
+              <li>全てのユーザーがこのテンプレートを閲覧・使用できるようになります</li>
+              <li>テンプレートに含まれる場所名、時間、費用などの情報が公開されます</li>
+              <li>あなたの名前は表示されませんが、テンプレート内容から個人が特定される可能性があります</li>
+              <li>一度公開すると、他のユーザーが既にコピーしている場合があります</li>
+            </ul>
+          </div>
+
+          <div className="modal-footer save-template-actions">
+            <button type="button" className="btn-text" onClick={cancelPublic}>
+              キャンセル
+            </button>
+            <button
+              type="button"
+              className="btn-filled btn-warning"
+              onClick={confirmPublic}
+            >
+              公開する
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content save-template-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">テンプレートとして保存</h2>
-          <button className="modal-close" onClick={onClose}>x</button>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <div className="save-template-form">
@@ -81,6 +142,20 @@ export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Pro
               className="input textarea"
               rows={2}
             />
+          </div>
+
+          <div className="form-field">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={e => handlePublicChange(e.target.checked)}
+              />
+              <span className="checkbox-text">
+                全体公開する
+                <span className="checkbox-hint">（他のユーザーもこのテンプレートを使用できます）</span>
+              </span>
+            </label>
           </div>
         </div>
 

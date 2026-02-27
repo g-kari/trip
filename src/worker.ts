@@ -3356,31 +3356,42 @@ type TripTemplateDay = {
   items: TripTemplateItem[];
 };
 
-// Get user's trip templates
+// Get user's trip templates + public templates
 app.get('/api/trip-templates', async (c) => {
   const user = c.get('user');
   if (!user) {
     return c.json({ error: 'ログインが必要です' }, 401);
   }
 
+  // Get user's own templates and public templates from others
   const { results } = await c.env.DB.prepare(
-    `SELECT id, name, description, theme, days_data as daysData, created_at as createdAt
+    `SELECT id, user_id as userId, name, description, theme, days_data as daysData, is_public as isPublic, created_at as createdAt
      FROM trip_templates
-     WHERE user_id = ?
-     ORDER BY created_at DESC`
-  ).bind(user.id).all<{
+     WHERE user_id = ? OR is_public = 1
+     ORDER BY
+       CASE WHEN user_id = ? THEN 0 ELSE 1 END,
+       created_at DESC`
+  ).bind(user.id, user.id).all<{
     id: string;
+    userId: string;
     name: string;
     description: string | null;
     theme: string;
     daysData: string;
+    isPublic: number;
     createdAt: string;
   }>();
 
   // Parse days_data JSON for each template
   const templates = results.map(t => ({
-    ...t,
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    theme: t.theme,
     daysData: JSON.parse(t.daysData || '[]') as TripTemplateDay[],
+    isPublic: t.isPublic === 1,
+    isOwn: t.userId === user.id,
+    createdAt: t.createdAt,
   }));
 
   return c.json({ templates });
@@ -3397,6 +3408,7 @@ app.post('/api/trip-templates', async (c) => {
     tripId: string;
     name: string;
     description?: string;
+    isPublic?: boolean;
   }>();
 
   if (!body.tripId || !body.name?.trim()) {
@@ -3467,15 +3479,16 @@ app.post('/api/trip-templates', async (c) => {
   const templateId = generateId();
 
   await c.env.DB.prepare(
-    `INSERT INTO trip_templates (id, user_id, name, description, theme, days_data)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO trip_templates (id, user_id, name, description, theme, days_data, is_public)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     templateId,
     user.id,
     body.name.trim(),
     body.description?.trim() || null,
     trip.theme || 'quiet',
-    JSON.stringify(daysData)
+    JSON.stringify(daysData),
+    body.isPublic ? 1 : 0
   ).run();
 
   return c.json({
@@ -3485,6 +3498,7 @@ app.post('/api/trip-templates', async (c) => {
       description: body.description?.trim() || null,
       theme: trip.theme || 'quiet',
       daysData,
+      isPublic: body.isPublic || false,
     }
   }, 201);
 });

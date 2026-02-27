@@ -34,6 +34,154 @@
   border-color: var(--color-accent);
 }
 
+/* Select element styling - base select class */
+.select {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  transition: border-color var(--transition-fast);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Custom dropdown arrow for all select elements */
+select.input,
+select.select,
+select.sort-select,
+select.packing-category-select,
+select.expense-select,
+select.expense-select-small,
+select.collaborator-role-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%238c7b6b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 12px 12px;
+  padding-right: calc(var(--space-3) + 12px + var(--space-3));
+  cursor: pointer;
+}
+
+select.input:focus,
+select.select:focus,
+select.sort-select:focus,
+select.packing-category-select:focus,
+select.expense-select:focus,
+select.expense-select-small:focus,
+select.collaborator-role-select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%233d2e1f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Firefox select fix */
+select.input:-moz-focusring,
+select.select:-moz-focusring,
+select.sort-select:-moz-focusring,
+select.packing-category-select:-moz-focusring,
+select.expense-select:-moz-focusring,
+select.expense-select-small:-moz-focusring,
+select.collaborator-role-select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 var(--color-text);
+}
+
+/* IE/Edge select fix */
+select.input::-ms-expand,
+select.select::-ms-expand,
+select.sort-select::-ms-expand,
+select.packing-category-select::-ms-expand,
+select.expense-select::-ms-expand,
+select.expense-select-small::-ms-expand,
+select.collaborator-role-select::-ms-expand {
+  display: none;
+}
+
+/* Dark mode select chevron */
+[data-color-mode="dark"] select.input,
+[data-color-mode="dark"] select.select,
+[data-color-mode="dark"] select.sort-select,
+[data-color-mode="dark"] select.packing-category-select,
+[data-color-mode="dark"] select.expense-select,
+[data-color-mode="dark"] select.expense-select-small,
+[data-color-mode="dark"] select.collaborator-role-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23999999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-color-mode="dark"] select.input:focus,
+[data-color-mode="dark"] select.select:focus,
+[data-color-mode="dark"] select.sort-select:focus,
+[data-color-mode="dark"] select.packing-category-select:focus,
+[data-color-mode="dark"] select.expense-select:focus,
+[data-color-mode="dark"] select.expense-select-small:focus,
+[data-color-mode="dark"] select.collaborator-role-select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23e8e8e8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] select.input,
+  [data-color-mode="system"] select.select,
+  [data-color-mode="system"] select.sort-select,
+  [data-color-mode="system"] select.packing-category-select,
+  [data-color-mode="system"] select.expense-select,
+  [data-color-mode="system"] select.expense-select-small,
+  [data-color-mode="system"] select.collaborator-role-select,
+  :root:not([data-color-mode]) select.input,
+  :root:not([data-color-mode]) select.select,
+  :root:not([data-color-mode]) select.sort-select,
+  :root:not([data-color-mode]) select.packing-category-select,
+  :root:not([data-color-mode]) select.expense-select,
+  :root:not([data-color-mode]) select.expense-select-small,
+  :root:not([data-color-mode]) select.collaborator-role-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23999999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  [data-color-mode="system"] select.input:focus,
+  [data-color-mode="system"] select.select:focus,
+  [data-color-mode="system"] select.sort-select:focus,
+  [data-color-mode="system"] select.packing-category-select:focus,
+  [data-color-mode="system"] select.expense-select:focus,
+  [data-color-mode="system"] select.expense-select-small:focus,
+  [data-color-mode="system"] select.collaborator-role-select:focus,
+  :root:not([data-color-mode]) select.input:focus,
+  :root:not([data-color-mode]) select.select:focus,
+  :root:not([data-color-mode]) select.sort-select:focus,
+  :root:not([data-color-mode]) select.packing-category-select:focus,
+  :root:not([data-color-mode]) select.expense-select:focus,
+  :root:not([data-color-mode]) select.expense-select-small:focus,
+  :root:not([data-color-mode]) select.collaborator-role-select:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23e8e8e8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+
+/* Photo theme select chevron */
+[data-theme="photo"] select.input,
+[data-theme="photo"] select.select,
+[data-theme="photo"] select.sort-select,
+[data-theme="photo"] select.packing-category-select,
+[data-theme="photo"] select.expense-select,
+[data-theme="photo"] select.expense-select-small,
+[data-theme="photo"] select.collaborator-role-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23a0a0b0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-theme="photo"] select.input:focus,
+[data-theme="photo"] select.select:focus,
+[data-theme="photo"] select.sort-select:focus,
+[data-theme="photo"] select.packing-category-select:focus,
+[data-theme="photo"] select.expense-select:focus,
+[data-theme="photo"] select.expense-select-small:focus,
+[data-theme="photo"] select.collaborator-role-select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23e94560' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
 .date-inputs {
   display: flex;
   align-items: center;

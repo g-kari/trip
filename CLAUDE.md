@@ -195,6 +195,68 @@ This project uses an automated task processing workflow. When starting a new ses
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Code Review with Codex (コードレビュー)
+
+コード変更後、品質向上のためにCodexを使ったコードレビューを実行できます。
+
+#### レビュー実行方法
+
+```bash
+# 変更差分のレビュー
+npx codex review
+
+# 特定ファイルのレビュー
+npx codex review src/worker.ts
+
+# セキュリティ重視のレビュー
+npx codex review --focus security
+
+# パフォーマンス重視のレビュー
+npx codex review --focus performance
+```
+
+#### レビュー観点
+
+1. **セキュリティ**
+   - SQL injection, XSS, CSRF対策
+   - 認証・認可の適切性
+   - 機密情報の漏洩リスク
+
+2. **パフォーマンス**
+   - N+1クエリ問題
+   - 不要な再レンダリング
+   - メモリリーク
+
+3. **コード品質**
+   - TypeScriptの型安全性
+   - エラーハンドリング
+   - テスト容易性
+
+4. **アクセシビリティ**
+   - ARIA属性
+   - キーボード操作
+   - スクリーンリーダー対応
+
+#### 自動レビュー設定
+
+`.codex/config.json` で自動レビュー設定を管理:
+
+```json
+{
+  "autoReview": {
+    "onCommit": true,
+    "focus": ["security", "typescript"],
+    "exclude": ["*.test.ts", "*.spec.ts"]
+  }
+}
+```
+
+#### レビュー結果の活用
+
+- Critical/High は必ず対応
+- Medium は検討して判断
+- Low/Info は参考情報として記録
+
 #### Feature Proposal Guidelines
 
 When proposing new features, consider:
