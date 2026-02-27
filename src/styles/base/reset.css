@@ -1,15 +1,38 @@
 /* ========================================
-   Reset — Base element resets
+   Reset — Tailwind v4 + Custom resets
    ======================================== */
 
 @import "tailwindcss";
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Static tokens — generates CSS variables + utility classes */
+@theme {
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 16px;
+  --font-sans: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
 }
 
+/* Dynamic tokens — utility classes only, values from tokens.css/themes.css */
+@theme reference {
+  --color-bg: var(--color-bg);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-faint: var(--color-text-faint);
+  --color-border: var(--color-border);
+  --color-border-light: var(--color-border-light);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-danger: var(--color-danger);
+  --color-danger-hover: var(--color-danger-hover);
+  --color-success: var(--color-success);
+  --color-success-hover: var(--color-success-hover);
+  --color-warning-text: var(--color-warning-text);
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-border: var(--color-warning-border);
+}
+
+/* Custom resets not covered by Tailwind preflight */
 body {
   min-height: 100vh;
   min-height: 100dvh;
@@ -35,9 +58,4 @@ button {
 
 ul, ol {
   list-style: none;
-}
-
-img {
-  display: block;
-  max-width: 100%;
 }
