@@ -3,30 +3,19 @@
    ======================================== */
 
 .voice-input-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  color: var(--color-text-muted);
-  cursor: pointer;
+  @apply relative inline-flex items-center justify-center
+         size-9 p-0
+         bg-bg border border-border rounded-m
+         text-text-muted cursor-pointer shrink-0;
   transition: all var(--transition-fast);
-  flex-shrink: 0;
-}
 
-.voice-input-btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
+  &:hover:not(:disabled) {
+    @apply border-accent text-accent;
+  }
 
-.voice-input-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 }
 
 /* Listening state */
@@ -34,23 +23,21 @@
   border-color: #e53935;
   color: #e53935;
   background: rgba(229, 57, 53, 0.08);
-}
 
-.voice-input-btn--listening:hover:not(:disabled) {
-  border-color: #c62828;
-  color: #c62828;
+  &:hover:not(:disabled) {
+    border-color: #c62828;
+    color: #c62828;
+  }
 }
 
 /* Pulse animation for recording indicator */
 .voice-input-pulse {
-  position: absolute;
+  @apply absolute rounded-m pointer-events-none;
   top: 50%;
   left: 50%;
   width: 100%;
   height: 100%;
-  border-radius: var(--radius-m);
   transform: translate(-50%, -50%);
-  pointer-events: none;
 }
 
 .voice-input-btn--listening .voice-input-pulse {
@@ -71,20 +58,17 @@
 
 /* Title input with voice button layout */
 .input-with-voice {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+  @apply flex items-center gap-[var(--space-2)];
 
-.input-with-voice .input {
-  flex: 1;
+  & .input {
+    @apply flex-1;
+  }
 }
 
 /* Recording status indicator (optional, for more feedback) */
 .voice-input-status {
-  font-size: 0.75rem;
+  @apply text-xs mt-[var(--space-1)];
   color: #e53935;
-  margin-top: var(--space-1);
   animation: voice-status-blink 1s ease-in-out infinite;
 }
 

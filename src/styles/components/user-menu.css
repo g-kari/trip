@@ -3,33 +3,21 @@
    ======================================== */
 
 .header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: var(--content-width);
+  @apply flex items-center justify-between w-full max-w-[var(--content-width)];
 }
 
 .header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  @apply flex items-center gap-[var(--space-3)];
 }
 
 .user-menu {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  @apply flex items-center gap-[var(--space-3)];
 }
 
 .user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
+  @apply size-7 rounded-full object-cover;
 }
 
 .user-name {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
+  @apply text-[0.8125rem] text-text-muted;
 }

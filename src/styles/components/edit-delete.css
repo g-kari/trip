@@ -4,30 +4,16 @@
 
 /* Hero actions row */
 .hero-actions-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
+  @apply flex items-center justify-center flex-wrap gap-[var(--space-3)] mt-[var(--space-3)];
 }
 
 /* Export dropdown */
 .export-dropdown-container {
-  position: relative;
+  @apply relative;
 }
 
 .export-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: var(--space-1);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  min-width: 140px;
-  z-index: 100;
-  overflow: hidden;
+  @apply absolute top-full right-0 mt-[var(--space-1)] bg-bg-elevated border border-border rounded-m min-w-[140px] z-[100] overflow-hidden;
   animation: dropdown-fade-in var(--transition-fast) ease-out;
 }
 
@@ -43,86 +29,62 @@
 }
 
 .export-dropdown-item {
-  display: block;
-  width: 100%;
+  @apply block w-full text-left text-[0.8125rem] text-text cursor-pointer;
   padding: var(--space-2) var(--space-3);
-  text-align: left;
-  font-size: 0.8125rem;
-  color: var(--color-text);
   background: none;
   border: none;
-  cursor: pointer;
   transition: background-color var(--transition-fast);
-}
 
-.export-dropdown-item:hover {
-  background-color: var(--color-bg);
+  &:hover {
+    @apply bg-bg;
+  }
 }
 
 .export-dropdown-item + .export-dropdown-item {
-  border-top: 1px solid var(--color-border-light);
+  @apply border-t border-border-light;
 }
 
 /* Edit trip form */
 .edit-trip-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-  max-width: 320px;
+  @apply flex flex-col items-center gap-[var(--space-3)] w-full max-w-[320px];
 }
 
 .hero-title-input {
-  font-size: 1.25rem;
-  text-align: center;
+  @apply text-xl text-center;
   font-weight: var(--font-weight-normal);
 }
 
 /* Item actions */
 .item-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  @apply flex gap-[var(--space-2)] mt-[var(--space-2)];
 }
 
 /* Small button variant */
 .btn-small {
+  @apply text-xs;
   padding: var(--space-1) var(--space-2);
-  font-size: 0.75rem;
 }
 
 /* Danger button */
 .btn-danger {
-  color: var(--color-danger);
-}
+  @apply text-danger;
 
-.btn-danger:hover {
-  color: var(--color-danger-hover);
+  &:hover {
+    color: var(--color-danger-hover);
+  }
 }
 
 /* Edit item form (inline in timeline) */
 .edit-item-form {
+  @apply flex flex-col gap-[var(--space-3)] p-[var(--space-3)] border border-border-light rounded-m bg-bg-elevated;
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  background-color: var(--color-bg-elevated);
 }
 
 /* Day header with delete button */
 .day-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply flex items-baseline gap-[var(--space-3)] mb-[var(--space-4)] pb-[var(--space-2)] border-b border-border-light;
 }
 
 .day-header .btn-text {
-  margin-left: auto;
+  @apply ml-auto;
 }

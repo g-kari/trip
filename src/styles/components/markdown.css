@@ -15,58 +15,50 @@
 
 /* Italic text */
 .md-italic {
-  font-style: italic;
+  @apply italic;
 }
 
 /* Links */
 .md-link {
-  color: var(--color-accent);
-  text-decoration: none;
+  @apply text-accent no-underline break-all;
   transition: color var(--transition-fast);
-  word-break: break-all;
-}
 
-.md-link:hover {
-  color: var(--color-accent-hover);
-  text-decoration: underline;
+  &:hover {
+    text-decoration: underline;
+    color: var(--color-accent-hover);
+  }
 }
 
 /* Bullet list */
 .md-list {
-  margin: var(--space-2) 0;
-  padding-left: var(--space-5);
-  list-style: none;
+  @apply my-[var(--space-2)] pl-[var(--space-5)] list-none;
 }
 
 .md-list-item {
-  position: relative;
-  margin-bottom: var(--space-1);
-  line-height: 1.6;
-}
+  @apply relative mb-[var(--space-1)] leading-relaxed;
 
-.md-list-item::before {
-  content: '\2022';
-  position: absolute;
-  left: calc(var(--space-4) * -1);
-  color: var(--color-text-faint);
+  &::before {
+    content: '\2022';
+    @apply absolute text-text-faint;
+    left: calc(var(--space-4) * -1);
+  }
 }
 
 /* Line breaks */
 .md-line {
-  display: inline;
+  @apply inline;
 }
 
 /* Ensure markdown in timeline notes looks good */
 .timeline-note .markdown-text {
-  display: block;
+  @apply block;
 }
 
 .timeline-note .md-list {
-  margin-top: var(--space-1);
-  margin-bottom: var(--space-1);
+  @apply mt-[var(--space-1)] mb-[var(--space-1)];
 }
 
 /* Day notes markdown */
 .day-notes-text .markdown-text {
-  display: block;
+  @apply block;
 }

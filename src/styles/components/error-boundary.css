@@ -3,44 +3,27 @@
    ======================================== */
 
 .error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: var(--space-8) var(--space-5);
+  @apply flex flex-col items-center text-center
+         py-[var(--space-8)] px-[var(--space-5)]
+         mx-auto;
   max-width: 400px;
-  margin: 0 auto;
 }
 
 .error-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-danger);
-  border: 2px solid var(--color-danger);
-  border-radius: 50%;
-  margin-bottom: var(--space-5);
+  @apply size-12 flex items-center justify-center
+         text-2xl font-medium
+         text-danger border-2 border-danger
+         rounded-full mb-[var(--space-5)];
 }
 
 .error-title {
-  font-size: 1.25rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  margin-bottom: var(--space-3);
+  @apply text-xl font-medium text-text mb-[var(--space-3)];
 }
 
 .error-message {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  line-height: 1.8;
-  margin-bottom: var(--space-6);
+  @apply text-sm text-text-muted leading-loose mb-[var(--space-6)];
 }
 
 .error-actions {
-  display: flex;
-  gap: var(--space-3);
+  @apply flex gap-[var(--space-3)];
 }

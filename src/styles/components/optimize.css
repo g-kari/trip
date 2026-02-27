@@ -4,47 +4,32 @@
 
 /* Optimize button in day header */
 .optimize-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
+  @apply inline-flex items-center gap-[var(--space-1)] text-[0.6875rem] text-text-muted bg-bg border border-border-light cursor-pointer transition-all duration-150 ml-auto;
   padding: var(--space-1) var(--space-2);
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-light);
   border-radius: 6px;
-  cursor: pointer;
-  transition: all 150ms ease;
-  margin-left: auto;
-}
 
-.optimize-btn:hover {
-  color: var(--color-text);
-  border-color: var(--color-border);
-  background: var(--color-bg-elevated);
-}
+  &:hover {
+    @apply text-text border-border bg-bg-elevated;
+  }
 
-.optimize-btn:active {
-  transform: scale(0.98);
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 /* Modal styles */
 .optimize-modal {
+  @apply w-[95%];
   max-width: 600px;
-  width: 95%;
 }
 
 /* Empty state */
 .optimize-empty {
-  text-align: center;
-  padding: var(--space-5);
-}
+  @apply text-center p-[var(--space-5)];
 
-.optimize-empty p {
-  margin-bottom: var(--space-3);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-  line-height: 1.6;
+  p {
+    @apply mb-[var(--space-3)] text-text-muted text-sm leading-relaxed;
+  }
 }
 
 .optimize-empty-note {
@@ -54,25 +39,17 @@
 
 /* Loading state */
 .optimize-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-7);
-  gap: var(--space-3);
-}
+  @apply flex flex-col items-center justify-center p-[var(--space-7)] gap-[var(--space-3)];
 
-.optimize-loading p {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  p {
+    @apply text-text-muted text-sm;
+  }
 }
 
 .optimize-spinner {
-  width: 32px;
-  height: 32px;
+  @apply w-8 h-8 rounded-full;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-accent);
-  border-radius: 50%;
   animation: optimize-spin 0.8s linear infinite;
 }
 
@@ -84,40 +61,27 @@
 
 /* Error state */
 .optimize-error {
-  text-align: center;
-  padding: var(--space-5);
-}
+  @apply text-center p-[var(--space-5)];
 
-.optimize-error p {
-  margin-bottom: var(--space-4);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  p {
+    @apply mb-[var(--space-4)] text-text-muted text-sm;
+  }
 }
 
 /* Remaining uses */
 .optimize-remaining {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  margin-top: var(--space-3);
-  text-align: center;
+  @apply text-xs text-text-faint mt-[var(--space-3)] text-center;
 }
 
 /* Results section */
 .optimize-results {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  @apply flex flex-col gap-[var(--space-4)];
 }
 
 /* Savings display */
 .optimize-savings {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
+  @apply flex items-center justify-center gap-[var(--space-2)] p-[var(--space-3)] rounded-lg;
   background: #d1fae5;
-  border-radius: 8px;
 }
 
 [data-color-mode="dark"] .optimize-savings {
@@ -125,8 +89,8 @@
 }
 
 .optimize-savings-icon {
+  @apply font-semibold;
   color: #065f46;
-  font-weight: 600;
 }
 
 [data-color-mode="dark"] .optimize-savings-icon {
@@ -134,9 +98,8 @@
 }
 
 .optimize-savings-text {
+  @apply text-sm font-medium;
   color: #065f46;
-  font-size: 0.875rem;
-  font-weight: 500;
 }
 
 [data-color-mode="dark"] .optimize-savings-text {
@@ -145,16 +108,14 @@
 
 /* Warnings */
 .optimize-warnings {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  @apply flex flex-col gap-[var(--space-2)];
 }
 
 .optimize-warning {
+  @apply text-[0.8125rem];
   padding: var(--space-2) var(--space-3);
   background: #fef3c7;
   border-radius: 6px;
-  font-size: 0.8125rem;
   color: #92400e;
 }
 
@@ -165,16 +126,14 @@
 
 /* Comparison layout */
 .optimize-comparison {
-  display: grid;
+  @apply grid items-start gap-[var(--space-3)];
   grid-template-columns: 1fr auto 1fr;
-  gap: var(--space-3);
-  align-items: start;
 }
 
 @media (max-width: 480px) {
   .optimize-comparison {
+    @apply gap-[var(--space-4)];
     grid-template-columns: 1fr;
-    gap: var(--space-4);
   }
 
   .optimize-arrow {
@@ -184,51 +143,30 @@
 }
 
 .optimize-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  color: var(--color-text-faint);
-  padding-top: var(--space-7);
+  @apply flex items-center justify-center text-xl text-text-faint pt-[var(--space-7)];
 }
 
 .optimize-column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  @apply flex flex-col gap-[var(--space-2)];
 }
 
 .optimize-column-title {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply text-xs font-medium text-text-muted uppercase tracking-wide pb-[var(--space-2)] border-b border-border-light;
 }
 
 .optimize-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  @apply flex flex-col gap-[var(--space-2)];
 }
 
 /* Item in list */
 .optimize-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  @apply flex items-start gap-[var(--space-2)] bg-bg border border-border-light rounded-lg transition-all duration-150;
   padding: var(--space-2) var(--space-3);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-light);
-  border-radius: 8px;
-  transition: all 150ms ease;
-}
 
-.optimize-item.moved {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  &.moved {
+    background: #dbeafe;
+    border-color: #93c5fd;
+  }
 }
 
 [data-color-mode="dark"] .optimize-item.moved {
@@ -237,17 +175,8 @@
 }
 
 .optimize-item-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  @apply flex items-center justify-center w-5 h-5 text-[0.6875rem] font-semibold text-text-muted rounded-full shrink-0;
   background: var(--color-border-light);
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .optimize-item.moved .optimize-item-number {
@@ -256,29 +185,19 @@
 }
 
 .optimize-item-content {
-  display: flex;
-  flex-direction: column;
+  @apply flex flex-col min-w-0;
   gap: 2px;
-  min-width: 0;
 }
 
 .optimize-item-title {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
+  @apply text-[0.8125rem] font-medium text-text flex flex-wrap items-center gap-[var(--space-2)];
 }
 
 .optimize-item-moved-badge {
-  font-size: 0.625rem;
-  font-weight: 400;
+  @apply text-[0.625rem] font-normal rounded;
   color: #1e40af;
   background: #bfdbfe;
   padding: 1px 6px;
-  border-radius: 4px;
 }
 
 [data-color-mode="dark"] .optimize-item-moved-badge {
@@ -287,42 +206,30 @@
 }
 
 .optimize-item-area {
-  font-size: 0.6875rem;
-  color: var(--color-text-faint);
+  @apply text-[0.6875rem] text-text-faint;
 }
 
 .optimize-item-reason {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  font-style: italic;
+  @apply text-[0.6875rem] text-text-muted italic;
 }
 
 /* Actions */
 .optimize-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border-light);
+  @apply flex justify-end gap-[var(--space-3)] pt-[var(--space-4)] border-t border-border-light;
 }
 
 .optimize-no-change {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  width: 100%;
-}
+  @apply flex flex-col items-center gap-[var(--space-3)] w-full;
 
-.optimize-no-change p {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  p {
+    @apply text-sm text-text-muted;
+  }
 }
 
 /* Print: hide optimization UI */
 @media print {
   .optimize-btn,
   .optimize-modal {
-    display: none;
+    @apply hidden;
   }
 }

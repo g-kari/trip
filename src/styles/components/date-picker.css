@@ -3,204 +3,150 @@
    ======================================== */
 
 .date-picker {
-  position: relative;
-  width: 100%;
+  @apply relative w-full;
 }
 
 .date-picker-input {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  font-size: 0.875rem;
-  font-family: inherit;
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  cursor: pointer;
+  @apply w-full flex items-center justify-between
+         gap-[var(--space-2)]
+         py-[var(--space-3)] px-[var(--space-4)]
+         text-sm font-[inherit]
+         text-text bg-bg
+         border border-border rounded-m
+         cursor-pointer text-left;
   transition: border-color var(--transition-fast);
-  text-align: left;
-}
 
-.date-picker-input:hover {
-  border-color: var(--color-text-muted);
-}
+  &:hover {
+    @apply border-text-muted;
+  }
 
-.date-picker-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
+  &:focus {
+    @apply outline-none border-accent;
+  }
 }
 
 .date-picker-value {
-  color: var(--color-text);
+  @apply text-text;
 }
 
 .date-picker-placeholder {
-  color: var(--color-text-faint);
+  @apply text-text-faint;
 }
 
 .date-picker-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
+  @apply flex items-center justify-center text-text-muted shrink-0;
 }
 
 .date-picker-calendar {
-  position: absolute;
-  z-index: 200;
+  @apply absolute z-200
+         p-[var(--space-4)]
+         bg-bg-elevated
+         border border-text-muted rounded-m;
   min-width: 280px;
-  padding: var(--space-4);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-text-muted);
-  border-radius: var(--radius-m);
 }
 
 /* Calendar header */
 .calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
+  @apply flex items-center justify-between mb-[var(--space-3)];
 }
 
 .calendar-title {
-  font-size: 0.9375rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  flex: 1;
-  text-align: center;
+  @apply text-[0.9375rem] font-medium text-text flex-1 text-center;
 }
 
 .calendar-nav-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-s);
-  cursor: pointer;
+  @apply flex items-center justify-center
+         size-7 p-0
+         text-text-muted bg-transparent
+         border border-border-light rounded-s
+         cursor-pointer;
   transition: all var(--transition-fast);
-}
 
-.calendar-nav-btn:hover {
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  border-color: var(--color-border);
+  &:hover {
+    @apply text-text bg-bg border-border;
+  }
 }
 
 /* Weekday headers */
 .calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: var(--space-2);
+  @apply grid grid-cols-7 mb-[var(--space-2)];
 }
 
 .calendar-weekday {
-  font-size: 0.6875rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-faint);
-  text-align: center;
-  padding: var(--space-1) 0;
-}
+  @apply text-[0.6875rem] font-medium text-text-faint text-center
+         py-[var(--space-1)];
 
-.calendar-weekday.sunday {
-  color: var(--color-danger);
-}
+  &.sunday {
+    @apply text-danger;
+  }
 
-.calendar-weekday.saturday {
-  color: #3a7bd5;
+  &.saturday {
+    color: #3a7bd5;
+  }
 }
 
 /* Calendar grid */
 .calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  @apply grid grid-cols-7 gap-0.5;
 }
 
 .calendar-day {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  aspect-ratio: 1;
-  font-size: 0.8125rem;
-  color: var(--color-text);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-s);
-  cursor: pointer;
+  @apply flex items-center justify-center
+         w-full aspect-square
+         text-[0.8125rem] text-text
+         bg-transparent border-none rounded-s
+         cursor-pointer;
   transition: all var(--transition-fast);
-}
 
-.calendar-day:hover:not(.disabled):not(.empty) {
-  background-color: var(--color-bg);
-}
+  &:hover:not(.disabled):not(.empty) {
+    @apply bg-bg;
+  }
 
-.calendar-day.empty {
-  cursor: default;
-}
+  &.empty {
+    @apply cursor-default;
+  }
 
-.calendar-day.sunday:not(.disabled) {
-  color: var(--color-danger);
-}
+  &.sunday:not(.disabled) {
+    @apply text-danger;
+  }
 
-.calendar-day.saturday:not(.disabled) {
-  color: #3a7bd5;
-}
+  &.saturday:not(.disabled) {
+    color: #3a7bd5;
+  }
 
-.calendar-day.today {
-  font-weight: var(--font-weight-medium);
-  border: 1px solid var(--color-border);
-}
+  &.today {
+    @apply font-medium border border-border;
+  }
 
-.calendar-day.selected {
-  background-color: var(--color-accent);
-  color: var(--color-bg);
-  font-weight: var(--font-weight-medium);
-}
+  &.selected {
+    @apply bg-accent text-bg font-medium;
 
-.calendar-day.selected.sunday,
-.calendar-day.selected.saturday {
-  color: var(--color-bg);
-}
+    &.sunday,
+    &.saturday {
+      @apply text-bg;
+    }
+  }
 
-.calendar-day.disabled {
-  color: var(--color-text-faint);
-  opacity: 0.4;
-  cursor: not-allowed;
+  &.disabled {
+    @apply text-text-faint opacity-40 cursor-not-allowed;
+  }
 }
 
 /* Calendar footer */
 .calendar-footer {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-4);
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border-light);
+  @apply flex justify-center gap-[var(--space-4)]
+         mt-[var(--space-3)] pt-[var(--space-3)]
+         border-t border-border-light;
 }
 
 .calendar-footer-btn {
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.75rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
+  @apply py-[var(--space-1)] px-[var(--space-3)]
+         text-xs font-[inherit]
+         text-text-muted bg-transparent border-none
+         cursor-pointer;
   transition: color var(--transition-fast);
-}
 
-.calendar-footer-btn:hover {
-  color: var(--color-text);
+  &:hover {
+    @apply text-text;
+  }
 }

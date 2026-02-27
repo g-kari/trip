@@ -3,51 +3,31 @@
    ======================================== */
 
 .share-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  flex-wrap: wrap;
+  @apply flex items-center justify-center gap-[var(--space-2)] mt-[var(--space-4)] flex-wrap;
 }
 
 .share-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  font-size: 0.8125rem;
+  @apply inline-flex items-center gap-[var(--space-2)] py-[var(--space-2)] px-[var(--space-4)] text-[0.8125rem] font-medium text-text bg-bg-elevated border border-border rounded-m cursor-pointer;
   font-family: inherit;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  cursor: pointer;
-  transition: all var(--transition-fast);
   min-height: 40px;
-}
+  transition: all var(--transition-fast);
 
-.share-btn:hover {
-  border-color: var(--color-text-muted);
-  background-color: var(--color-bg);
+  &:hover {
+    @apply border-border bg-bg;
+    border-color: var(--color-text-muted);
+  }
 }
 
 .share-btn-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-}
+  @apply flex items-center justify-center w-4 h-4;
 
-.share-btn-icon svg {
-  width: 16px;
-  height: 16px;
+  & svg {
+    @apply w-4 h-4;
+  }
 }
 
 .share-btn-text {
-  white-space: nowrap;
+  @apply whitespace-nowrap;
 }
 
 /* Copy button states */
@@ -59,14 +39,12 @@
 
 /* QR code button */
 .share-btn-qr {
-  background-color: var(--color-bg-elevated);
-  border-color: var(--color-border);
-  color: var(--color-text);
-}
+  @apply bg-bg-elevated border-border text-text;
 
-.share-btn-qr:hover {
-  border-color: var(--color-text-muted);
-  background-color: var(--color-bg);
+  &:hover {
+    @apply bg-bg;
+    border-color: var(--color-text-muted);
+  }
 }
 
 /* LINE button */
@@ -74,11 +52,11 @@
   background-color: #00B900;
   border-color: #00B900;
   color: #ffffff;
-}
 
-.share-btn-line:hover {
-  background-color: #00a000;
-  border-color: #00a000;
+  &:hover {
+    background-color: #00a000;
+    border-color: #00a000;
+  }
 }
 
 /* X (Twitter) button */
@@ -86,23 +64,20 @@
   background-color: #000000;
   border-color: #000000;
   color: #ffffff;
-}
 
-.share-btn-x:hover {
-  background-color: #333333;
-  border-color: #333333;
+  &:hover {
+    background-color: #333333;
+    border-color: #333333;
+  }
 }
 
 /* Share buttons in hero section */
 .hero-share-section {
-  margin-top: var(--space-4);
+  @apply mt-[var(--space-4)];
 }
 
 .share-section-title {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  text-align: center;
-  margin-bottom: var(--space-3);
+  @apply text-xs text-text-muted text-center mb-[var(--space-3)];
 }
 
 .hero-with-cover .share-section-title {
@@ -112,15 +87,12 @@
 /* Mobile responsive for share buttons */
 @media (max-width: 480px) {
   .share-buttons {
-    flex-direction: column;
-    width: 100%;
-    gap: var(--space-2);
+    @apply flex-col w-full gap-[var(--space-2)];
   }
 
   .share-btn {
-    width: 100%;
+    @apply w-full justify-center;
     max-width: 280px;
-    justify-content: center;
   }
 }
 
@@ -135,75 +107,53 @@
    ======================================== */
 
 .share-qr-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-4) 0;
-  margin-bottom: var(--space-3);
-  border-bottom: 1px solid var(--color-border-light);
-}
+  @apply flex flex-col items-center py-[var(--space-4)] px-0 mb-[var(--space-3)] border-b border-border-light;
 
-.share-qr-section .share-section-title {
-  margin-bottom: var(--space-3);
+  & .share-section-title {
+    @apply mb-[var(--space-3)];
+  }
 }
 
 .qr-code-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
+  @apply flex items-center justify-center p-[var(--space-3)] rounded-m border border-border-light;
   background-color: #ffffff;
-  border-radius: var(--radius-m);
-  border: 1px solid var(--color-border-light);
 }
 
 .qr-code-image {
-  display: block;
+  @apply block;
 }
 
 .qr-code-loading {
-  background-color: var(--color-bg);
-  border-radius: var(--radius-m);
+  @apply bg-bg rounded-m;
   animation: pulse 1.5s infinite;
 }
 
 .qr-code-error {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  text-align: center;
-  padding: var(--space-4);
+  @apply text-[0.8125rem] text-text-muted text-center p-[var(--space-4)];
 }
 
 /* QR code button wrapper */
 .share-qr-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
+  @apply flex flex-col items-center gap-[var(--space-2)] p-0 bg-none border-none cursor-pointer;
   transition: transform var(--transition-fast);
-}
 
-.share-qr-button:hover {
-  transform: scale(1.02);
-}
+  &:hover {
+    transform: scale(1.02);
 
-.share-qr-button:hover .qr-code-container {
-  border-color: var(--color-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    & .qr-code-container {
+      @apply border-border;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    & .share-qr-hint {
+      @apply text-text-muted;
+    }
+  }
 }
 
 .share-qr-hint {
-  font-size: 0.6875rem;
-  color: var(--color-text-faint);
+  @apply text-[0.6875rem] text-text-faint;
   transition: color var(--transition-fast);
-}
-
-.share-qr-button:hover .share-qr-hint {
-  color: var(--color-text-muted);
 }
 
 @keyframes pulse {

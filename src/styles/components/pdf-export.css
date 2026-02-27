@@ -4,12 +4,9 @@
 
 /* Loading spinner for PDF generation */
 .btn-loading {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--color-border);
+  @apply inline-block size-4
+         border-2 border-border rounded-full;
   border-top-color: var(--color-accent);
-  border-radius: 50%;
   animation: btn-spin 0.8s linear infinite;
 }
 
@@ -22,8 +19,7 @@
 /* PDF export container (off-screen rendering) */
 .pdf-export-container {
   font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
-  line-height: 1.6;
-  letter-spacing: 0.02em;
+  @apply leading-relaxed tracking-wide;
 }
 
 .pdf-export-container * {

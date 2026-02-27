@@ -3,70 +3,48 @@
    ======================================== */
 
 .spot-suggestions-modal {
+  @apply w-[90%];
   max-width: 480px;
-  width: 90%;
 }
 
 .spot-suggestions-source {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-bg);
-  border-radius: 8px;
-  margin-bottom: var(--space-4);
+  @apply flex flex-wrap items-center gap-[var(--space-2)] p-[var(--space-3)] bg-bg rounded-lg mb-[var(--space-4)];
 }
 
 .spot-suggestions-source-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  @apply text-xs text-text-muted;
 }
 
 .spot-suggestions-source-name {
-  font-weight: 500;
-  color: var(--color-text);
+  @apply font-medium text-text;
 }
 
 .spot-suggestions-source-area {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
+  @apply text-[0.8125rem] text-text-muted;
 }
 
 /* Empty state */
 .spot-suggestions-empty {
-  text-align: center;
-  padding: var(--space-5);
-}
+  @apply text-center p-[var(--space-5)];
 
-.spot-suggestions-empty p {
-  margin-bottom: var(--space-4);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-  line-height: 1.6;
+  p {
+    @apply mb-[var(--space-4)] text-text-muted text-sm leading-relaxed;
+  }
 }
 
 /* Loading state */
 .spot-suggestions-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-7);
-  gap: var(--space-3);
-}
+  @apply flex flex-col items-center justify-center p-[var(--space-7)] gap-[var(--space-3)];
 
-.spot-suggestions-loading p {
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  p {
+    @apply text-text-muted text-sm;
+  }
 }
 
 .spot-suggestions-spinner {
-  width: 32px;
-  height: 32px;
+  @apply w-8 h-8 rounded-full;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-accent);
-  border-radius: 50%;
   animation: spot-suggestions-spin 0.8s linear infinite;
 }
 
@@ -78,64 +56,45 @@
 
 /* Error state */
 .spot-suggestions-error {
-  text-align: center;
-  padding: var(--space-5);
-}
+  @apply text-center p-[var(--space-5)];
 
-.spot-suggestions-error p {
-  margin-bottom: var(--space-4);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  p {
+    @apply mb-[var(--space-4)] text-text-muted text-sm;
+  }
 }
 
 /* Remaining uses */
 .spot-suggestions-remaining {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  margin-top: var(--space-3);
-  text-align: center;
+  @apply text-xs text-text-faint mt-[var(--space-3)] text-center;
 }
 
 /* Suggestions list */
 .spot-suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  @apply flex flex-col gap-[var(--space-3)];
 }
 
 .spot-suggestion-item {
-  padding: var(--space-4);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-light);
+  @apply p-[var(--space-4)] bg-bg border border-border-light transition-colors duration-150;
   border-radius: 10px;
-  transition: border-color 150ms ease;
-}
 
-.spot-suggestion-item:hover {
-  border-color: var(--color-border);
+  &:hover {
+    @apply border-border;
+  }
 }
 
 .spot-suggestion-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  @apply flex items-center justify-between gap-[var(--space-2)] mb-[var(--space-2)];
 }
 
 .spot-suggestion-name {
-  font-weight: 500;
-  color: var(--color-text);
-  font-size: 0.9375rem;
+  @apply font-medium text-text text-[0.9375rem];
 }
 
 .spot-suggestion-category {
-  font-size: 0.6875rem;
+  @apply text-[0.6875rem] text-text-muted whitespace-nowrap;
   padding: 2px 8px;
   border-radius: 10px;
   background: var(--color-border-light);
-  color: var(--color-text-muted);
-  white-space: nowrap;
 }
 
 .spot-suggestion-category-restaurant {
@@ -180,35 +139,25 @@
 }
 
 .spot-suggestion-area {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  margin-bottom: var(--space-2);
+  @apply block text-xs text-text-faint mb-[var(--space-2)];
 }
 
 .spot-suggestion-description {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-  margin-bottom: var(--space-3);
+  @apply text-[0.8125rem] text-text-muted leading-relaxed mb-[var(--space-3)];
 }
 
 .spot-suggestion-cost {
-  display: inline-block;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
+  @apply inline-block text-xs text-text-muted mb-[var(--space-3)];
 }
 
 .spot-suggestion-add {
-  width: 100%;
-  font-size: 0.8125rem;
+  @apply w-full text-[0.8125rem];
   padding: var(--space-2) var(--space-3);
 }
 
 /* Print: hide spot suggestions */
 @media print {
   .spot-suggestions-modal {
-    display: none;
+    @apply hidden;
   }
 }

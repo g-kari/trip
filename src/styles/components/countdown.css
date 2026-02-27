@@ -3,9 +3,7 @@
    ======================================== */
 
 .countdown-widget {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  @apply inline-flex items-center gap-[var(--space-2)];
 }
 
 /* ========================================
@@ -13,24 +11,20 @@
    ======================================== */
 
 .countdown-compact {
-  font-size: 0.75rem;
+  @apply text-xs;
 }
 
 .countdown-text-compact {
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
+  @apply text-text-muted whitespace-nowrap;
 
-.countdown-text-compact .countdown-number {
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-accent);
-  margin: 0 2px;
+  & .countdown-number {
+    @apply text-sm font-medium text-accent;
+    margin: 0 2px;
+  }
 }
 
 .countdown-text-small {
-  color: var(--color-text-faint);
-  font-size: 0.6875rem;
+  @apply text-text-faint text-[0.6875rem];
 }
 
 /* ========================================
@@ -38,45 +32,32 @@
    ======================================== */
 
 .countdown-full {
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  margin-top: var(--space-3);
+  @apply flex-col items-center
+         py-[var(--space-3)] px-[var(--space-4)]
+         bg-bg-elevated border border-border-light rounded-m
+         mt-[var(--space-3)];
 }
 
 .countdown-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
+  @apply text-xs text-text-muted mb-[var(--space-2)];
 }
 
 .countdown-values {
-  display: flex;
-  gap: var(--space-4);
-  justify-content: center;
+  @apply flex gap-[var(--space-4)] justify-center;
 }
 
 .countdown-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  @apply flex flex-col items-center;
   min-width: 48px;
 }
 
 .countdown-value {
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-accent);
-  line-height: 1.2;
+  @apply text-2xl font-bold text-accent leading-tight;
   font-variant-numeric: tabular-nums;
 }
 
 .countdown-unit-label {
-  font-size: 0.6875rem;
-  color: var(--color-text-faint);
+  @apply text-[0.6875rem] text-text-faint;
   margin-top: 2px;
 }
 
@@ -85,35 +66,28 @@
    ======================================== */
 
 .countdown-badge {
-  display: inline-flex;
-  align-items: center;
+  @apply inline-flex items-center
+         rounded-s text-[0.6875rem] font-medium
+         whitespace-nowrap;
   padding: 2px 8px;
-  border-radius: var(--radius-s);
-  font-size: 0.6875rem;
-  font-weight: var(--font-weight-medium);
-  white-space: nowrap;
 }
 
 .countdown-badge-traveling {
-  background: var(--color-success);
+  @apply bg-success;
   color: #fff;
 }
 
 .countdown-badge-ended {
-  background: var(--color-border);
-  color: var(--color-text-muted);
+  @apply bg-border text-text-muted;
 }
 
 .countdown-badge-imminent {
-  background: var(--color-accent);
-  color: var(--color-bg);
+  @apply bg-accent text-bg;
 }
 
 /* Text after badge in full mode */
 .countdown-ended .countdown-text-muted {
-  color: var(--color-text-faint);
-  font-size: 0.75rem;
-  margin-left: var(--space-2);
+  @apply text-text-faint text-xs ml-[var(--space-2)];
 }
 
 /* ========================================
@@ -122,11 +96,11 @@
 
 /* When trip is today/imminent */
 .countdown-today .countdown-text-compact {
-  color: var(--color-text);
+  @apply text-text;
 }
 
 .countdown-today .countdown-number {
-  color: var(--color-success);
+  @apply text-success;
 }
 
 .countdown-imminent .countdown-badge {
@@ -147,17 +121,15 @@
    ======================================== */
 
 [data-color-mode="dark"] .countdown-badge-traveling {
-  background: var(--color-success);
+  @apply bg-success;
 }
 
 [data-color-mode="dark"] .countdown-badge-ended {
-  background: var(--color-border);
-  color: var(--color-text-muted);
+  @apply bg-border text-text-muted;
 }
 
 [data-color-mode="dark"] .countdown-badge-imminent {
-  background: var(--color-accent);
-  color: var(--color-bg);
+  @apply bg-accent text-bg;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -185,6 +157,6 @@
 
 @media print {
   .countdown-widget {
-    display: none;
+    @apply hidden;
   }
 }

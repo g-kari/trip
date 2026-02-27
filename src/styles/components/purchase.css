@@ -7,167 +7,118 @@
 }
 
 .purchase-loading {
-  text-align: center;
-  padding: var(--space-6);
-  color: var(--color-text-muted);
+  @apply text-center p-[var(--space-6)] text-text-muted;
 }
 
 /* Status section */
 .purchase-status {
-  padding: var(--space-4);
-  background-color: var(--color-bg);
-  border-radius: var(--radius-m);
-  margin-bottom: var(--space-5);
+  @apply p-[var(--space-4)] bg-bg rounded-m mb-[var(--space-5)];
 }
 
 .purchase-status-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) 0;
-}
+  @apply flex justify-between items-center py-[var(--space-2)];
 
-.purchase-status-item:not(:last-child) {
-  border-bottom: 1px solid var(--color-border-light);
+  &:not(:last-child) {
+    @apply border-b border-border-light;
+  }
 }
 
 .purchase-status-label {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  @apply text-sm text-text-muted;
 }
 
 .purchase-status-value {
-  font-size: 0.9375rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  @apply text-[0.9375rem] font-medium text-text;
 }
 
 .purchase-status-remaining {
-  color: var(--color-accent);
+  @apply text-accent;
 }
 
 .purchase-premium-badge {
-  margin-top: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  @apply mt-[var(--space-3)]
+         py-[var(--space-2)] px-[var(--space-3)]
+         rounded-s text-[0.8125rem] font-medium text-center;
   background-color: #e8f5e9;
   color: #2e7d32;
-  border-radius: var(--radius-s);
-  font-size: 0.8125rem;
-  font-weight: var(--font-weight-medium);
-  text-align: center;
 }
 
 /* Form */
 .purchase-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  @apply flex flex-col gap-[var(--space-4)];
 }
 
 .purchase-label {
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  @apply text-sm font-medium text-text;
 }
 
 .purchase-slot-selector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
+  @apply flex items-center justify-center gap-[var(--space-4)];
 }
 
 .purchase-slot-btn {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  background-color: var(--color-bg-elevated);
-  color: var(--color-text);
-  font-size: 1.25rem;
-  cursor: pointer;
+  @apply size-10 flex items-center justify-center
+         border border-border rounded-m
+         bg-bg-elevated text-text text-xl
+         cursor-pointer;
   transition: all var(--transition-fast);
-}
 
-.purchase-slot-btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
+  &:hover:not(:disabled) {
+    @apply border-accent text-accent;
+  }
 
-.purchase-slot-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  &:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
 }
 
 .purchase-slot-count {
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-medium);
+  @apply text-2xl font-medium text-center;
   min-width: 60px;
-  text-align: center;
 }
 
 /* Price */
 .purchase-price {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-4);
-  background-color: var(--color-bg);
-  border-radius: var(--radius-m);
+  @apply flex justify-between items-center
+         p-[var(--space-4)] bg-bg rounded-m;
 }
 
 .purchase-price-label {
-  font-size: 0.9375rem;
-  color: var(--color-text-muted);
+  @apply text-[0.9375rem] text-text-muted;
 }
 
 .purchase-price-value {
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
+  @apply text-2xl font-bold text-text;
 }
 
 /* Benefits */
 .purchase-benefits {
-  padding: var(--space-3);
+  @apply p-[var(--space-3)] rounded-m;
   background-color: #fff8e6;
   border: 1px solid #ffd966;
-  border-radius: var(--radius-m);
 }
 
 .purchase-benefit-title {
-  font-size: 0.8125rem;
-  font-weight: var(--font-weight-medium);
+  @apply text-[0.8125rem] font-medium mb-[var(--space-2)];
   color: #b8860b;
-  margin-bottom: var(--space-2);
 }
 
 .purchase-benefit-list {
-  margin: 0;
-  padding-left: var(--space-4);
-  font-size: 0.8125rem;
+  @apply m-0 pl-[var(--space-4)] text-[0.8125rem];
   color: #8b6914;
-}
 
-.purchase-benefit-list li {
-  margin-bottom: var(--space-1);
+  & li {
+    @apply mb-[var(--space-1)];
+  }
 }
 
 /* Button */
 .purchase-btn {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font-size: 1rem;
+  @apply w-full py-[var(--space-3)] px-[var(--space-4)] text-base;
 }
 
 .purchase-note {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  text-align: center;
-  margin: 0;
+  @apply text-xs text-text-faint text-center m-0;
 }
 
 /* Dark mode */

@@ -3,91 +3,66 @@
    ======================================== */
 
 .day-notes-section {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+  @apply mt-[var(--space-5)] pt-[var(--space-4)];
   border-top: 1px dashed var(--color-border-light);
 }
 
 .day-notes-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
+  @apply flex items-center justify-between mb-[var(--space-3)];
 }
 
 .day-notes-label {
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
+  @apply text-xs font-medium text-text-muted uppercase;
   letter-spacing: 0.08em;
 }
 
 .day-notes-text {
-  font-size: 0.875rem;
-  color: var(--color-text);
-  line-height: 1.6;
-  margin-bottom: var(--space-2);
+  @apply text-sm text-text leading-relaxed mb-[var(--space-2)];
   white-space: pre-wrap;
 }
 
 .day-notes-edit {
-  margin-bottom: var(--space-3);
-}
+  @apply mb-[var(--space-3)];
 
-.day-notes-edit .textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 80px;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  margin-bottom: var(--space-2);
+  & .textarea {
+    @apply w-full text-sm leading-relaxed mb-[var(--space-2)];
+    resize: vertical;
+    min-height: 80px;
+  }
 }
 
 /* Day photos grid */
 .day-photos-grid {
-  display: grid;
+  @apply grid gap-[var(--space-3)] mt-[var(--space-3)];
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: var(--space-3);
-  margin-top: var(--space-3);
 }
 
 .day-photo-item {
-  position: relative;
+  @apply relative;
 }
 
 .day-photo {
-  width: 100%;
+  @apply w-full object-cover border border-border-light;
   height: 100px;
-  object-fit: cover;
   border-radius: 8px;
-  border: 1px solid var(--color-border-light);
 }
 
 .day-photo-delete {
-  position: absolute;
+  @apply absolute flex items-center justify-center border border-border rounded-full cursor-pointer opacity-0 text-danger;
   top: 4px;
   right: 4px;
   width: 24px;
   height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
   font-size: 14px;
-  cursor: pointer;
-  opacity: 0;
+  background: rgba(255, 255, 255, 0.9);
   transition: opacity 150ms ease;
-  color: var(--color-danger);
-}
 
-.day-photo-delete:hover {
-  background: rgba(255, 255, 255, 1);
-  color: var(--color-danger-hover);
+  &:hover {
+    background: rgba(255, 255, 255, 1);
+    color: var(--color-danger-hover);
+  }
 }
 
 .day-photo-item:hover .day-photo-delete {
-  opacity: 1;
+  @apply opacity-100;
 }

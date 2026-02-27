@@ -3,30 +3,23 @@
    ======================================== */
 
 .header-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-left: var(--space-5);
+  @apply flex items-center gap-[var(--space-4)] ml-[var(--space-5)];
 }
 
 .header-nav-link {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
+  @apply text-[0.8125rem] text-text-muted no-underline transition-colors duration-150;
 
-.header-nav-link:hover {
-  color: var(--color-text);
+  &:hover {
+    @apply text-text;
+  }
 }
 
 @media (max-width: 480px) {
   .header-nav {
-    gap: var(--space-3);
-    margin-left: var(--space-3);
+    @apply gap-[var(--space-3)] ml-[var(--space-3)];
   }
 
   .header-nav-link {
-    font-size: 0.75rem;
+    @apply text-xs;
   }
 }

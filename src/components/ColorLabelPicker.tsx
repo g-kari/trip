@@ -1,6 +1,6 @@
 import type { ColorLabel } from '../types'
 import { COLOR_LABELS, COLOR_LABEL_NAMES } from '../types'
-import '../styles/components/color-label.css'
+
 
 type ColorLabelPickerProps = {
   value: ColorLabel | null

@@ -3,47 +3,37 @@
    ======================================== */
 
 .cover-section {
-  margin-top: var(--space-3);
-  width: 100%;
+  @apply mt-[var(--space-3)] w-full;
 }
 
 .cover-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
+  @apply flex flex-col items-center gap-[var(--space-2)];
 }
 
 .cover-image {
-  width: 100%;
-  max-width: 280px;
-  height: auto;
-  border-radius: var(--radius-m);
+  @apply w-full max-w-[280px] h-auto rounded-m;
   object-fit: cover;
 }
 
 .cover-upload-btn {
-  width: 100%;
-  max-width: 280px;
+  @apply w-full max-w-[280px];
 }
 
 /* Hero with cover image */
 .hero-with-cover {
-  position: relative;
+  @apply relative;
   background-size: cover;
   background-position: center;
 }
 
 .hero-with-cover::before {
+  @apply absolute inset-0;
   content: '';
-  position: absolute;
-  inset: 0;
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6));
 }
 
 .hero-with-cover > * {
-  position: relative;
-  z-index: 1;
+  @apply relative z-[1];
 }
 
 .hero-with-cover .hero-title,

@@ -13,100 +13,73 @@
 
 /* Template loading state */
 .template-loading {
-  padding: var(--space-6);
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  @apply p-[var(--space-6)] text-center text-text-muted text-sm;
 }
 
 /* Empty state for no templates */
 .template-empty-state {
-  padding: var(--space-6);
-  text-align: center;
+  @apply p-[var(--space-6)] text-center;
 }
 
 .template-empty-text {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
+  @apply text-sm text-text-muted mb-[var(--space-2)];
 }
 
 .template-empty-hint {
-  font-size: 0.8125rem;
-  color: var(--color-text-faint);
-  margin: 0;
+  @apply text-[0.8125rem] text-text-faint m-0;
 }
 
 /* Template section header */
 .template-section-header {
-  font-size: 0.75rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: var(--space-2) var(--space-4);
-  background-color: var(--color-bg);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply text-xs font-medium text-text-muted
+         uppercase tracking-wide
+         py-[var(--space-2)] px-[var(--space-4)]
+         bg-bg border-b border-border-light;
 }
 
 /* Template list */
 .template-list-container {
+  @apply overflow-y-auto;
   max-height: 400px;
-  overflow-y: auto;
 }
 
 .trip-template-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  @apply list-none p-0 m-0;
 }
 
 .trip-template-item {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply flex items-start justify-between
+         py-[var(--space-3)] px-[var(--space-4)]
+         border-b border-border-light;
   transition: background-color var(--transition-fast);
-}
 
-.trip-template-item:last-child {
-  border-bottom: none;
-}
+  &:last-child {
+    @apply border-b-0;
+  }
 
-.trip-template-item:hover {
-  background-color: var(--color-bg);
+  &:hover {
+    @apply bg-bg;
+  }
 }
 
 .trip-template-item-content {
-  flex: 1;
-  cursor: pointer;
-  min-width: 0;
+  @apply flex-1 cursor-pointer min-w-0;
 }
 
 .trip-template-item-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  @apply flex items-center gap-[var(--space-2)] mb-[var(--space-1)];
 }
 
 .trip-template-name {
-  font-size: 0.9375rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  @apply text-[0.9375rem] font-medium text-text
+         overflow-hidden text-ellipsis whitespace-nowrap;
 }
 
 .trip-template-theme {
-  font-size: 0.6875rem;
-  padding: var(--space-1) var(--space-2);
+  @apply text-[0.6875rem]
+         py-[var(--space-1)] px-[var(--space-2)]
+         bg-bg text-text-muted shrink-0;
   border-radius: 4px;
-  background-color: var(--color-bg);
-  color: var(--color-text-muted);
-  flex-shrink: 0;
 }
 
 .trip-template-theme-quiet {
@@ -120,75 +93,56 @@
 }
 
 .trip-template-description {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-1) 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  @apply text-[0.8125rem] text-text-muted
+         m-0 mb-[var(--space-1)]
+         overflow-hidden text-ellipsis whitespace-nowrap;
 }
 
 .trip-template-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-}
+  @apply flex flex-wrap gap-[var(--space-2)]
+         text-xs text-text-faint;
 
-.trip-template-meta span::before {
-  content: '';
-}
+  & span::before {
+    content: '';
+  }
 
-.trip-template-meta span:not(:first-child)::before {
-  content: ' / ';
-  margin-right: var(--space-1);
+  & span:not(:first-child)::before {
+    content: ' / ';
+    margin-right: var(--space-1);
+  }
 }
 
 .trip-template-delete {
-  flex-shrink: 0;
-  margin-left: var(--space-2);
-  opacity: 0.5;
+  @apply shrink-0 ml-[var(--space-2)] opacity-50;
   transition: opacity var(--transition-fast);
 }
 
 .trip-template-item:hover .trip-template-delete {
-  opacity: 1;
+  @apply opacity-100;
 }
 
 /* Selected template & create form */
 .template-create-form {
-  padding: var(--space-4) 0;
+  @apply py-[var(--space-4)];
 }
 
 .template-selected-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  margin-bottom: var(--space-4);
+  @apply flex items-center justify-between
+         p-[var(--space-3)]
+         bg-bg border border-border-light rounded-m
+         mb-[var(--space-4)];
 }
 
 .template-selected-name {
-  font-size: 0.875rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  @apply text-sm font-medium text-text;
 }
 
 .template-create-fields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  @apply flex flex-col gap-[var(--space-3)];
 }
 
 .template-create-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
+  @apply flex justify-between gap-[var(--space-3)] mt-[var(--space-4)];
 }
 
 /* Save as template modal */
@@ -197,111 +151,85 @@
 }
 
 .save-template-form {
-  padding: var(--space-2) 0;
+  @apply py-[var(--space-2)];
 }
 
 .save-template-hint {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  margin: 0 0 var(--space-4) 0;
-  line-height: 1.6;
+  @apply text-[0.8125rem] text-text-muted
+         m-0 mb-[var(--space-4)] leading-relaxed;
 }
 
 .save-template-form .form-field {
-  margin-bottom: var(--space-3);
+  @apply mb-[var(--space-3)];
 }
 
 .save-template-form .form-label {
-  display: block;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-1);
+  @apply block text-[0.8125rem] text-text-muted mb-[var(--space-1)];
 }
 
 .save-template-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding-top: var(--space-3);
+  @apply flex justify-end gap-[var(--space-3)] pt-[var(--space-3)];
 }
 
 /* Public template warning */
 .public-warning {
-  padding: var(--space-4);
+  @apply p-[var(--space-4)] rounded-m mb-[var(--space-4)];
   background-color: #fff8e6;
   border: 1px solid #ffd966;
-  border-radius: var(--radius-m);
-  margin-bottom: var(--space-4);
 }
 
 .public-warning-icon {
-  font-size: 2rem;
-  text-align: center;
-  margin-bottom: var(--space-2);
+  @apply text-[2rem] text-center mb-[var(--space-2)];
 }
 
 .public-warning-text {
-  font-size: 0.9375rem;
-  color: var(--color-text);
-  margin: 0 0 var(--space-3) 0;
-  text-align: center;
+  @apply text-[0.9375rem] text-text
+         m-0 mb-[var(--space-3)] text-center;
 }
 
 .public-warning-list {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  margin: 0;
-  padding-left: var(--space-5);
-  line-height: 1.7;
-}
+  @apply text-[0.8125rem] text-text-muted
+         m-0 pl-[var(--space-5)] leading-loose;
 
-.public-warning-list li {
-  margin-bottom: var(--space-1);
+  & li {
+    @apply mb-[var(--space-1)];
+  }
 }
 
 .btn-warning {
   background-color: #e67e22;
   border-color: #e67e22;
-}
 
-.btn-warning:hover {
-  background-color: #d35400;
-  border-color: #d35400;
+  &:hover {
+    background-color: #d35400;
+    border-color: #d35400;
+  }
 }
 
 /* Checkbox for public option */
 .checkbox-label {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  cursor: pointer;
-}
+  @apply flex items-start gap-[var(--space-2)] cursor-pointer;
 
-.checkbox-label input[type="checkbox"] {
-  margin-top: 2px;
-  flex-shrink: 0;
+  & input[type="checkbox"] {
+    @apply mt-0.5 shrink-0;
+  }
 }
 
 .checkbox-text {
-  font-size: 0.875rem;
-  color: var(--color-text);
+  @apply text-sm text-text;
 }
 
 .checkbox-hint {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-top: var(--space-1);
+  @apply block text-xs text-text-muted mt-[var(--space-1)];
 }
 
 /* Public badge */
 .trip-template-public-badge {
-  font-size: 0.6875rem;
+  @apply text-[0.6875rem] shrink-0;
   padding: 2px 6px;
   border-radius: 4px;
   background-color: #e8f5e9;
   color: #2e7d32;
-  flex-shrink: 0;
 }
 
 /* Mobile responsive */
@@ -311,28 +239,27 @@
   }
 
   .trip-template-item {
-    padding: var(--space-3);
+    @apply p-[var(--space-3)];
   }
 
   .trip-template-item-header {
-    flex-wrap: wrap;
+    @apply flex-wrap;
   }
 
   .template-create-actions {
-    flex-direction: column-reverse;
+    @apply flex-col-reverse;
   }
 
   .template-create-actions .btn-filled {
-    width: 100%;
+    @apply w-full;
   }
 
   .save-template-actions {
-    flex-direction: column-reverse;
+    @apply flex-col-reverse;
   }
 
   .save-template-actions .btn-filled,
   .save-template-actions .btn-text {
-    width: 100%;
-    text-align: center;
+    @apply w-full text-center;
   }
 }

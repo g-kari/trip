@@ -3,20 +3,27 @@
    ======================================== */
 
 .offline-indicator {
-  position: fixed;
+  @apply fixed z-[9998]
+         flex items-center gap-[var(--space-2)]
+         py-[var(--space-2)] px-[var(--space-4)]
+         bg-bg-elevated border border-text-muted rounded-m;
   bottom: var(--space-5);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9998;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-caption);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-text-muted);
-  border-radius: var(--radius-m);
   animation: fade-in 0.2s ease-out;
+
+  &.offline {
+    @apply border-text-muted;
+  }
+
+  &.online {
+    @apply border-border;
+  }
+
+  &.update {
+    @apply border-accent;
+  }
 }
 
 @keyframes fade-in {
@@ -30,50 +37,31 @@
   }
 }
 
-.offline-indicator.offline {
-  border-color: var(--color-text-muted);
-}
-
-.offline-indicator.online {
-  border-color: var(--color-border);
-}
-
 .offline-indicator-text {
-  color: var(--color-text-muted);
-  white-space: nowrap;
+  @apply text-text-muted whitespace-nowrap;
 }
 
 .offline-indicator-close {
-  background: none;
-  border: none;
+  @apply bg-none border-none cursor-pointer
+         text-text-faint leading-none;
   font-size: var(--font-size-small);
-  cursor: pointer;
   padding: 0 0 0 var(--space-1);
-  color: var(--color-text-faint);
-  line-height: 1;
-}
 
-.offline-indicator-close:hover {
-  color: var(--color-text-muted);
-}
-
-/* Update available banner */
-.offline-indicator.update {
-  border-color: var(--color-accent);
+  &:hover {
+    @apply text-text-muted;
+  }
 }
 
 .offline-indicator-update-btn {
-  background: var(--color-accent);
-  color: var(--color-bg);
-  border: none;
-  border-radius: var(--radius-s);
-  padding: var(--space-1) var(--space-2);
+  @apply bg-accent text-bg
+         border-none rounded-s
+         py-[var(--space-1)] px-[var(--space-2)]
+         cursor-pointer;
   font-size: var(--font-size-caption);
-  cursor: pointer;
-}
 
-.offline-indicator-update-btn:hover {
-  background: var(--color-accent-hover);
+  &:hover {
+    background: var(--color-accent-hover);
+  }
 }
 
 /* Mobile adjustments */

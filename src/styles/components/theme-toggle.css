@@ -3,32 +3,19 @@
    ======================================== */
 
 .theme-selector {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
+  @apply flex gap-[var(--space-2)] mt-[var(--space-3)];
 }
 
 .theme-btn {
-  padding: var(--space-2) var(--space-4);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background-color: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
+  @apply px-[var(--space-4)] py-[var(--space-2)] text-[0.8125rem] font-[inherit] text-text-muted bg-transparent border border-border rounded-m cursor-pointer transition-all duration-150;
 
-.theme-btn:hover {
-  border-color: var(--color-text-muted);
-  color: var(--color-text);
-}
+  &:hover {
+    @apply border-text-muted text-text;
+  }
 
-.theme-btn.active {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-bg);
+  &.active {
+    @apply bg-accent border-accent text-bg;
+  }
 }
 
 /* ========================================
@@ -37,81 +24,42 @@
    ======================================== */
 
 .theme-toggle-dropdown {
-  position: relative;
+  @apply relative;
 }
 
 .theme-toggle-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  font-size: 1.125rem;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
+  @apply flex items-center justify-center size-9 text-lg text-text-muted bg-transparent border border-border-light rounded-m cursor-pointer transition-all duration-150;
 
-.theme-toggle-icon-btn:hover {
-  color: var(--color-text);
-  border-color: var(--color-border);
-  background-color: var(--color-bg-elevated);
+  &:hover {
+    @apply text-text border-border bg-bg-elevated;
+  }
 }
 
 .theme-toggle-menu {
-  position: absolute;
+  @apply absolute right-0 min-w-[140px] p-[var(--space-2)] bg-bg-elevated border border-border rounded-m z-100;
   top: calc(100% + var(--space-2));
-  right: 0;
-  min-width: 140px;
-  padding: var(--space-2);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  z-index: 100;
 }
 
 .theme-toggle-menu-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-s);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  text-align: left;
-}
+  @apply flex items-center gap-[var(--space-2)] w-full px-[var(--space-3)] py-[var(--space-2)] text-[0.8125rem] font-[inherit] text-text-muted bg-transparent border-none rounded-s cursor-pointer transition-all duration-150 text-left;
 
-.theme-toggle-menu-item:hover {
-  color: var(--color-text);
-  background-color: var(--color-bg);
-}
+  &:hover {
+    @apply text-text bg-bg;
+  }
 
-.theme-toggle-menu-item.active {
-  color: var(--color-text);
-  background-color: var(--color-bg);
+  &.active {
+    @apply text-text bg-bg;
+  }
 }
 
 .theme-toggle-menu-icon {
-  font-size: 1rem;
-  width: 1.25rem;
-  text-align: center;
+  @apply text-base w-5 text-center;
 }
 
 /* Mobile responsive */
 @media (max-width: 480px) {
   .theme-toggle-icon-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
+    @apply size-8 text-base;
   }
 }
 

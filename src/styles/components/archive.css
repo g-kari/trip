@@ -3,80 +3,65 @@
    ======================================== */
 
 .archive-tabs {
-  display: flex;
-  gap: var(--space-1);
-  margin-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply flex gap-[var(--space-1)] mb-[var(--space-4)]
+         border-b border-border-light;
 }
 
 .archive-tab {
-  padding: var(--space-2) var(--space-4);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  @apply py-[var(--space-2)] px-[var(--space-4)]
+         text-[0.8125rem] font-[inherit]
+         text-text-muted bg-transparent
+         border-none border-b-2 border-b-transparent
+         cursor-pointer transition-all duration-150;
   margin-bottom: -1px;
-}
 
-.archive-tab:hover {
-  color: var(--color-text);
-}
+  &:hover {
+    @apply text-text;
+  }
 
-.archive-tab.active {
-  color: var(--color-text);
-  border-bottom-color: var(--color-accent);
+  &.active {
+    @apply text-text border-b-accent;
+  }
 }
 
 /* Archived trip card (dimmed appearance) */
 .trip-card-archived {
-  opacity: 0.6;
-}
+  @apply opacity-60;
 
-.trip-card-archived:hover {
-  opacity: 0.8;
+  &:hover {
+    @apply opacity-80;
+  }
 }
 
 /* Archive button on trip card */
 .archive-btn {
-  margin-top: var(--space-2);
-  padding-left: 0;
-  color: var(--color-text-faint);
-}
+  @apply mt-[var(--space-2)] pl-0 text-text-faint;
 
-.archive-btn:hover {
-  color: var(--color-text-muted);
-}
+  &:hover {
+    @apply text-text-muted;
+  }
 
-.archive-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 }
 
 /* Trip card actions container */
 .trip-card-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
+  @apply flex items-center gap-[var(--space-2)] mt-[var(--space-2)];
 }
 
 /* Duplicate button on trip card */
 .duplicate-btn {
-  padding-left: 0;
-  color: var(--color-text-faint);
-}
+  @apply pl-0 text-text-faint;
 
-.duplicate-btn:hover {
-  color: var(--color-text-muted);
-}
+  &:hover {
+    @apply text-text-muted;
+  }
 
-.duplicate-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 }
 
 /* ========================================
@@ -85,79 +70,63 @@
 
 /* Pin button on trip card */
 .pin-btn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--color-text-faint);
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
+  @apply size-7 p-0
+         border-none bg-transparent
+         text-text-faint cursor-pointer
+         transition-colors duration-150;
 
-.pin-btn:hover {
-  color: var(--color-text-muted);
+  &:hover {
+    @apply text-text-muted;
+  }
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 }
 
 .pin-btn-active {
-  color: var(--color-accent);
-}
+  @apply text-accent;
 
-.pin-btn-active:hover {
-  color: var(--color-text);
-}
-
-.pin-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  &:hover {
+    @apply text-text;
+  }
 }
 
 /* Pinned trip card highlight */
 .trip-card-pinned {
-  border-color: var(--color-border);
-  background-color: var(--color-bg-elevated);
-}
+  @apply border-border bg-bg-elevated;
 
-.trip-card-pinned::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-m) var(--radius-m) 0 0;
+  &::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-0.5 bg-accent;
+    border-radius: var(--radius-m) var(--radius-m) 0 0;
+  }
 }
 
 /* Title row with pin indicator */
 .trip-card-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  @apply flex items-center gap-[var(--space-1)];
 }
 
 .trip-card-pin-indicator {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-accent);
-  flex-shrink: 0;
+  @apply inline-flex items-center text-accent shrink-0;
 }
 
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .filter-buttons {
-    flex-direction: column;
+    @apply flex-col;
   }
 
   .filter-btn {
-    text-align: center;
+    @apply text-center;
   }
 
   .filter-date-inputs {
-    flex-direction: column;
+    @apply flex-col;
   }
 
   .filter-date-inputs .date-separator {
-    display: none;
+    @apply hidden;
   }
 }

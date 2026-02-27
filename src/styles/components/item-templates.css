@@ -4,202 +4,147 @@
 
 /* Add item section with template button */
 .add-item-section {
-  margin-top: var(--space-2);
+  @apply mt-[var(--space-2)];
 }
 
 .add-item-buttons {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
+  @apply flex gap-[var(--space-2)] items-center;
 }
 
 /* Template button group in item actions */
 .template-actions {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
+  @apply flex gap-[var(--space-2)] items-center;
 }
 
 /* Template selection dropdown/modal */
 .template-selector {
-  position: relative;
+  @apply relative;
 }
 
 .template-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 100;
+  @apply absolute top-full left-0 z-100
+         overflow-y-auto
+         bg-bg-elevated border border-border rounded-m
+         mt-[var(--space-1)];
   min-width: 280px;
   max-width: 320px;
   max-height: 300px;
-  overflow-y: auto;
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  margin-top: var(--space-1);
 }
 
 .template-dropdown-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-light);
+  @apply flex items-center justify-between
+         py-[var(--space-3)] px-[var(--space-4)]
+         border-b border-border-light;
 }
 
 .template-dropdown-title {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text);
+  @apply text-[0.8125rem] font-medium text-text;
 }
 
 .template-dropdown-close {
-  padding: var(--space-1);
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-}
+  @apply p-[var(--space-1)] bg-none border-none
+         text-text-muted cursor-pointer text-base leading-none;
 
-.template-dropdown-close:hover {
-  color: var(--color-text);
+  &:hover {
+    @apply text-text;
+  }
 }
 
 .template-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  @apply list-none p-0 m-0;
 }
 
 .template-list-item {
-  padding: var(--space-3) var(--space-4);
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-border-light);
+  @apply py-[var(--space-3)] px-[var(--space-4)]
+         cursor-pointer border-b border-border-light;
   transition: background-color var(--transition-fast);
-}
 
-.template-list-item:last-child {
-  border-bottom: none;
-}
+  &:last-child {
+    @apply border-b-0;
+  }
 
-.template-list-item:hover {
-  background-color: var(--color-bg);
+  &:hover {
+    @apply bg-bg;
+  }
 }
 
 .template-item-title {
-  font-size: 0.875rem;
-  color: var(--color-text);
-  margin-bottom: var(--space-1);
+  @apply text-sm text-text mb-[var(--space-1)];
 }
 
 .template-item-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
+  @apply flex flex-wrap gap-[var(--space-2)]
+         text-xs text-text-muted;
 
-.template-item-meta span {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
+  & span {
+    @apply flex items-center gap-[var(--space-1)];
+  }
 }
 
 .template-empty {
-  padding: var(--space-5) var(--space-4);
-  text-align: center;
-  color: var(--color-text-faint);
-  font-size: 0.8125rem;
+  @apply py-[var(--space-5)] px-[var(--space-4)]
+         text-center text-text-faint text-[0.8125rem];
 }
 
 /* Save as template button in item actions */
 .btn-save-template {
-  font-size: 0.75rem;
-  padding: var(--space-1) var(--space-2);
-  color: var(--color-text-faint);
-  background: none;
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-s);
-  cursor: pointer;
+  @apply text-xs py-[var(--space-1)] px-[var(--space-2)]
+         text-text-faint bg-none
+         border border-border-light rounded-s
+         cursor-pointer;
   transition: all var(--transition-fast);
-}
 
-.btn-save-template:hover {
-  color: var(--color-text-muted);
-  border-color: var(--color-border);
-}
+  &:hover {
+    @apply text-text-muted border-border;
+  }
 
-.btn-save-template:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
 }
 
 /* Template button in add item section */
 .template-btn-row {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  @apply flex gap-[var(--space-2)] mb-[var(--space-2)];
 }
 
 .btn-from-template {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  background-color: var(--color-bg);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-m);
-  cursor: pointer;
+  @apply flex items-center gap-[var(--space-1)]
+         py-[var(--space-2)] px-[var(--space-3)]
+         text-[0.8125rem] text-text-muted
+         bg-bg border border-dashed border-border rounded-m
+         cursor-pointer;
   transition: all var(--transition-fast);
-}
 
-.btn-from-template:hover {
-  color: var(--color-text);
-  border-color: var(--color-border);
-  background-color: var(--color-bg-elevated);
+  &:hover {
+    @apply text-text border-border bg-bg-elevated;
+  }
 }
 
 /* Delete template button */
 .template-delete-btn {
-  padding: var(--space-1);
-  background: none;
-  border: none;
-  color: var(--color-text-faint);
-  cursor: pointer;
-  font-size: 0.75rem;
+  @apply p-[var(--space-1)] bg-none border-none
+         text-text-faint cursor-pointer text-xs;
   transition: color var(--transition-fast);
-}
 
-.template-delete-btn:hover {
-  color: var(--color-danger, #d32f2f);
+  &:hover {
+    color: var(--color-danger, #d32f2f);
+  }
 }
 
 .template-list-item-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  @apply flex justify-between items-start;
 }
 
 .template-list-item-content {
-  flex: 1;
+  @apply flex-1;
 }
 
 /* Confirmation toast for template saved */
 .template-saved-toast {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  font-size: 0.8125rem;
-  color: var(--color-text);
+  @apply flex items-center gap-[var(--space-2)]
+         py-[var(--space-3)] px-[var(--space-4)]
+         bg-bg-elevated border border-border rounded-m
+         text-[0.8125rem] text-text;
 }

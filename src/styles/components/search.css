@@ -3,178 +3,113 @@
    ======================================== */
 
 .search-filter-section {
-  margin-bottom: var(--space-5);
+  @apply mb-[var(--space-5)];
 }
 
 .search-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  @apply flex items-center gap-[var(--space-3)];
 }
 
 .search-input {
-  flex: 1;
+  @apply flex-1;
 }
 
 .filter-toggle {
-  white-space: nowrap;
-  position: relative;
-}
+  @apply whitespace-nowrap relative;
 
-.filter-toggle.active {
-  color: var(--color-accent);
+  &.active {
+    @apply text-accent;
+  }
 }
 
 .filter-indicator {
-  position: absolute;
+  @apply absolute rounded-full;
   top: 4px;
   right: 4px;
   width: 6px;
   height: 6px;
   background-color: var(--color-accent);
-  border-radius: 50%;
 }
 
 .filter-options {
-  margin-top: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-m);
-  background-color: var(--color-bg-elevated);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  @apply mt-[var(--space-3)] p-[var(--space-4)] border border-border-light rounded-m bg-bg-elevated flex flex-col gap-[var(--space-4)];
 }
 
 .filter-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  @apply flex flex-col gap-[var(--space-2)];
 }
 
 .filter-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  font-weight: var(--font-weight-medium);
+  @apply text-xs text-text-muted font-medium;
 }
 
 .filter-buttons {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  @apply flex gap-[var(--space-2)] flex-wrap;
 }
 
 .filter-btn {
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background-color: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
+  @apply px-[var(--space-3)] py-[var(--space-2)] text-[0.8125rem] font-[inherit] text-text-muted bg-transparent border border-border rounded-m cursor-pointer transition-all duration-150;
 
-.filter-btn:hover {
-  border-color: var(--color-text-muted);
-  color: var(--color-text);
-}
+  &:hover {
+    @apply border-text-muted text-text;
+  }
 
-.filter-btn.active {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-bg);
+  &.active {
+    @apply bg-accent border-accent text-bg;
+  }
 }
 
 .filter-date-inputs {
-  flex: 1;
-}
+  @apply flex-1;
 
-.filter-date-inputs .input {
-  font-size: 0.8125rem;
+  & .input {
+    @apply text-[0.8125rem];
+  }
 }
 
 .sort-select {
-  width: 100%;
-  font-size: 0.8125rem;
-  cursor: pointer;
+  @apply w-full text-[0.8125rem] cursor-pointer;
 }
 
 .clear-filters-btn {
-  align-self: flex-start;
-  padding-left: 0;
-  color: var(--color-text-faint);
-}
+  @apply self-start pl-0 text-text-faint;
 
-.clear-filters-btn:hover {
-  color: var(--color-text-muted);
+  &:hover {
+    @apply text-text-muted;
+  }
 }
 
 /* Active filters summary (tags) */
 .active-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
+  @apply flex flex-wrap gap-[var(--space-2)] mt-[var(--space-3)];
 }
 
 .filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  background-color: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-s);
+  @apply inline-flex items-center gap-[var(--space-1)] px-[var(--space-2)] py-[var(--space-1)] text-xs text-text-muted bg-bg-elevated border border-border-light rounded-s;
 }
 
 .filter-tag-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply flex items-center justify-center p-0 text-[0.625rem] font-[inherit] text-text-faint bg-transparent border-none rounded-full cursor-pointer transition-all duration-150;
   width: 14px;
   height: 14px;
-  padding: 0;
-  font-size: 0.625rem;
-  font-family: inherit;
-  color: var(--color-text-faint);
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
 
-.filter-tag-remove:hover {
-  background-color: var(--color-border-light);
-  color: var(--color-text);
+  &:hover {
+    @apply bg-border-light text-text;
+  }
 }
 
 /* Trip card with theme indicator */
 .trip-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  @apply flex items-center justify-between gap-[var(--space-2)] mb-[var(--space-1)];
 }
 
 .trip-card-theme {
-  font-size: 0.6875rem;
+  @apply text-[0.6875rem] rounded-s text-text-muted bg-bg border border-border-light whitespace-nowrap;
   padding: 2px 6px;
-  border-radius: var(--radius-s);
-  color: var(--color-text-muted);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border-light);
-  white-space: nowrap;
 }
 
 .trip-card-theme-photo {
-  color: var(--color-accent);
-  border-color: var(--color-border);
+  @apply text-accent border-border;
 }
 
 .trip-card-theme-retro {

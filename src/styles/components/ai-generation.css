@@ -4,67 +4,48 @@
 
 .ai-form {
   background: linear-gradient(135deg, var(--color-bg-elevated), var(--color-bg));
-  border: 1px solid var(--color-border);
+  @apply border border-border;
 }
 
 .ai-form-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  @apply flex items-center justify-center gap-[var(--space-2)] mb-[var(--space-4)];
 }
 
 .ai-form-icon {
-  font-size: 1.25rem;
+  @apply text-xl;
 }
 
 .ai-form-title {
-  font-size: 0.9375rem;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text);
+  @apply text-[0.9375rem] font-medium text-text;
 }
 
 .style-selector {
-  width: 100%;
+  @apply w-full;
 }
 
 .style-label {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
+  @apply block text-xs text-text-muted mb-[var(--space-2)];
 }
 
 .style-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  @apply flex flex-wrap gap-[var(--space-2)];
 }
 
 .style-btn {
-  flex: 1;
+  @apply flex-1 text-[0.8125rem] text-text-muted bg-transparent border border-border rounded-m cursor-pointer transition-all duration-150;
+  font-family: inherit;
   min-width: calc(50% - var(--space-1));
   padding: var(--space-2) var(--space-3);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  color: var(--color-text-muted);
-  background-color: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-m);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
 
-.style-btn:hover {
-  border-color: var(--color-text-muted);
-  color: var(--color-text);
-}
+  &:hover {
+    @apply text-text;
+    border-color: var(--color-text-muted);
+  }
 
-.style-btn.active {
-  background-color: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-bg);
+  &.active {
+    @apply bg-accent text-bg;
+    border-color: var(--color-accent);
+  }
 }
 
 .textarea {
@@ -73,15 +54,12 @@
 }
 
 .error-text {
-  font-size: 0.8125rem;
+  @apply text-[0.8125rem] text-center;
   color: #d32f2f;
-  text-align: center;
 }
 
 .generating-hint {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  text-align: center;
+  @apply text-xs text-text-faint text-center;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -91,27 +69,16 @@
 }
 
 .ai-remaining {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  text-align: center;
-  margin-bottom: var(--space-2);
+  @apply text-xs text-text-muted text-center mb-[var(--space-2)];
 }
 
 .ai-login-prompt,
 .ai-limit-reached {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  text-align: center;
-}
+  @apply flex flex-col items-center gap-[var(--space-3)] p-[var(--space-4)] text-center;
 
-.ai-login-prompt p,
-.ai-limit-reached p {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  margin: 0;
+  p {
+    @apply text-sm text-text-muted m-0;
+  }
 }
 
 .ai-limit-hint {
@@ -124,29 +91,18 @@
    ======================================== */
 
 .ai-image-section {
-  margin-top: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-bg);
-  border-radius: 8px;
+  @apply mt-[var(--space-2)] p-[var(--space-3)] bg-bg rounded-lg;
   border: 1px dashed var(--color-border-light);
 }
 
 .ai-image-preview {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  @apply flex items-center gap-[var(--space-3)];
 }
 
 .ai-image-thumb {
-  width: 80px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid var(--color-border-light);
+  @apply w-20 h-[60px] object-cover rounded border border-border-light;
 }
 
 .ai-image-hint {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  margin-top: var(--space-2);
+  @apply text-xs text-text-faint mt-[var(--space-2)];
 }
