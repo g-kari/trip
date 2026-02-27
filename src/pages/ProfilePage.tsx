@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { PurchaseModal } from '../components/PurchaseModal'
 
 type ProfileData = {
   id: string
@@ -17,13 +18,25 @@ type ProfileStats = {
   archivedTrips: number
 }
 
+type SlotInfo = {
+  freeSlots: number
+  purchasedSlots: number
+  totalSlots: number
+  usedSlots: number
+  remainingSlots: number
+  isPremium: boolean
+  pricePerSlot: number
+}
+
 export function ProfilePage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, loading: authLoading, logout, refreshUser } = useAuth()
   const { showSuccess, showError } = useToast()
 
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [stats, setStats] = useState<ProfileStats | null>(null)
+  const [slotInfo, setSlotInfo] = useState<SlotInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Edit mode state
@@ -35,6 +48,21 @@ export function ProfilePage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  // Purchase modal state
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+
+  const fetchSlotInfo = useCallback(async () => {
+    try {
+      const res = await fetch('/api/payment/slots')
+      if (res.ok) {
+        const data = await res.json() as SlotInfo
+        setSlotInfo(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch slot info:', err)
+    }
+  }, [])
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -51,13 +79,16 @@ export function ProfilePage() {
       setProfile(data.profile)
       setStats(data.stats)
       setEditName(data.profile.name || '')
+
+      // Also fetch slot info
+      await fetchSlotInfo()
     } catch (err) {
       console.error('Failed to fetch profile:', err)
       showError('プロフィールの取得に失敗しました')
     } finally {
       setLoading(false)
     }
-  }, [navigate, showError])
+  }, [navigate, showError, fetchSlotInfo])
 
   useEffect(() => {
     if (!authLoading) {
@@ -68,6 +99,22 @@ export function ProfilePage() {
       fetchProfile()
     }
   }, [authLoading, user, navigate, fetchProfile])
+
+  // Handle payment result from URL params
+  useEffect(() => {
+    const payment = searchParams.get('payment')
+    if (payment === 'success') {
+      showSuccess('購入が完了しました！')
+      // Refresh data
+      fetchSlotInfo()
+      refreshUser()
+      // Clear the param
+      setSearchParams({}, { replace: true })
+    } else if (payment === 'cancelled') {
+      // Just clear the param silently
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams, showSuccess, fetchSlotInfo, refreshUser])
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault()
@@ -278,6 +325,51 @@ export function ProfilePage() {
         </div>
       )}
 
+      {/* Trip Slots */}
+      {slotInfo && (
+        <div className="profile-section">
+          <h2 className="profile-section-title">旅程枠</h2>
+          <div className="profile-slots">
+            <div className="profile-slot-info">
+              <div className="profile-slot-row">
+                <span className="profile-slot-label">使用中</span>
+                <span className="profile-slot-value">
+                  {slotInfo.usedSlots} / {slotInfo.totalSlots} 枠
+                </span>
+              </div>
+              <div className="profile-slot-row">
+                <span className="profile-slot-label">残り枠</span>
+                <span className="profile-slot-value profile-slot-remaining">
+                  {slotInfo.remainingSlots} 枠
+                </span>
+              </div>
+              <div className="profile-slot-row">
+                <span className="profile-slot-label">内訳</span>
+                <span className="profile-slot-value profile-slot-detail">
+                  無料 {slotInfo.freeSlots}枠 + 購入 {slotInfo.purchasedSlots}枠
+                </span>
+              </div>
+            </div>
+            {slotInfo.isPremium ? (
+              <div className="profile-premium-badge">
+                プレミアム会員（広告非表示）
+              </div>
+            ) : (
+              <div className="profile-slot-promo">
+                <p>旅程枠を購入すると広告が非表示になります</p>
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn-filled profile-action-btn"
+              onClick={() => setShowPurchaseModal(true)}
+            >
+              旅程枠を購入（¥{slotInfo.pricePerSlot}/枠）
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Feedback */}
       <div className="profile-section">
         <h2 className="profile-section-title">サポート</h2>
@@ -356,6 +448,11 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Purchase Modal */}
+      {showPurchaseModal && (
+        <PurchaseModal onClose={() => setShowPurchaseModal(false)} />
       )}
     </div>
   )

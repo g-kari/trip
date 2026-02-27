@@ -31,6 +31,8 @@ type Bindings = {
   GOOGLE_CLIENT_SECRET: string;
   LINE_CHANNEL_ID: string;
   LINE_CHANNEL_SECRET: string;
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SECRET: string;
 };
 
 type Vars = {
@@ -6127,8 +6129,216 @@ app.get('/api/geocode', async (c) => {
   }
 });
 
+// ============ Payment (Stripe) ============
+
+// Price configuration
+const TRIP_SLOT_PRICE = 100; // ¥100 per trip slot
+
+// Create Stripe checkout session
+app.post('/api/payment/checkout', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{ slots?: number }>();
+  const slots = body.slots || 1;
+
+  if (slots < 1 || slots > 10) {
+    return c.json({ error: '購入枠数は1〜10の範囲で指定してください' }, 400);
+  }
+
+  const url = new URL(c.req.url);
+  const origin = url.origin;
+
+  try {
+    // Create Stripe checkout session
+    const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${c.env.STRIPE_SECRET_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        'payment_method_types[]': 'card',
+        'line_items[0][price_data][currency]': 'jpy',
+        'line_items[0][price_data][product_data][name]': `旅程枠 ${slots}枠`,
+        'line_items[0][price_data][product_data][description]': '追加の旅程作成枠',
+        'line_items[0][price_data][unit_amount]': String(TRIP_SLOT_PRICE),
+        'line_items[0][quantity]': String(slots),
+        'mode': 'payment',
+        'success_url': `${origin}/profile?payment=success`,
+        'cancel_url': `${origin}/profile?payment=cancelled`,
+        'metadata[user_id]': user.id,
+        'metadata[slots]': String(slots),
+        'client_reference_id': user.id,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Stripe checkout error:', error);
+      return c.json({ error: '決済セッションの作成に失敗しました' }, 500);
+    }
+
+    const session = await response.json() as { id: string; url: string };
+    return c.json({ sessionId: session.id, url: session.url });
+  } catch (err) {
+    console.error('Stripe checkout error:', err);
+    return c.json({ error: '決済処理中にエラーが発生しました' }, 500);
+  }
+});
+
+// Stripe webhook handler
+app.post('/api/payment/webhook', async (c) => {
+  const signature = c.req.header('stripe-signature');
+  if (!signature) {
+    return c.json({ error: 'Missing signature' }, 400);
+  }
+
+  const payload = await c.req.text();
+
+  // Verify webhook signature
+  try {
+    const encoder = new TextEncoder();
+    const timestampMatch = signature.match(/t=(\d+)/);
+    const signatureMatch = signature.match(/v1=([a-f0-9]+)/);
+
+    if (!timestampMatch || !signatureMatch) {
+      return c.json({ error: 'Invalid signature format' }, 400);
+    }
+
+    const timestamp = timestampMatch[1];
+    const expectedSignature = signatureMatch[1];
+
+    // Create signed payload
+    const signedPayload = `${timestamp}.${payload}`;
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(c.env.STRIPE_WEBHOOK_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const signatureBytes = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(signedPayload)
+    );
+    const computedSignature = Array.from(new Uint8Array(signatureBytes))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    if (computedSignature !== expectedSignature) {
+      return c.json({ error: 'Invalid signature' }, 400);
+    }
+
+    // Check timestamp (within 5 minutes)
+    const webhookTimestamp = parseInt(timestamp, 10);
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    if (Math.abs(currentTimestamp - webhookTimestamp) > 300) {
+      return c.json({ error: 'Timestamp too old' }, 400);
+    }
+  } catch (err) {
+    console.error('Webhook signature verification error:', err);
+    return c.json({ error: 'Signature verification failed' }, 400);
+  }
+
+  // Parse event
+  const event = JSON.parse(payload) as {
+    type: string;
+    data: {
+      object: {
+        id: string;
+        metadata: { user_id: string; slots: string };
+        amount_total: number;
+        payment_status: string;
+      };
+    };
+  };
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+
+    if (session.payment_status === 'paid') {
+      const userId = session.metadata.user_id;
+      const slots = parseInt(session.metadata.slots, 10);
+      const amount = session.amount_total;
+
+      try {
+        // Record purchase
+        const purchaseId = crypto.randomUUID();
+        await c.env.DB.prepare(
+          `INSERT INTO purchases (id, user_id, amount, trip_slots, payment_method, payment_id)
+           VALUES (?, ?, ?, ?, 'stripe', ?)`
+        ).bind(purchaseId, userId, amount, slots, session.id).run();
+
+        // Update user's slots and premium status
+        await c.env.DB.prepare(
+          `UPDATE users
+           SET is_premium = 1,
+               purchased_slots = purchased_slots + ?
+           WHERE id = ?`
+        ).bind(slots, userId).run();
+
+        console.log(`Payment completed: user=${userId}, slots=${slots}, amount=${amount}`);
+      } catch (err) {
+        console.error('Failed to process payment:', err);
+        return c.json({ error: 'Failed to process payment' }, 500);
+      }
+    }
+  }
+
+  return c.json({ received: true });
+});
+
+// Get user's slot info
+app.get('/api/payment/slots', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Count user's trips
+  const tripCount = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM trips WHERE user_id = ?'
+  ).bind(user.id).first<{ count: number }>();
+
+  const usedSlots = tripCount?.count ?? 0;
+  const freeSlots = user.freeSlots ?? 3;
+  const purchasedSlots = user.purchasedSlots ?? 0;
+  const totalSlots = freeSlots + purchasedSlots;
+  const remainingSlots = Math.max(0, totalSlots - usedSlots);
+
+  return c.json({
+    freeSlots,
+    purchasedSlots,
+    totalSlots,
+    usedSlots,
+    remainingSlots,
+    isPremium: !!user.isPremium,
+    pricePerSlot: TRIP_SLOT_PRICE,
+  });
+});
+
+// Get purchase history
+app.get('/api/payment/history', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const purchases = await c.env.DB.prepare(
+    `SELECT id, amount, trip_slots as tripSlots, payment_method as paymentMethod,
+            created_at as createdAt
+     FROM purchases WHERE user_id = ? ORDER BY created_at DESC`
+  ).bind(user.id).all();
+
+  return c.json({ purchases: purchases.results });
+});
+
 // SPA routes - serve index.html for client-side routing
-const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed'];
+const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed', '/profile'];
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);

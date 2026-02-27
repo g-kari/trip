@@ -46,6 +46,7 @@
 @import './components/weather.css';
 @import './components/pdf-export.css';
 @import './components/ads.css';
+@import './components/purchase.css';
 
 /* Pages */
 @import './pages/login.css';

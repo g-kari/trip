@@ -1,0 +1,214 @@
+/* ========================================
+   Purchase Modal Styles
+   ======================================== */
+
+.purchase-modal {
+  max-width: 400px;
+}
+
+.purchase-loading {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--color-text-muted);
+}
+
+/* Status section */
+.purchase-status {
+  padding: var(--space-4);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-m);
+  margin-bottom: var(--space-5);
+}
+
+.purchase-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+}
+
+.purchase-status-item:not(:last-child) {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.purchase-status-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.purchase-status-value {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.purchase-status-remaining {
+  color: var(--color-accent);
+}
+
+.purchase-premium-badge {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border-radius: var(--radius-s);
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}
+
+/* Form */
+.purchase-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.purchase-label {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.purchase-slot-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.purchase-slot-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.purchase-slot-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.purchase-slot-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.purchase-slot-count {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-medium);
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Price */
+.purchase-price {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-m);
+}
+
+.purchase-price-label {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+}
+
+.purchase-price-value {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+/* Benefits */
+.purchase-benefits {
+  padding: var(--space-3);
+  background-color: #fff8e6;
+  border: 1px solid #ffd966;
+  border-radius: var(--radius-m);
+}
+
+.purchase-benefit-title {
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  color: #b8860b;
+  margin-bottom: var(--space-2);
+}
+
+.purchase-benefit-list {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: 0.8125rem;
+  color: #8b6914;
+}
+
+.purchase-benefit-list li {
+  margin-bottom: var(--space-1);
+}
+
+/* Button */
+.purchase-btn {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: 1rem;
+}
+
+.purchase-note {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  text-align: center;
+  margin: 0;
+}
+
+/* Dark mode */
+[data-color-mode="dark"] .purchase-premium-badge {
+  background-color: rgba(46, 125, 50, 0.2);
+  color: #81c784;
+}
+
+[data-color-mode="dark"] .purchase-benefits {
+  background-color: rgba(255, 217, 102, 0.1);
+  border-color: rgba(255, 217, 102, 0.3);
+}
+
+[data-color-mode="dark"] .purchase-benefit-title {
+  color: #ffd966;
+}
+
+[data-color-mode="dark"] .purchase-benefit-list {
+  color: #ffe082;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .purchase-premium-badge,
+  :root:not([data-color-mode]) .purchase-premium-badge {
+    background-color: rgba(46, 125, 50, 0.2);
+    color: #81c784;
+  }
+
+  [data-color-mode="system"] .purchase-benefits,
+  :root:not([data-color-mode]) .purchase-benefits {
+    background-color: rgba(255, 217, 102, 0.1);
+    border-color: rgba(255, 217, 102, 0.3);
+  }
+
+  [data-color-mode="system"] .purchase-benefit-title,
+  :root:not([data-color-mode]) .purchase-benefit-title {
+    color: #ffd966;
+  }
+
+  [data-color-mode="system"] .purchase-benefit-list,
+  :root:not([data-color-mode]) .purchase-benefit-list {
+    color: #ffe082;
+  }
+}
