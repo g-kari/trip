@@ -875,7 +875,7 @@ export function TripViewPage() {
                   />
                 </div>
                 {items.length === 0 ? (
-                  <div className="timeline-item">
+                  <div className="timeline-item timeline-item-empty">
                     <span className="timeline-time">—</span>
                     <div className="timeline-content">
                       <span className="timeline-title" style={{ color: 'var(--color-text-faint)' }}>
@@ -886,7 +886,10 @@ export function TripViewPage() {
                 ) : (
                   items.map((item) => (
                     <div key={item.id} className="timeline-item">
-                      <span className="timeline-time">{item.timeStart || '—'}</span>
+                      <span className="timeline-time">
+                        {item.timeStart || '—'}
+                        {item.timeEnd && <span className="timeline-time-end">〜{item.timeEnd}</span>}
+                      </span>
                       <div className="timeline-item-checkin">
                         {canCheckIn && (isOwner || user) && (
                           <button

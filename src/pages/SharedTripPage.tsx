@@ -776,6 +776,7 @@ export function SharedTripPage() {
                   <div key={item.id} className="timeline-item">
                     <span className="timeline-time">
                       {item.timeStart || ''}
+                      {item.timeEnd && <span className="timeline-time-end">〜{item.timeEnd}</span>}
                     </span>
                     <div className="timeline-item-checkin">
                       {item.checkedInAt && (

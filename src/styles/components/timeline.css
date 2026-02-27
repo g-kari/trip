@@ -23,14 +23,65 @@
 .timeline-item {
   @apply grid gap-[var(--space-3)] py-[var(--space-3)];
   grid-template-columns: 56px 1fr;
+  position: relative;
 }
 
 .timeline-item + .timeline-item {
   @apply border-t border-border-light;
 }
 
+/* ── Timeline visual: vertical line ── */
+.timeline-item::after {
+  content: '';
+  position: absolute;
+  left: 59px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border-light);
+  pointer-events: none;
+}
+
+.timeline-item:first-child::after {
+  top: 23px;
+}
+
+.timeline-item:last-child::after {
+  bottom: auto;
+  height: 23px;
+}
+
+.timeline-item:only-child::after {
+  display: none;
+}
+
+/* ── Timeline visual: time dot ── */
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 56px;
+  top: 19px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Hide visuals on empty state */
+.timeline-item-empty::before,
+.timeline-item-empty::after {
+  display: none !important;
+}
+
 .timeline-time {
   @apply text-[0.8125rem] text-text-muted pt-px;
+}
+
+.timeline-time-end {
+  @apply block text-[0.6875rem] text-text-faint;
+  margin-top: 1px;
 }
 
 /* Drag handle */
