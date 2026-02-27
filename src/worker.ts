@@ -814,7 +814,7 @@ app.post('/api/trips', async (c) => {
     if (userData) {
       const totalSlots = userData.freeSlots + userData.purchasedSlots;
       const usedSlots = await c.env.DB.prepare(
-        'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 0'
+        'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND (is_archived = 0 OR is_archived IS NULL)'
       ).bind(user.id).first<{ count: number }>();
 
       if (usedSlots && usedSlots.count >= totalSlots) {
@@ -3574,7 +3574,7 @@ app.post('/api/trips/from-template/:templateId', async (c) => {
   if (userData) {
     const totalSlots = userData.freeSlots + userData.purchasedSlots;
     const usedSlots = await c.env.DB.prepare(
-      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 0'
+      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND (is_archived = 0 OR is_archived IS NULL)'
     ).bind(user.id).first<{ count: number }>();
 
     if (usedSlots && usedSlots.count >= totalSlots) {
@@ -4028,7 +4028,7 @@ app.post('/api/trips/generate', async (c) => {
   if (userData) {
     const totalSlots = userData.freeSlots + userData.purchasedSlots;
     const usedSlots = await c.env.DB.prepare(
-      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 0'
+      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND (is_archived = 0 OR is_archived IS NULL)'
     ).bind(user.id).first<{ count: number }>();
 
     if (usedSlots && usedSlots.count >= totalSlots) {
