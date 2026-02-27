@@ -232,6 +232,20 @@ export type SettlementSummary = {
   totalExpenses: number
 }
 
+// Trip history entry for version tracking
+export type TripHistoryEntry = {
+  id: string
+  userId: string | null
+  userName: string | null
+  action: string
+  entityType: string
+  entityId: string | null
+  summary: string
+  changes: string | null
+  hasSnapshot: number
+  createdAt: string
+}
+
 // Standalone expense (not tied to a specific item)
 export type StandaloneExpense = {
   id: string

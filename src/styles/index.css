@@ -57,6 +57,7 @@
 @import './components/countdown.css';
 @import './components/voice-input.css';
 @import './components/color-label.css';
+@import './components/trip-history.css';
 
 /* Pages */
 @import './pages/login.css';

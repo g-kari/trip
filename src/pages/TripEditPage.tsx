@@ -12,7 +12,7 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon } from '../components/Icons'
 import { VoiceInputButton } from '../components/VoiceInputButton'
 import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
@@ -20,6 +20,7 @@ import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
 import { SpotSuggestions } from '../components/SpotSuggestions'
 import { PublishModal } from '../components/PublishModal'
+import { TripHistory } from '../components/TripHistory'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
@@ -664,6 +665,9 @@ export function TripEditPage() {
 
   // Collaborator modal state
   const [showCollaboratorModal, setShowCollaboratorModal] = useState(false)
+
+  // History modal state
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
 
   // Embed modal state
   const [showEmbedModal, setShowEmbedModal] = useState(false)
@@ -1814,6 +1818,9 @@ export function TripEditPage() {
               </button>
             </>
           )}
+          <button className="btn-icon" onClick={() => setShowHistoryModal(true)} title="変更履歴">
+            <HistoryIcon size={16} />
+          </button>
           <button className="btn-icon btn-danger" onClick={deleteTrip} title="削除">
             <TrashIcon size={16} />
           </button>
@@ -2275,6 +2282,18 @@ export function TripEditPage() {
         <CollaboratorManager
           tripId={trip.id}
           onClose={() => setShowCollaboratorModal(false)}
+        />
+      )}
+
+      {showHistoryModal && (
+        <TripHistory
+          tripId={trip.id}
+          isOwner={currentUserRole === 'owner'}
+          onClose={() => setShowHistoryModal(false)}
+          onRestored={() => {
+            setShowHistoryModal(false)
+            refreshTrip()
+          }}
         />
       )}
 

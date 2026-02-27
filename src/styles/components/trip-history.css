@@ -1,0 +1,129 @@
+/* ========================================
+   Trip History Modal
+   ======================================== */
+
+.history-modal {
+  max-width: 420px;
+}
+
+.history-modal .modal-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.history-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-entry {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-light);
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.history-entry:last-child {
+  border-bottom: none;
+}
+
+.history-action-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--color-bg);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--color-border-light);
+}
+
+.history-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.history-user {
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.history-time {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+.history-summary {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+.history-restore-btn {
+  margin-top: var(--space-2);
+  font-size: 0.75rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.history-restore-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.history-restore-confirm {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+}
+
+.history-restore-warning {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  margin: 0 0 var(--space-2) 0;
+  line-height: 1.6;
+}
+
+.history-restore-warning small {
+  color: var(--color-text-muted);
+}
+
+.history-restore-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.history-load-more {
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.history-empty {
+  text-align: center;
+  color: var(--color-text-faint);
+  padding: var(--space-6) 0;
+  font-size: 0.875rem;
+}

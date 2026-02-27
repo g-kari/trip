@@ -862,8 +862,8 @@ app.put('/api/trips/:id', async (c) => {
   const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string; budget?: number | null; colorLabel?: string | null }>();
 
   const existing = await c.env.DB.prepare(
-    'SELECT id, user_id as userId FROM trips WHERE id = ?'
-  ).bind(id).first<{ id: string; userId: string | null }>();
+    'SELECT id, user_id as userId, title, start_date as startDate, end_date as endDate, theme, budget, color_label as colorLabel, cover_image_url as coverImageUrl FROM trips WHERE id = ?'
+  ).bind(id).first<{ id: string; userId: string | null; title: string; startDate: string | null; endDate: string | null; theme: string; budget: number | null; colorLabel: string | null; coverImageUrl: string | null }>();
 
   if (!existing) {
     return c.json({ error: 'Trip not found' }, 404);
@@ -911,6 +911,77 @@ app.put('/api/trips/:id', async (c) => {
     colorLabelValue === undefined ? null : colorLabelValue,
     id
   ).run();
+
+  // Record history with coalescing
+  if (user) {
+    const changes: Record<string, { old: unknown; new: unknown }> = {};
+    if (body.title && body.title.trim() !== existing.title) {
+      changes['title'] = { old: existing.title, new: body.title.trim() };
+    }
+    if (body.startDate !== undefined && body.startDate !== existing.startDate) {
+      changes['startDate'] = { old: existing.startDate, new: body.startDate };
+    }
+    if (body.endDate !== undefined && body.endDate !== existing.endDate) {
+      changes['endDate'] = { old: existing.endDate, new: body.endDate };
+    }
+    if (theme !== null && theme !== existing.theme) {
+      changes['theme'] = { old: existing.theme, new: theme };
+    }
+    if (body.budget !== undefined) {
+      const newBudget = body.budget === null ? null : body.budget;
+      if (newBudget !== existing.budget) {
+        changes['budget'] = { old: existing.budget, new: newBudget };
+      }
+    }
+    if (body.colorLabel !== undefined) {
+      const newLabel = body.colorLabel === null ? null : (colorLabelValue === undefined ? existing.colorLabel : colorLabelValue);
+      if (newLabel !== existing.colorLabel) {
+        changes['colorLabel'] = { old: existing.colorLabel, new: newLabel };
+      }
+    }
+
+    if (Object.keys(changes).length > 0) {
+      // Check for recent coalescable entry (within 60 seconds)
+      const recentEntry = await c.env.DB.prepare(
+        `SELECT id, changes FROM trip_history
+         WHERE trip_id = ? AND user_id = ? AND action = 'trip.update'
+         AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ', datetime('now', '-60 seconds'))
+         ORDER BY created_at DESC LIMIT 1`
+      ).bind(id, user.id).first<{ id: string; changes: string | null }>();
+
+      if (recentEntry) {
+        const existingChanges: Record<string, { old: unknown; new: unknown }> = recentEntry.changes ? JSON.parse(recentEntry.changes) : {};
+        for (const [key, val] of Object.entries(changes)) {
+          if (existingChanges[key]) {
+            existingChanges[key].new = val.new;
+          } else {
+            existingChanges[key] = val;
+          }
+        }
+        // Remove entries where old === new (user reverted)
+        for (const key of Object.keys(existingChanges)) {
+          if (JSON.stringify(existingChanges[key].old) === JSON.stringify(existingChanges[key].new)) {
+            delete existingChanges[key];
+          }
+        }
+        if (Object.keys(existingChanges).length > 0) {
+          const newSnapshot = await buildTripSnapshot(c.env.DB, id);
+          await c.env.DB.prepare(
+            `UPDATE trip_history SET changes = ?, snapshot = ?,
+             summary = ?, created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+             WHERE id = ?`
+          ).bind(JSON.stringify(existingChanges), newSnapshot,
+            buildChangeSummary(existingChanges), recentEntry.id).run();
+        } else {
+          await c.env.DB.prepare('DELETE FROM trip_history WHERE id = ?')
+            .bind(recentEntry.id).run();
+        }
+      } else {
+        await recordTripHistory(c.env.DB, id, user.id, user.name, 'trip.update',
+          'trip', id, buildChangeSummary(changes), changes, true);
+      }
+    }
+  }
 
   const trip = await c.env.DB.prepare(
     'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, color_label as colorLabel, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
@@ -1131,6 +1202,69 @@ app.post('/api/trips/:id/duplicate', async (c) => {
   return c.json({ trip: newTrip, tripId: newTripId }, 201);
 });
 
+// ============ Trip History ============
+
+async function buildTripSnapshot(db: D1Database, tripId: string): Promise<string> {
+  const trip = await db.prepare(
+    `SELECT id, title, start_date, end_date, theme, cover_image_url, budget, color_label
+     FROM trips WHERE id = ?`
+  ).bind(tripId).first();
+
+  const { results: days } = await db.prepare(
+    'SELECT id, date, sort, notes FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all();
+
+  const { results: items } = await db.prepare(
+    `SELECT id, day_id, title, area, time_start, time_end, map_url, note, cost,
+     cost_category, sort, photo_url FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(tripId).all();
+
+  return JSON.stringify({ trip, days, items });
+}
+
+function buildChangeSummary(changes: Record<string, { old: unknown; new: unknown }>): string {
+  const fieldNames: Record<string, string> = {
+    title: 'タイトル', startDate: '開始日', endDate: '終了日',
+    theme: 'テーマ', budget: '予算', colorLabel: 'カラーラベル',
+    coverImageUrl: 'カバー画像',
+  };
+  const keys = Object.keys(changes);
+  if (keys.length === 0) return '変更';
+  if (keys.length === 1) {
+    const field = fieldNames[keys[0]] || keys[0];
+    return `${field}を変更`;
+  }
+  return `${keys.map(k => fieldNames[k] || k).join('、')}を変更`;
+}
+
+async function recordTripHistory(
+  db: D1Database,
+  tripId: string,
+  userId: string | null,
+  userName: string | null,
+  action: string,
+  entityType: string,
+  entityId: string | null,
+  summary: string,
+  changes: Record<string, { old: unknown; new: unknown }> | null,
+  includeSnapshot: boolean = true
+): Promise<void> {
+  const id = generateId();
+  let snapshot: string | null = null;
+
+  if (includeSnapshot) {
+    snapshot = await buildTripSnapshot(db, tripId);
+  }
+
+  await db.prepare(
+    `INSERT INTO trip_history (id, trip_id, user_id, user_name, action, entity_type, entity_id, summary, changes, snapshot)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id, tripId, userId, userName, action, entityType, entityId,
+    summary, changes ? JSON.stringify(changes) : null, snapshot
+  ).run();
+}
+
 // ============ Days ============
 
 // Helper to check trip ownership (owner-only operations)
@@ -1218,6 +1352,11 @@ app.post('/api/trips/:tripId/days', async (c) => {
     'SELECT id, date, sort FROM days WHERE id = ?'
   ).bind(id).first();
 
+  if (user) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'day.create',
+      'day', id, `「${body.date}」の日程を追加`, null, true);
+  }
+
   return c.json({ day }, 201);
 });
 
@@ -1291,6 +1430,11 @@ app.post('/api/trips/:tripId/days/bulk', async (c) => {
     createdDays.push({ id, date, sort });
   }
 
+  if (user && createdDays.length > 0) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'days.generate',
+      'trip', tripId, `${createdDays.length}日分の日程を一括追加`, null, true);
+  }
+
   return c.json({ days: createdDays, skipped: dayCount - datesToCreate.length }, 201);
 });
 
@@ -1333,14 +1477,19 @@ app.delete('/api/trips/:tripId/days/:dayId', async (c) => {
   }
 
   const existing = await c.env.DB.prepare(
-    'SELECT id FROM days WHERE id = ? AND trip_id = ?'
-  ).bind(dayId, tripId).first();
+    'SELECT id, date FROM days WHERE id = ? AND trip_id = ?'
+  ).bind(dayId, tripId).first<{ id: string; date: string }>();
 
   if (!existing) {
     return c.json({ error: 'Day not found' }, 404);
   }
 
   await c.env.DB.prepare('DELETE FROM days WHERE id = ?').bind(dayId).run();
+
+  if (user) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'day.delete',
+      'day', dayId, `「${existing.date}」の日程を削除`, null, true);
+  }
 
   return c.json({ ok: true });
 });
@@ -1394,6 +1543,11 @@ app.post('/api/trips/:tripId/items', async (c) => {
     'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, cost_category as costCategory, sort FROM items WHERE id = ?'
   ).bind(id).first();
 
+  if (user) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'item.create',
+      'item', id, `「${body.title.trim()}」を追加`, null, true);
+  }
+
   return c.json({ item }, 201);
 });
 
@@ -1420,8 +1574,8 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
   }
 
   const existing = await c.env.DB.prepare(
-    'SELECT id FROM items WHERE id = ? AND trip_id = ?'
-  ).bind(itemId, tripId).first();
+    'SELECT id, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, cost_category as costCategory FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; title: string; area: string | null; timeStart: string | null; timeEnd: string | null; mapUrl: string | null; note: string | null; cost: number | null; costCategory: string | null }>();
 
   if (!existing) {
     return c.json({ error: 'Item not found' }, 404);
@@ -1457,6 +1611,46 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     'SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd, map_url as mapUrl, note, cost, cost_category as costCategory, sort FROM items WHERE id = ?'
   ).bind(itemId).first();
 
+  if (user) {
+    const itemChanges: Record<string, { old: unknown; new: unknown }> = {};
+    if (body.title && body.title !== existing.title) itemChanges['title'] = { old: existing.title, new: body.title };
+    if (body.area !== undefined && body.area !== existing.area) itemChanges['area'] = { old: existing.area, new: body.area };
+    if (body.timeStart !== undefined && body.timeStart !== existing.timeStart) itemChanges['timeStart'] = { old: existing.timeStart, new: body.timeStart };
+    if (body.timeEnd !== undefined && body.timeEnd !== existing.timeEnd) itemChanges['timeEnd'] = { old: existing.timeEnd, new: body.timeEnd };
+    if (body.note !== undefined && body.note !== existing.note) itemChanges['note'] = { old: existing.note, new: body.note };
+    if (body.cost !== undefined && body.cost !== existing.cost) itemChanges['cost'] = { old: existing.cost, new: body.cost };
+
+    if (Object.keys(itemChanges).length > 0) {
+      const itemTitle = body.title || existing.title;
+      const recentEntry = await c.env.DB.prepare(
+        `SELECT id, changes FROM trip_history
+         WHERE trip_id = ? AND user_id = ? AND action = 'item.update' AND entity_id = ?
+         AND created_at > strftime('%Y-%m-%dT%H:%M:%fZ', datetime('now', '-60 seconds'))
+         ORDER BY created_at DESC LIMIT 1`
+      ).bind(tripId, user.id, itemId).first<{ id: string; changes: string | null }>();
+
+      if (recentEntry) {
+        const prev: Record<string, { old: unknown; new: unknown }> = recentEntry.changes ? JSON.parse(recentEntry.changes) : {};
+        for (const [key, val] of Object.entries(itemChanges)) {
+          if (prev[key]) { prev[key].new = val.new; } else { prev[key] = val; }
+        }
+        for (const key of Object.keys(prev)) {
+          if (JSON.stringify(prev[key].old) === JSON.stringify(prev[key].new)) delete prev[key];
+        }
+        if (Object.keys(prev).length > 0) {
+          await c.env.DB.prepare(
+            `UPDATE trip_history SET changes = ?, summary = ?, created_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
+          ).bind(JSON.stringify(prev), `「${itemTitle}」を更新`, recentEntry.id).run();
+        } else {
+          await c.env.DB.prepare('DELETE FROM trip_history WHERE id = ?').bind(recentEntry.id).run();
+        }
+      } else {
+        await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'item.update',
+          'item', itemId, `「${itemTitle}」を更新`, itemChanges, false);
+      }
+    }
+  }
+
   return c.json({ item });
 });
 
@@ -1471,14 +1665,19 @@ app.delete('/api/trips/:tripId/items/:itemId', async (c) => {
   }
 
   const existing = await c.env.DB.prepare(
-    'SELECT id FROM items WHERE id = ? AND trip_id = ?'
-  ).bind(itemId, tripId).first();
+    'SELECT id, title FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; title: string }>();
 
   if (!existing) {
     return c.json({ error: 'Item not found' }, 404);
   }
 
   await c.env.DB.prepare('DELETE FROM items WHERE id = ?').bind(itemId).run();
+
+  if (user) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'item.delete',
+      'item', itemId, `「${existing.title}」を削除`, null, true);
+  }
 
   return c.json({ ok: true });
 });
@@ -1503,6 +1702,11 @@ app.put('/api/trips/:tripId/days/:dayId/reorder', async (c) => {
     await c.env.DB.prepare(
       'UPDATE items SET sort = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ? AND trip_id = ? AND day_id = ?'
     ).bind(i, body.itemIds[i], tripId, dayId).run();
+  }
+
+  if (user) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'day.reorder',
+      'day', dayId, '予定の順序を変更', null, true);
   }
 
   return c.json({ ok: true });
@@ -1569,7 +1773,121 @@ app.put('/api/trips/:tripId/items/:itemId/reorder', async (c) => {
     ).bind(i, newDayItems[i].id).run();
   }
 
+  if (user) {
+    await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'item.reorder',
+      'item', itemId, '予定を別の日に移動', null, true);
+  }
+
   return c.json({ ok: true });
+});
+
+// ============ Trip History ============
+
+// Get trip history
+app.get('/api/trips/:tripId/history', async (c) => {
+  const tripId = c.req.param('tripId');
+  const user = c.get('user');
+  const url = new URL(c.req.url);
+  const cursor = url.searchParams.get('cursor');
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '30'), 50);
+
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  let query = `SELECT id, user_id as userId, user_name as userName, action,
+    entity_type as entityType, entity_id as entityId, summary, changes,
+    CASE WHEN snapshot IS NOT NULL THEN 1 ELSE 0 END as hasSnapshot,
+    created_at as createdAt
+    FROM trip_history WHERE trip_id = ?`;
+  const bindings: unknown[] = [tripId];
+
+  if (cursor) {
+    query += ' AND created_at < ?';
+    bindings.push(cursor);
+  }
+
+  query += ' ORDER BY created_at DESC LIMIT ?';
+  bindings.push(limit + 1);
+
+  const stmt = c.env.DB.prepare(query);
+  const { results } = bindings.length === 2
+    ? await stmt.bind(bindings[0], bindings[1]).all()
+    : await stmt.bind(bindings[0], bindings[1], bindings[2]).all();
+
+  const hasMore = results.length > limit;
+  const entries = results.slice(0, limit);
+
+  return c.json({
+    entries,
+    hasMore,
+    nextCursor: hasMore ? (entries[entries.length - 1] as Record<string, unknown>).createdAt : null,
+  });
+});
+
+// Restore trip from history snapshot
+app.post('/api/trips/:tripId/history/:historyId/restore', async (c) => {
+  const { tripId, historyId } = c.req.param();
+  const user = c.get('user');
+
+  const check = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  const entry = await c.env.DB.prepare(
+    'SELECT snapshot, created_at as createdAt FROM trip_history WHERE id = ? AND trip_id = ?'
+  ).bind(historyId, tripId).first<{ snapshot: string | null; createdAt: string }>();
+
+  if (!entry || !entry.snapshot) {
+    return c.json({ error: 'スナップショットが見つかりません' }, 404);
+  }
+
+  const snapshot = JSON.parse(entry.snapshot) as {
+    trip: { title: string; start_date: string | null; end_date: string | null; theme: string; cover_image_url: string | null; budget: number | null; color_label: string | null };
+    days: Array<{ id: string; date: string; sort: number; notes: string | null }>;
+    items: Array<{ id: string; day_id: string; title: string; area: string | null; time_start: string | null; time_end: string | null; map_url: string | null; note: string | null; cost: number | null; cost_category: string | null; sort: number; photo_url: string | null }>;
+  };
+
+  // Record pre-restore state
+  await recordTripHistory(c.env.DB, tripId, user!.id, user!.name,
+    'trip.restore', 'trip', tripId,
+    `${entry.createdAt.slice(0, 16).replace('T', ' ')}時点の状態に復元`,
+    null, true);
+
+  // Delete existing days and items (CASCADE handles items)
+  await c.env.DB.prepare('DELETE FROM days WHERE trip_id = ?').bind(tripId).run();
+
+  // Restore trip metadata
+  const t = snapshot.trip;
+  await c.env.DB.prepare(
+    `UPDATE trips SET title = ?, start_date = ?, end_date = ?, theme = ?,
+     cover_image_url = ?, budget = ?, color_label = ?,
+     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+     WHERE id = ?`
+  ).bind(t.title, t.start_date, t.end_date, t.theme,
+    t.cover_image_url, t.budget, t.color_label, tripId).run();
+
+  // Restore days
+  for (const day of snapshot.days) {
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort, notes) VALUES (?, ?, ?, ?, ?)'
+    ).bind(day.id, tripId, day.date, day.sort, day.notes).run();
+  }
+
+  // Restore items
+  for (const item of snapshot.items) {
+    await c.env.DB.prepare(
+      `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end,
+       map_url, note, cost, cost_category, sort, photo_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(item.id, tripId, item.day_id, item.title, item.area,
+      item.time_start, item.time_end, item.map_url, item.note,
+      item.cost, item.cost_category, item.sort, item.photo_url).run();
+  }
+
+  return c.json({ success: true });
 });
 
 // ============ Share Tokens ============
