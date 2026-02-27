@@ -5,8 +5,9 @@ import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
-import { PinIcon, PinFilledIcon, CopyIcon } from '../components/Icons'
+import { PinIcon, PinFilledIcon, CopyIcon, CompareIcon } from '../components/Icons'
 import { TemplateListModal } from '../components/TemplateListModal'
+import { CompareSelectionBar } from '../components/CompareSelectionBar'
 import { AdBanner } from '../components/AdBanner'
 import { shouldShowAd } from '../utils/adUtils'
 
@@ -74,6 +75,27 @@ export function TripListPage() {
   // Template modal state
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
+
+  // Compare selection state
+  const [compareMode, setCompareMode] = useState(false)
+  const [selectedForCompare, setSelectedForCompare] = useState<Trip[]>([])
+
+  const toggleCompareSelection = useCallback((trip: Trip) => {
+    setSelectedForCompare(prev => {
+      const isSelected = prev.some(t => t.id === trip.id)
+      if (isSelected) {
+        return prev.filter(t => t.id !== trip.id)
+      } else if (prev.length < 4) {
+        return [...prev, trip]
+      }
+      return prev
+    })
+  }, [])
+
+  const clearCompareSelection = useCallback(() => {
+    setSelectedForCompare([])
+    setCompareMode(false)
+  }, [])
 
   const fetchAiUsage = useCallback(async () => {
     try {
@@ -518,6 +540,17 @@ export function TripListPage() {
           </button>
           {user && (
             <>
+              <button
+                className={`btn-outline ${compareMode ? 'btn-active' : ''}`}
+                onClick={() => {
+                  setCompareMode(!compareMode)
+                  if (compareMode) {
+                    setSelectedForCompare([])
+                  }
+                }}
+              >
+                {compareMode ? '比較モード終了' : '比較'}
+              </button>
               <button
                 className="btn-outline"
                 onClick={() => setShowTemplateModal(true)}
@@ -1023,6 +1056,19 @@ export function TripListPage() {
                 )}
                 {user && (
                   <div className="trip-card-actions">
+                    {compareMode && (
+                      <button
+                        type="button"
+                        className={`btn-icon trip-card-compare-btn ${selectedForCompare.some(t => t.id === trip.id) ? 'selected' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleCompareSelection(trip)
+                        }}
+                        title={selectedForCompare.some(t => t.id === trip.id) ? '比較から外す' : '比較に追加'}
+                      >
+                        <CompareIcon size={16} />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={`btn-icon pin-btn ${trip.pinned ? 'pin-btn-active' : ''}`}
@@ -1072,6 +1118,15 @@ export function TripListPage() {
         <TemplateListModal
           onClose={() => setShowTemplateModal(false)}
           onSelect={createFromTemplate}
+        />
+      )}
+
+      {/* Compare selection bar */}
+      {compareMode && (
+        <CompareSelectionBar
+          selectedTrips={selectedForCompare}
+          onRemove={(tripId) => setSelectedForCompare(prev => prev.filter(t => t.id !== tripId))}
+          onClear={clearCompareSelection}
         />
       )}
     </div>

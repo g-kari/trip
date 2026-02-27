@@ -65,6 +65,7 @@
 @import './pages/invite.css';
 @import './pages/embed.css';
 @import './pages/gallery.css';
+@import './pages/compare.css';
 
 /* Responsive - must be last */
 @import './base/responsive.css';

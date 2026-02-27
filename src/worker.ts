@@ -7464,8 +7464,371 @@ app.get('/api/trips/:id/publish', async (c) => {
   });
 });
 
+// ============ Trip Comparison ============
+
+// Get all comparison groups for current user
+app.get('/api/comparisons', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const groups = await c.env.DB.prepare(`
+    SELECT
+      cg.id,
+      cg.name,
+      cg.created_at as createdAt,
+      COUNT(ct.id) as tripCount
+    FROM comparison_groups cg
+    LEFT JOIN comparison_trips ct ON cg.id = ct.group_id
+    WHERE cg.user_id = ?
+    GROUP BY cg.id
+    ORDER BY cg.created_at DESC
+  `).bind(user.id).all<{
+    id: string;
+    name: string;
+    createdAt: string;
+    tripCount: number;
+  }>();
+
+  return c.json({ groups: groups.results });
+});
+
+// Create a new comparison group
+app.post('/api/comparisons', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{
+    name: string;
+    tripIds: string[];
+    labels?: string[];
+  }>();
+
+  if (!body.name?.trim()) {
+    return c.json({ error: '比較グループ名を入力してください' }, 400);
+  }
+
+  if (!body.tripIds || body.tripIds.length < 2) {
+    return c.json({ error: '比較するには少なくとも2つの旅程を選択してください' }, 400);
+  }
+
+  if (body.tripIds.length > 4) {
+    return c.json({ error: '比較できる旅程は最大4つまでです' }, 400);
+  }
+
+  // Verify all trips belong to the user
+  const placeholders = body.tripIds.map(() => '?').join(',');
+  const trips = await c.env.DB.prepare(
+    `SELECT id FROM trips WHERE id IN (${placeholders}) AND user_id = ?`
+  ).bind(...body.tripIds, user.id).all<{ id: string }>();
+
+  if (trips.results.length !== body.tripIds.length) {
+    return c.json({ error: '選択された旅程の一部にアクセスできません' }, 403);
+  }
+
+  const groupId = generateId();
+
+  // Create group
+  await c.env.DB.prepare(
+    'INSERT INTO comparison_groups (id, user_id, name) VALUES (?, ?, ?)'
+  ).bind(groupId, user.id, body.name.trim()).run();
+
+  // Add trips to group
+  for (let i = 0; i < body.tripIds.length; i++) {
+    const tripId = body.tripIds[i];
+    const label = body.labels?.[i] || null;
+    const ctId = generateId();
+    await c.env.DB.prepare(
+      'INSERT INTO comparison_trips (id, group_id, trip_id, label, sort) VALUES (?, ?, ?, ?, ?)'
+    ).bind(ctId, groupId, tripId, label, i).run();
+  }
+
+  return c.json({ groupId }, 201);
+});
+
+// Get comparison group details with trip summaries
+app.get('/api/comparisons/:groupId', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const groupId = c.req.param('groupId');
+
+  // Get group and verify ownership
+  const group = await c.env.DB.prepare(
+    'SELECT id, name, user_id as userId, created_at as createdAt FROM comparison_groups WHERE id = ?'
+  ).bind(groupId).first<{
+    id: string;
+    name: string;
+    userId: string;
+    createdAt: string;
+  }>();
+
+  if (!group) {
+    return c.json({ error: '比較グループが見つかりません' }, 404);
+  }
+
+  if (group.userId !== user.id) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  // Get trips with summaries
+  const trips = await c.env.DB.prepare(`
+    SELECT
+      ct.id as comparisonTripId,
+      ct.label,
+      ct.sort,
+      t.id,
+      t.title,
+      t.start_date as startDate,
+      t.end_date as endDate,
+      t.theme,
+      t.cover_image_url as coverImageUrl,
+      t.budget
+    FROM comparison_trips ct
+    JOIN trips t ON ct.trip_id = t.id
+    WHERE ct.group_id = ?
+    ORDER BY ct.sort ASC
+  `).bind(groupId).all<{
+    comparisonTripId: string;
+    label: string | null;
+    sort: number;
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string;
+    coverImageUrl: string | null;
+    budget: number | null;
+  }>();
+
+  // Calculate additional data for each trip
+  const tripDetails = await Promise.all(
+    trips.results.map(async (trip) => {
+      // Get day count
+      const dayCountResult = await c.env.DB.prepare(
+        'SELECT COUNT(*) as count FROM days WHERE trip_id = ?'
+      ).bind(trip.id).first<{ count: number }>();
+      const days = dayCountResult?.count || 0;
+
+      // Get item count and total cost
+      const itemStats = await c.env.DB.prepare(
+        'SELECT COUNT(*) as count, SUM(COALESCE(cost, 0)) as totalCost FROM items WHERE trip_id = ?'
+      ).bind(trip.id).first<{ count: number; totalCost: number | null }>();
+      const itemCount = itemStats?.count || 0;
+      const totalCost = itemStats?.totalCost || 0;
+
+      // Get unique areas
+      const areasResult = await c.env.DB.prepare(
+        'SELECT DISTINCT area FROM items WHERE trip_id = ? AND area IS NOT NULL AND area != \'\''
+      ).bind(trip.id).all<{ area: string }>();
+      const areas = areasResult.results.map(r => r.area);
+
+      return {
+        comparisonTripId: trip.comparisonTripId,
+        id: trip.id,
+        label: trip.label,
+        title: trip.title,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        theme: trip.theme,
+        coverImageUrl: trip.coverImageUrl,
+        budget: trip.budget,
+        days,
+        totalCost,
+        itemCount,
+        areas,
+      };
+    })
+  );
+
+  return c.json({
+    id: group.id,
+    name: group.name,
+    createdAt: group.createdAt,
+    trips: tripDetails,
+  });
+});
+
+// Update comparison group (labels, add/remove trips)
+app.put('/api/comparisons/:groupId', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const groupId = c.req.param('groupId');
+
+  // Verify ownership
+  const group = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM comparison_groups WHERE id = ?'
+  ).bind(groupId).first<{ id: string; userId: string }>();
+
+  if (!group) {
+    return c.json({ error: '比較グループが見つかりません' }, 404);
+  }
+
+  if (group.userId !== user.id) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  const body = await c.req.json<{
+    name?: string;
+    tripIds?: string[];
+    labels?: (string | null)[];
+  }>();
+
+  // Update name if provided
+  if (body.name?.trim()) {
+    await c.env.DB.prepare(
+      'UPDATE comparison_groups SET name = ? WHERE id = ?'
+    ).bind(body.name.trim(), groupId).run();
+  }
+
+  // Update trips if provided
+  if (body.tripIds) {
+    if (body.tripIds.length < 2) {
+      return c.json({ error: '比較するには少なくとも2つの旅程を選択してください' }, 400);
+    }
+
+    if (body.tripIds.length > 4) {
+      return c.json({ error: '比較できる旅程は最大4つまでです' }, 400);
+    }
+
+    // Verify all trips belong to the user
+    const placeholders = body.tripIds.map(() => '?').join(',');
+    const trips = await c.env.DB.prepare(
+      `SELECT id FROM trips WHERE id IN (${placeholders}) AND user_id = ?`
+    ).bind(...body.tripIds, user.id).all<{ id: string }>();
+
+    if (trips.results.length !== body.tripIds.length) {
+      return c.json({ error: '選択された旅程の一部にアクセスできません' }, 403);
+    }
+
+    // Delete existing trips
+    await c.env.DB.prepare(
+      'DELETE FROM comparison_trips WHERE group_id = ?'
+    ).bind(groupId).run();
+
+    // Add new trips
+    for (let i = 0; i < body.tripIds.length; i++) {
+      const tripId = body.tripIds[i];
+      const label = body.labels?.[i] || null;
+      const ctId = generateId();
+      await c.env.DB.prepare(
+        'INSERT INTO comparison_trips (id, group_id, trip_id, label, sort) VALUES (?, ?, ?, ?, ?)'
+      ).bind(ctId, groupId, tripId, label, i).run();
+    }
+  } else if (body.labels) {
+    // Only update labels
+    const existingTrips = await c.env.DB.prepare(
+      'SELECT id, trip_id, sort FROM comparison_trips WHERE group_id = ? ORDER BY sort'
+    ).bind(groupId).all<{ id: string; trip_id: string; sort: number }>();
+
+    for (let i = 0; i < existingTrips.results.length; i++) {
+      const ct = existingTrips.results[i];
+      const label = body.labels[i] || null;
+      await c.env.DB.prepare(
+        'UPDATE comparison_trips SET label = ? WHERE id = ?'
+      ).bind(label, ct.id).run();
+    }
+  }
+
+  return c.json({ ok: true });
+});
+
+// Delete comparison group
+app.delete('/api/comparisons/:groupId', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const groupId = c.req.param('groupId');
+
+  // Verify ownership
+  const group = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM comparison_groups WHERE id = ?'
+  ).bind(groupId).first<{ id: string; userId: string }>();
+
+  if (!group) {
+    return c.json({ error: '比較グループが見つかりません' }, 404);
+  }
+
+  if (group.userId !== user.id) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  // Delete group (cascade will delete comparison_trips)
+  await c.env.DB.prepare(
+    'DELETE FROM comparison_groups WHERE id = ?'
+  ).bind(groupId).run();
+
+  return c.json({ ok: true });
+});
+
+// Adopt a trip from comparison (optional: delete others)
+app.post('/api/comparisons/:groupId/adopt/:tripId', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const groupId = c.req.param('groupId');
+  const tripId = c.req.param('tripId');
+
+  // Verify ownership of group
+  const group = await c.env.DB.prepare(
+    'SELECT id, user_id as userId FROM comparison_groups WHERE id = ?'
+  ).bind(groupId).first<{ id: string; userId: string }>();
+
+  if (!group) {
+    return c.json({ error: '比較グループが見つかりません' }, 404);
+  }
+
+  if (group.userId !== user.id) {
+    return c.json({ error: 'アクセスが拒否されました' }, 403);
+  }
+
+  // Verify trip is in the group
+  const tripInGroup = await c.env.DB.prepare(
+    'SELECT id FROM comparison_trips WHERE group_id = ? AND trip_id = ?'
+  ).bind(groupId, tripId).first<{ id: string }>();
+
+  if (!tripInGroup) {
+    return c.json({ error: '指定された旅程は比較グループに含まれていません' }, 400);
+  }
+
+  const body = await c.req.json<{ deleteOthers?: boolean }>();
+
+  if (body.deleteOthers) {
+    // Get other trip IDs in the group
+    const otherTrips = await c.env.DB.prepare(
+      'SELECT trip_id FROM comparison_trips WHERE group_id = ? AND trip_id != ?'
+    ).bind(groupId, tripId).all<{ trip_id: string }>();
+
+    // Delete other trips
+    for (const other of otherTrips.results) {
+      await c.env.DB.prepare(
+        'DELETE FROM trips WHERE id = ? AND user_id = ?'
+      ).bind(other.trip_id, user.id).run();
+    }
+  }
+
+  // Delete the comparison group
+  await c.env.DB.prepare(
+    'DELETE FROM comparison_groups WHERE id = ?'
+  ).bind(groupId).run();
+
+  return c.json({ ok: true, adoptedTripId: tripId });
+});
+
 // SPA routes - serve index.html for client-side routing
-const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed', '/profile', '/gallery', '/gallery/'];
+const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed', '/profile', '/gallery', '/gallery/', '/compare', '/compare/'];
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
@@ -7479,7 +7842,8 @@ app.get('*', async (c) => {
     path.match(/^\/trips\/[^/]+\/album$/) ||  // /trips/:id/album
     path.match(/^\/invite\/[^/]+$/) ||  // /invite/:token
     path.match(/^\/embed\/[^/]+$/) ||  // /embed/:id
-    path.match(/^\/gallery\/[^/]+$/);  // /gallery/:id
+    path.match(/^\/gallery\/[^/]+$/) ||  // /gallery/:id
+    path.match(/^\/compare\/[^/]+$/);  // /compare/:groupId
 
   if (isSpaRoute) {
     url.pathname = '/index.html';

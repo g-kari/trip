@@ -25,6 +25,7 @@ import { EmbedPage } from './pages/EmbedPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { GalleryDetailPage } from './pages/GalleryDetailPage'
 import { SavedTripsPage } from './pages/SavedTripsPage'
+import { ComparePage } from './pages/ComparePage'
 import { OfflineIndicator } from './components/OfflineIndicator'
 
 const queryClient = new QueryClient({
@@ -64,6 +65,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/gallery/saved" element={<SavedTripsPage />} />
                 <Route path="/gallery/:id" element={<GalleryDetailPage />} />
+                <Route path="/compare/:groupId" element={<ComparePage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/feedback" element={<FeedbackListPage />} />
