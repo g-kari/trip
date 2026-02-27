@@ -2653,44 +2653,32 @@ app.post('/api/trips/generate', async (c) => {
     }
   }
 
-  const prompt = `あなたは旅行プランナーです。以下の条件で${destination}への旅行プランを作成してください。
+  const systemPrompt = `あなたはプロの旅行プランナーです。JSONのみを出力してください。説明文やマークダウンは一切不要です。
+ルール:
+- 実在する観光スポット・飲食店を使うこと（架空の名前は禁止）
+- 時間は現実的に設定（移動時間を考慮、朝は9:00以降、夜は21:00まで）
+- 各日は朝食または午前の活動から始め、夕食または夜の活動で終える
+- 昼食と夕食は必ず含める
+- エリアが近い予定をまとめ、無理な移動を避ける
+- costは入場料・食事代など実際の目安（0なら省略可）`;
+
+  const userPrompt = `${destination}への旅行プランを作成してください。
 
 条件:
-- 目的地: ${destination}
-- 日程: ${startDate} から ${endDate} (${dayCount}日間)
-- 旅のスタイル: ${styleLabel}
-${budgetInfo}
-${notesInfo}${imageContext}
+- 日程: ${startDate} 〜 ${endDate}（${dayCount}日間）
+- スタイル: ${styleLabel}
+${budgetInfo ? `- ${budgetInfo}\n` : ''}${notesInfo ? `- ${notesInfo}\n` : ''}${imageContext}
+JSON形式:
+{"title":"旅程タイトル","days":[{"date":"YYYY-MM-DD","items":[{"title":"スポット名","timeStart":"HH:MM","timeEnd":"HH:MM","area":"エリア名","note":"説明","cost":数値}]}]}
 
-以下のJSON形式で出力してください。他の説明は不要です:
-{
-  "title": "旅程のタイトル（例: 京都3日間の旅）",
-  "days": [
-    {
-      "date": "YYYY-MM-DD形式の日付",
-      "items": [
-        {
-          "title": "スポット名や活動名",
-          "timeStart": "HH:MM形式の開始時間",
-          "timeEnd": "HH:MM形式の終了時間（省略可）",
-          "area": "エリア名（例: 祇園、嵐山など）",
-          "note": "簡単な説明やおすすめポイント",
-          "cost": 推定費用（数値、円単位）
-        }
-      ]
-    }
-  ]
-}
-
-各日は朝から夜まで3〜5個の予定を入れてください。
-観光スポット、食事、移動などをバランスよく配置してください。
-費用は入場料や食事代の目安を入れてください。`;
+各日4〜6個の予定を入れてください。`;
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await (c.env.AI as any).run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
       messages: [
-        { role: 'user', content: prompt }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
       ],
       max_tokens: 4096,
     });
@@ -2703,55 +2691,73 @@ ${notesInfo}${imageContext}
     // Try to parse JSON from the response
     let generatedTrip: GeneratedTrip;
     try {
-      // Find JSON in the response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      // Find JSON in the response (try multiple patterns for robustness)
+      let jsonStr = responseText;
+      // Strip markdown code fences if present
+      const fenceMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) {
+        jsonStr = fenceMatch[1];
+      }
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
       generatedTrip = JSON.parse(jsonMatch[0]);
+      // Validate structure
+      if (!generatedTrip.days || !Array.isArray(generatedTrip.days)) {
+        throw new Error('Invalid trip structure: missing days array');
+      }
     } catch {
       console.error('Failed to parse AI response:', responseText);
-      return c.json({ error: 'AIの応答を解析できませんでした' }, 500);
+      return c.json({ error: 'AIの応答を解析できませんでした。もう一度お試しください。' }, 500);
     }
 
-    // Create trip in database
+    // Create trip in database using batch for performance
     const tripId = generateId();
     const theme = 'quiet';
 
-    await c.env.DB.prepare(
-      'INSERT INTO trips (id, title, start_date, end_date, theme, user_id) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(tripId, generatedTrip.title || `${destination}の旅`, startDate, endDate, theme, user?.id ?? null).run();
+    const statements: D1PreparedStatement[] = [
+      c.env.DB.prepare(
+        'INSERT INTO trips (id, title, start_date, end_date, theme, user_id) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(tripId, generatedTrip.title || `${destination}の旅`, startDate, endDate, theme, user.id)
+    ];
 
-    // Create days and items
-    for (let i = 0; i < generatedTrip.days.length; i++) {
-      const day = generatedTrip.days[i];
+    // Limit days to the actual day count to prevent AI from generating extra days
+    const days = generatedTrip.days.slice(0, dayCount);
+    for (let i = 0; i < days.length; i++) {
+      const day = days[i];
       const dayId = generateId();
       const dayDate = day.date || new Date(start.getTime() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      await c.env.DB.prepare(
-        'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
-      ).bind(dayId, tripId, dayDate, i).run();
+      statements.push(
+        c.env.DB.prepare(
+          'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+        ).bind(dayId, tripId, dayDate, i)
+      );
 
-      // Create items for this day
       for (let j = 0; j < (day.items || []).length; j++) {
         const item = day.items[j];
         const itemId = generateId();
 
-        await c.env.DB.prepare(
-          `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, note, cost, sort)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(
-          itemId, tripId, dayId,
-          item.title || '未定',
-          item.area || null,
-          item.timeStart || null,
-          item.timeEnd || null,
-          item.note || null,
-          item.cost || null,
-          j
-        ).run();
+        statements.push(
+          c.env.DB.prepare(
+            `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, note, cost, sort)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(
+            itemId, tripId, dayId,
+            item.title || '未定',
+            item.area || null,
+            item.timeStart || null,
+            item.timeEnd || null,
+            item.note || null,
+            item.cost || null,
+            j
+          )
+        );
       }
     }
+
+    await c.env.DB.batch(statements);
 
     // Fetch the created trip
     const trip = await c.env.DB.prepare(

@@ -65,6 +65,7 @@ export function TripListPage() {
   const [aiImage, setAiImage] = useState<File | null>(null)
   const [aiImagePreview, setAiImagePreview] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [generatingStep, setGeneratingStep] = useState(0)
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiRemaining, setAiRemaining] = useState<number | null>(null)
   const [aiLimitReached, setAiLimitReached] = useState(false)
@@ -339,7 +340,14 @@ export function TripListPage() {
     if (!aiDestination.trim() || !aiStartDate || !aiEndDate) return
 
     setGenerating(true)
+    setGeneratingStep(0)
     setAiError(null)
+
+    // Cycle through progress steps while waiting
+    const stepInterval = setInterval(() => {
+      setGeneratingStep(prev => (prev < 2 ? prev + 1 : prev))
+    }, 3000)
+
     try {
       let res: Response
 
@@ -398,7 +406,9 @@ export function TripListPage() {
       console.error('Failed to generate trip:', err)
       setAiError('旅程の生成に失敗しました')
     } finally {
+      clearInterval(stepInterval)
       setGenerating(false)
+      setGeneratingStep(0)
     }
   }
 
@@ -779,7 +789,11 @@ export function TripListPage() {
             {generating ? '生成中...' : 'AIで生成する（2クレジット）'}
           </button>
           {generating && (
-            <p className="generating-hint">AIが旅程を考えています...</p>
+            <p className="generating-hint">
+              {generatingStep === 0 && 'AIが旅程を考えています...'}
+              {generatingStep === 1 && 'スポットを選定しています...'}
+              {generatingStep === 2 && 'スケジュールを組み立てています...'}
+            </p>
           )}
             </>
           )}
