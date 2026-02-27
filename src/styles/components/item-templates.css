@@ -87,41 +87,6 @@
          text-center text-text-faint text-[0.8125rem];
 }
 
-/* Save as template button in item actions */
-.btn-save-template {
-  @apply text-xs py-[var(--space-1)] px-[var(--space-2)]
-         text-text-faint bg-none
-         border border-border-light rounded-s
-         cursor-pointer;
-  transition: all var(--transition-fast);
-
-  &:hover {
-    @apply text-text-muted border-border;
-  }
-
-  &:disabled {
-    @apply opacity-50 cursor-not-allowed;
-  }
-}
-
-/* Template button in add item section */
-.template-btn-row {
-  @apply flex gap-[var(--space-2)] mb-[var(--space-2)];
-}
-
-.btn-from-template {
-  @apply flex items-center gap-[var(--space-1)]
-         py-[var(--space-2)] px-[var(--space-3)]
-         text-[0.8125rem] text-text-muted
-         bg-bg border border-dashed border-border rounded-m
-         cursor-pointer;
-  transition: all var(--transition-fast);
-
-  &:hover {
-    @apply text-text border-border bg-bg-elevated;
-  }
-}
-
 /* Delete template button */
 .template-delete-btn {
   @apply p-[var(--space-1)] bg-none border-none
@@ -141,10 +106,3 @@
   @apply flex-1;
 }
 
-/* Confirmation toast for template saved */
-.template-saved-toast {
-  @apply flex items-center gap-[var(--space-2)]
-         py-[var(--space-3)] px-[var(--space-4)]
-         bg-bg-elevated border border-border rounded-m
-         text-[0.8125rem] text-text;
-}

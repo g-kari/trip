@@ -50,18 +50,6 @@
   @apply flex gap-[var(--space-2)] items-center;
 }
 
-.collaborator-invite-form {
-  @apply flex flex-col gap-[var(--space-3)] p-[var(--space-4)] bg-bg rounded-m mb-[var(--space-4)];
-
-  & .form-row {
-    @apply flex gap-[var(--space-2)];
-
-    & .input {
-      @apply flex-1;
-    }
-  }
-}
-
 .collaborator-role-select {
   @apply min-w-[100px];
   flex: 0 0 auto !important;
@@ -114,10 +102,6 @@
   @apply font-medium text-text;
 }
 
-.collaborator-email {
-  @apply font-medium text-text;
-}
-
 .collaborator-role {
   @apply text-xs text-text-muted py-[var(--space-1)] px-[var(--space-2)] bg-bg rounded-s;
 }
@@ -147,10 +131,6 @@
 
   .collaborator-invite-row {
     @apply flex-col items-stretch;
-  }
-
-  .collaborator-invite-form .form-row {
-    @apply flex-col;
   }
 
   .collaborator-role-select {

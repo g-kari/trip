@@ -24,31 +24,6 @@
          text-text-muted text-xs leading-none;
 }
 
-/* Size variants */
-.weather-badge-small {
-  gap: 2px;
-
-  & .weather-icon-svg {
-    @apply size-3.5;
-  }
-}
-
-.weather-badge-medium {
-  @apply gap-[var(--space-1)];
-
-  & .weather-icon-svg {
-    @apply size-[18px];
-  }
-}
-
-.weather-badge-large {
-  @apply gap-[var(--space-2)] text-sm;
-
-  & .weather-icon-svg {
-    @apply size-6;
-  }
-}
-
 /* Weather icon SVG */
 .weather-icon-svg {
   @apply shrink-0;
@@ -86,37 +61,9 @@
 
 /* Responsive adjustments */
 @media (max-width: 480px) {
-  .weather-badge-medium .weather-icon-svg {
-    @apply size-4;
-  }
-
-  .weather-badge-large .weather-icon-svg {
-    @apply size-5;
-  }
-
   .weather-badge {
     @apply text-[0.6875rem];
   }
-}
-
-/* Weather summary for trip overview */
-.weather-summary {
-  @apply flex flex-wrap gap-[var(--space-2)]
-         p-[var(--space-3)]
-         bg-bg-elevated border border-border-light
-         mb-[var(--space-4)];
-  border-radius: 8px;
-}
-
-.weather-summary-item {
-  @apply flex items-center gap-[var(--space-2)]
-         py-[var(--space-1)] px-[var(--space-2)]
-         bg-bg text-xs text-text-muted;
-  border-radius: 4px;
-}
-
-.weather-summary-date {
-  @apply font-medium text-text;
 }
 
 /* Inline weather display in timeline */

@@ -81,6 +81,17 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-pdf': ['jspdf', 'html2canvas'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

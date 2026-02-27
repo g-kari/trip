@@ -65,22 +65,6 @@
   }
 }
 
-/* Recording status indicator (optional, for more feedback) */
-.voice-input-status {
-  @apply text-xs mt-[var(--space-1)];
-  color: #e53935;
-  animation: voice-status-blink 1s ease-in-out infinite;
-}
-
-@keyframes voice-status-blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
 /* Dark mode adjustments */
 [data-color-mode="dark"] .voice-input-btn--listening {
   background: rgba(229, 57, 53, 0.15);

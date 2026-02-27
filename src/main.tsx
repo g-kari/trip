@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -8,25 +8,26 @@ import { ColorModeProvider } from './components/ColorModeProvider'
 import { ToastProvider } from './components/Toast'
 import { AuthProvider } from './components/AuthProvider'
 import { Layout } from './components/Layout'
-import { HomePage } from './pages/HomePage'
-import { TripListPage } from './pages/TripListPage'
-import { TripViewPage } from './pages/TripViewPage'
-import { TripEditPage } from './pages/TripEditPage'
-import { SharedTripPage } from './pages/SharedTripPage'
-import { LoginPage } from './pages/LoginPage'
-import { ContactPage } from './pages/ContactPage'
-import { FeedbackListPage } from './pages/FeedbackListPage'
-import { AlbumPage } from './pages/AlbumPage'
-import { TemplatesPage } from './pages/TemplatesPage'
-import { StatsPage } from './pages/StatsPage'
-import { ProfilePage } from './pages/ProfilePage'
-import { InviteAcceptPage } from './pages/InviteAcceptPage'
-import { EmbedPage } from './pages/EmbedPage'
-import { GalleryPage } from './pages/GalleryPage'
-import { GalleryDetailPage } from './pages/GalleryDetailPage'
-import { SavedTripsPage } from './pages/SavedTripsPage'
-import { ComparePage } from './pages/ComparePage'
 import { OfflineIndicator } from './components/OfflineIndicator'
+
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })))
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const ContactPage = lazy(() => import('./pages/ContactPage').then(m => ({ default: m.ContactPage })))
+const SharedTripPage = lazy(() => import('./pages/SharedTripPage').then(m => ({ default: m.SharedTripPage })))
+const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage').then(m => ({ default: m.InviteAcceptPage })))
+const EmbedPage = lazy(() => import('./pages/EmbedPage').then(m => ({ default: m.EmbedPage })))
+const TripListPage = lazy(() => import('./pages/TripListPage').then(m => ({ default: m.TripListPage })))
+const TripViewPage = lazy(() => import('./pages/TripViewPage').then(m => ({ default: m.TripViewPage })))
+const TripEditPage = lazy(() => import('./pages/TripEditPage').then(m => ({ default: m.TripEditPage })))
+const AlbumPage = lazy(() => import('./pages/AlbumPage').then(m => ({ default: m.AlbumPage })))
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage').then(m => ({ default: m.TemplatesPage })))
+const GalleryPage = lazy(() => import('./pages/GalleryPage').then(m => ({ default: m.GalleryPage })))
+const GalleryDetailPage = lazy(() => import('./pages/GalleryDetailPage').then(m => ({ default: m.GalleryDetailPage })))
+const SavedTripsPage = lazy(() => import('./pages/SavedTripsPage').then(m => ({ default: m.SavedTripsPage })))
+const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })))
+const StatsPage = lazy(() => import('./pages/StatsPage').then(m => ({ default: m.StatsPage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const FeedbackListPage = lazy(() => import('./pages/FeedbackListPage').then(m => ({ default: m.FeedbackListPage })))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,10 @@ createRoot(document.getElementById('root')!).render(
             <AuthProvider>
               <BrowserRouter>
             <OfflineIndicator />
+            <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+              <div style={{ width: 32, height: 32, border: '3px solid var(--color-border, #e0d6ca)', borderTopColor: 'var(--color-primary, #3d2e1f)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+            </div>}>
             <Routes>
               {/* 認証不要のページ */}
               <Route path="/" element={<HomePage />} />
@@ -71,6 +76,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/feedback" element={<FeedbackListPage />} />
               </Route>
             </Routes>
+            </Suspense>
               </BrowserRouter>
             </AuthProvider>
           </ToastProvider>
