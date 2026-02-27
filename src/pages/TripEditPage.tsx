@@ -2267,7 +2267,11 @@ export function TripEditPage() {
       </div>
 
       {/* Packing List */}
-      {trip && <PackingList tripId={trip.id} />}
+      {trip && (
+        <CollapsibleSection title="持ち物リスト" defaultOpen={false}>
+          <PackingList tripId={trip.id} />
+        </CollapsibleSection>
+      )}
 
       {/* Expense Splitting Section */}
       {trip && (

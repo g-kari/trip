@@ -147,9 +147,6 @@ export function PackingList({ tripId, readOnly = false }: PackingListProps) {
   if (loading) {
     return (
       <div className="packing-list-section">
-        <div className="packing-list-header">
-          <h3 className="packing-list-title">持ち物リスト</h3>
-        </div>
         <div className="packing-list-loading">読み込み中...</div>
       </div>
     )
@@ -157,14 +154,13 @@ export function PackingList({ tripId, readOnly = false }: PackingListProps) {
 
   return (
     <div className="packing-list-section">
-      <div className="packing-list-header">
-        <h3 className="packing-list-title">持ち物リスト</h3>
-        {totalItems > 0 && (
+      {totalItems > 0 && (
+        <div className="packing-list-header">
           <span className="packing-list-progress">
-            {checkedItems}/{totalItems} ({progress}%)
+            {checkedItems}/{totalItems} 完了（{progress}%）
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {totalItems > 0 && (
         <div className="packing-progress-bar">
