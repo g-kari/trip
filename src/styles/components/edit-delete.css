@@ -80,11 +80,7 @@
   grid-column: 1 / -1;
 }
 
-/* Day header with delete button */
-.day-header {
-  @apply flex items-baseline gap-[var(--space-2)] mb-[var(--space-4)] pb-[var(--space-2)] border-b border-border-light flex-wrap;
-}
-
+/* Day header — delete button alignment (base styles in timeline.css) */
 .day-header .btn-text {
   @apply ml-auto;
 }

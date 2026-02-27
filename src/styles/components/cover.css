@@ -15,10 +15,6 @@
   object-fit: cover;
 }
 
-.cover-upload-btn {
-  @apply w-full max-w-[280px];
-}
-
 /* Hero with cover image */
 .hero-with-cover {
   @apply relative;

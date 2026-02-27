@@ -143,6 +143,15 @@
     @apply gap-[var(--space-2)];
   }
 
+  /* Adjust dot/line pseudo-elements to match 48px column */
+  .timeline-item::before {
+    left: 48px;
+  }
+
+  .timeline-item::after {
+    left: 51px;
+  }
+
   .timeline-time {
     @apply text-xs;
   }
@@ -320,5 +329,13 @@
 
   .timeline-item {
     grid-template-columns: 44px 1fr;
+  }
+
+  .timeline-item::before {
+    left: 44px;
+  }
+
+  .timeline-item::after {
+    left: 47px;
   }
 }
