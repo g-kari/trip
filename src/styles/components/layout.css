@@ -94,6 +94,100 @@
   gap: var(--space-2);
 }
 
+/* Action icon buttons */
+.action-icon-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.action-icon-btn:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+/* Tooltip */
+.action-icon-btn[data-tooltip] {
+  position: relative;
+}
+
+.action-icon-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+  color: var(--color-bg-elevated);
+  background: var(--color-text);
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 10;
+}
+
+.action-icon-btn[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+/* Action menu wrapper */
+.action-menu-wrapper {
+  position: relative;
+}
+
+/* Dropdown menu */
+.action-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 160px;
+  padding: var(--space-1) 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-m);
+  z-index: 100;
+}
+
+.action-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  text-align: left;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.action-dropdown-item:hover {
+  background: var(--color-bg);
+}
+
+.action-dropdown-item.active {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+}
+
+.action-dropdown-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Trip card */
 .trip-card {
   display: block;

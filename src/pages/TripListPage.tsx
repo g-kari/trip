@@ -5,7 +5,7 @@ import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
-import { PinIcon, PinFilledIcon, CopyIcon, CompareIcon } from '../components/Icons'
+import { PinIcon, PinFilledIcon, CopyIcon, CompareIcon, MoreVerticalIcon, PlusIcon } from '../components/Icons'
 import { TemplateListModal } from '../components/TemplateListModal'
 import { CompareSelectionBar } from '../components/CompareSelectionBar'
 import { AdBanner } from '../components/AdBanner'
@@ -80,6 +80,10 @@ export function TripListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
 
+  // Action menu state
+  const [activeMenu, setActiveMenu] = useState<'create' | 'more' | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
   // Compare selection state
   const [compareMode, setCompareMode] = useState(false)
   const [selectedForCompare, setSelectedForCompare] = useState<Trip[]>([])
@@ -100,6 +104,18 @@ export function TripListPage() {
     setSelectedForCompare([])
     setCompareMode(false)
   }, [])
+
+  // Close action menu on click outside
+  useEffect(() => {
+    if (!activeMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActiveMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [activeMenu])
 
   const fetchAiUsage = useCallback(async () => {
     try {
@@ -522,57 +538,101 @@ export function TripListPage() {
     <div className="trip-list-section">
       <div className="section-header">
         <span className="section-title">{user ? 'マイ旅程' : 'trips'}</span>
-        <div className="section-actions">
-          <Link to="/templates" className="btn-text">
-            テンプレート
-          </Link>
-          <button
-            className="btn-outline"
-            onClick={() => {
-              setShowAiForm(!showAiForm)
-              setShowCreateForm(false)
-            }}
-          >
-            {showAiForm ? 'キャンセル' : 'AIで作成'}
-          </button>
-          <button
-            className="btn-outline"
-            onClick={() => {
-              setShowCreateForm(!showCreateForm)
-              setShowAiForm(false)
-            }}
-          >
-            {showCreateForm ? 'キャンセル' : '手動で作成'}
-          </button>
-          {user && (
-            <>
-              <button
-                className={`btn-outline ${compareMode ? 'btn-active' : ''}`}
-                onClick={() => {
-                  setCompareMode(!compareMode)
-                  if (compareMode) {
-                    setSelectedForCompare([])
-                  }
-                }}
-              >
-                {compareMode ? '比較モード終了' : '比較'}
-              </button>
-              <button
-                className="btn-outline"
-                onClick={() => setShowTemplateModal(true)}
-                disabled={creatingFromTemplate}
-              >
-                テンプレートから
-              </button>
-              <button
-                className="btn-outline"
-                onClick={() => importInputRef.current?.click()}
-                disabled={importing}
-              >
-                {importing ? 'インポート中...' : 'インポート'}
-              </button>
-            </>
-          )}
+        <div className="section-actions" ref={menuRef}>
+          <div className="action-menu-wrapper">
+            <button
+              type="button"
+              className="btn-icon action-icon-btn"
+              data-tooltip="作成"
+              onClick={() => setActiveMenu(activeMenu === 'create' ? null : 'create')}
+            >
+              <PlusIcon size={18} />
+            </button>
+            {activeMenu === 'create' && (
+              <div className="action-dropdown">
+                <button
+                  type="button"
+                  className="action-dropdown-item"
+                  onClick={() => {
+                    setShowAiForm(!showAiForm)
+                    setShowCreateForm(false)
+                    setActiveMenu(null)
+                  }}
+                >
+                  {showAiForm ? 'AI作成を閉じる' : '✨ AIで作成'}
+                </button>
+                <button
+                  type="button"
+                  className="action-dropdown-item"
+                  onClick={() => {
+                    setShowCreateForm(!showCreateForm)
+                    setShowAiForm(false)
+                    setActiveMenu(null)
+                  }}
+                >
+                  {showCreateForm ? '手動作成を閉じる' : '手動で作成'}
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="action-menu-wrapper">
+            <button
+              type="button"
+              className="btn-icon action-icon-btn"
+              data-tooltip="その他"
+              onClick={() => setActiveMenu(activeMenu === 'more' ? null : 'more')}
+            >
+              <MoreVerticalIcon size={18} />
+            </button>
+            {activeMenu === 'more' && (
+              <div className="action-dropdown">
+                <Link
+                  to="/templates"
+                  className="action-dropdown-item"
+                  onClick={() => setActiveMenu(null)}
+                >
+                  テンプレート一覧
+                </Link>
+                {user && (
+                  <>
+                    <button
+                      type="button"
+                      className="action-dropdown-item"
+                      onClick={() => {
+                        setShowTemplateModal(true)
+                        setActiveMenu(null)
+                      }}
+                      disabled={creatingFromTemplate}
+                    >
+                      テンプレートから作成
+                    </button>
+                    <button
+                      type="button"
+                      className={`action-dropdown-item ${compareMode ? 'active' : ''}`}
+                      onClick={() => {
+                        setCompareMode(!compareMode)
+                        if (compareMode) setSelectedForCompare([])
+                        setActiveMenu(null)
+                      }}
+                    >
+                      {compareMode ? '比較モード終了' : '比較'}
+                    </button>
+                    <button
+                      type="button"
+                      className="action-dropdown-item"
+                      onClick={() => {
+                        importInputRef.current?.click()
+                        setActiveMenu(null)
+                      }}
+                      disabled={importing}
+                    >
+                      {importing ? 'インポート中...' : 'インポート'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <input
             ref={importInputRef}
             type="file"
