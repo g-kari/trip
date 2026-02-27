@@ -42,6 +42,7 @@ export function TripListPage() {
 
   // Search and filter state (synced with URL)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery)
   const [filterStartDate, setFilterStartDate] = useState(searchParams.get('dateFrom') || '')
   const [filterEndDate, setFilterEndDate] = useState(searchParams.get('dateTo') || '')
   const [filterTheme, setFilterTheme] = useState<ThemeFilter>((searchParams.get('theme') as ThemeFilter) || '')
@@ -113,10 +114,10 @@ export function TripListPage() {
     }
   }, [])
 
-  // Build URL params for API call
+  // Build URL params for API call (uses debounced search to avoid mid-typing fetches)
   const buildApiUrl = useCallback(() => {
     const params = new URLSearchParams()
-    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    if (debouncedSearchQuery.trim()) params.set('q', debouncedSearchQuery.trim())
     if (filterTheme) params.set('theme', filterTheme)
     if (filterTag) params.set('tag', filterTag)
     if (filterColor) params.set('color', filterColor)
@@ -126,7 +127,7 @@ export function TripListPage() {
     params.set('archived', archiveTab === 'archived' ? '1' : '0')
     const queryString = params.toString()
     return queryString ? `/api/trips?${queryString}` : '/api/trips'
-  }, [searchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder, archiveTab])
+  }, [debouncedSearchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder, archiveTab])
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -168,10 +169,18 @@ export function TripListPage() {
     }
   }, [authLoading, user, fetchTrips, fetchAiUsage, fetchAvailableTags])
 
-  // Update URL params when filters change
+  // Debounce search query to avoid re-renders on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Update URL params when filters change (uses debounced search)
   useEffect(() => {
     const params = new URLSearchParams()
-    if (searchQuery.trim()) params.set('q', searchQuery.trim())
+    if (debouncedSearchQuery.trim()) params.set('q', debouncedSearchQuery.trim())
     if (filterTheme) params.set('theme', filterTheme)
     if (filterTag) params.set('tag', filterTag)
     if (filterColor) params.set('color', filterColor)
@@ -180,25 +189,16 @@ export function TripListPage() {
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
     if (archiveTab === 'archived') params.set('archived', '1')
     setSearchParams(params, { replace: true })
-  }, [searchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
-
-  // Debounced search to avoid too many API calls
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  }, [debouncedSearchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value)
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
-    }
-    searchTimeoutRef.current = setTimeout(() => {
-      setLoading(true)
-    }, 300)
   }, [])
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    return !!(searchQuery.trim() || filterTheme || filterTag || filterColor || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
-  }, [searchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder])
+    return !!(debouncedSearchQuery.trim() || filterTheme || filterTag || filterColor || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
+  }, [debouncedSearchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder])
 
   // Clear all filters
   const clearFilters = useCallback(() => {
