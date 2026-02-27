@@ -662,79 +662,81 @@ export function SharedTripPage() {
                     <span className="timeline-time">
                       {item.timeStart || ''}
                     </span>
-                    {item.checkedInAt && (
-                      <span className="checkin-btn checked" title="チェックイン済み" />
-                    )}
-                    <div className="timeline-content">
-                      <span className="timeline-title">
-                        {item.title}
-                        {item.checkedInAt && (
-                          <span className="checkin-time">{formatCheckinTime(item.checkedInAt)}</span>
+                    <div className="timeline-item-checkin">
+                      {item.checkedInAt && (
+                        <span className="checkin-btn checked" title="チェックイン済み" />
+                      )}
+                      <div className="timeline-content">
+                        <span className="timeline-title">
+                          {item.title}
+                          {item.checkedInAt && (
+                            <span className="checkin-time">{formatCheckinTime(item.checkedInAt)}</span>
+                          )}
+                        </span>
+                        <div className="timeline-meta">
+                          {item.area && <span>{item.area}</span>}
+                          {item.cost !== null && item.cost > 0 && (
+                            <span>{formatCost(item.cost)}</span>
+                          )}
+                          {item.mapUrl && (
+                            <a
+                              href={item.mapUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="map-link"
+                            >
+                              地図
+                            </a>
+                          )}
+                        </div>
+                        {item.note && (
+                          <p className="timeline-note">
+                            <MarkdownText text={item.note} />
+                          </p>
                         )}
-                      </span>
-                      <div className="timeline-meta">
-                        {item.area && <span>{item.area}</span>}
-                        {item.cost !== null && item.cost > 0 && (
-                          <span>{formatCost(item.cost)}</span>
+                        {item.photoUrl && (
+                          <div className="item-photo">
+                            <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                            {canDeleteItemPhoto(item) && (
+                              <button
+                                className="item-photo-delete no-print"
+                                onClick={() => deleteItemPhoto(item.id)}
+                                disabled={deletingItemPhoto === item.id}
+                                title="写真を削除"
+                              >
+                                {deletingItemPhoto === item.id ? '...' : '×'}
+                              </button>
+                            )}
+                            {item.photoUploadedByName && (
+                              <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
+                            )}
+                          </div>
                         )}
-                        {item.mapUrl && (
-                          <a
-                            href={item.mapUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="map-link"
-                          >
-                            地図
-                          </a>
+                        {/* Photo upload for logged-in users */}
+                        {user && !item.photoUrl && (
+                          <div className="photo-upload-section no-print">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              ref={(el) => {
+                                if (el) itemPhotoInputRefs.current.set(item.id, el)
+                              }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) uploadItemPhoto(item.id, file)
+                              }}
+                            />
+                            <button
+                              className="btn-text btn-small"
+                              onClick={() => itemPhotoInputRefs.current.get(item.id)?.click()}
+                              disabled={uploadingItemPhoto === item.id}
+                            >
+                              {uploadingItemPhoto === item.id ? 'アップロード中...' : '📷 写真を追加'}
+                            </button>
+                          </div>
                         )}
                       </div>
-                      {item.note && (
-                        <p className="timeline-note">
-                          <MarkdownText text={item.note} />
-                        </p>
-                      )}
-                      {item.photoUrl && (
-                        <div className="item-photo">
-                          <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
-                          {canDeleteItemPhoto(item) && (
-                            <button
-                              className="item-photo-delete no-print"
-                              onClick={() => deleteItemPhoto(item.id)}
-                              disabled={deletingItemPhoto === item.id}
-                              title="写真を削除"
-                            >
-                              {deletingItemPhoto === item.id ? '...' : '×'}
-                            </button>
-                          )}
-                          {item.photoUploadedByName && (
-                            <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
-                          )}
-                        </div>
-                      )}
-                      {/* Photo upload for logged-in users */}
-                      {user && !item.photoUrl && (
-                        <div className="photo-upload-section no-print">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            ref={(el) => {
-                              if (el) itemPhotoInputRefs.current.set(item.id, el)
-                            }}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0]
-                              if (file) uploadItemPhoto(item.id, file)
-                            }}
-                          />
-                          <button
-                            className="btn-text btn-small"
-                            onClick={() => itemPhotoInputRefs.current.get(item.id)?.click()}
-                            disabled={uploadingItemPhoto === item.id}
-                          >
-                            {uploadingItemPhoto === item.id ? 'アップロード中...' : '📷 写真を追加'}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))

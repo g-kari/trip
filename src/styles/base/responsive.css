@@ -87,10 +87,8 @@
     font-size: 0.8125rem;
   }
 
-  /* Hero actions wrap on small screens */
+  /* Hero actions tighter gap on small screens */
   .hero-actions-row {
-    flex-wrap: wrap;
-    justify-content: center;
     gap: var(--space-2);
   }
 
