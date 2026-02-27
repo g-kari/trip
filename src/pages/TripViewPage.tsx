@@ -23,6 +23,7 @@ import { OptimizeButton } from '../components/OptimizeButton'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { CollapsibleSection } from '../components/CollapsibleSection'
 import { FallbackImage } from '../components/FallbackImage'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -174,6 +175,9 @@ export function TripViewPage() {
 
   // Travel mode hook
   const { isTraveling, todayDayId, canCheckIn } = useTravelMode(trip)
+
+  // Scroll reveal animation
+  useScrollReveal(!loading && !!trip)
 
   // Jump to today's section
   const jumpToToday = useCallback(() => {
@@ -914,6 +918,7 @@ export function TripViewPage() {
               <section
                 key={day.id}
                 className={`day-section ${isToday ? 'is-today' : ''}`}
+                data-reveal
                 ref={(el) => { if (el) dayRefs.current.set(day.id, el) }}
               >
                 <div className="day-header">

@@ -19,6 +19,7 @@ import { PackingList } from '../components/PackingList'
 import { CollapsibleSection } from '../components/CollapsibleSection'
 import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon, ImageIcon } from '../components/Icons'
 import { FallbackImage } from '../components/FallbackImage'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 // Day weather component
 function DayWeather({ date, items }: { date: string; items: Item[] }) {
@@ -168,6 +169,9 @@ export function SharedTripPage() {
 
   // Travel mode hook
   const { isTraveling } = useTravelMode(trip)
+
+  // Scroll reveal animation
+  useScrollReveal(!loading && !!trip)
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -717,7 +721,7 @@ export function SharedTripPage() {
           const { label, dateStr } = formatDayLabel(day.date, index)
           const isToday = isDayToday(day.date)
           return (
-            <section key={day.id} className={`day-section ${isToday ? 'is-today' : ''}`}>
+            <section key={day.id} className={`day-section ${isToday ? 'is-today' : ''}`} data-reveal>
               <div className="day-header">
                 <span className="day-label">{label}</span>
                 <span className="day-date">{dateStr}</span>
