@@ -12,9 +12,14 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon } from '../components/Icons'
+import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
+import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
+import { ExpenseModal } from '../components/ExpenseModal'
 import { MarkdownText } from '../components/MarkdownText'
+import { WeatherIcon } from '../components/WeatherIcon'
+import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 import type { TripMember } from '../types'
 
 // Active editor type for collaborative editing
@@ -23,6 +28,18 @@ type ActiveEditor = {
   lastActiveAt: string
   userName: string | null
   avatarUrl: string | null
+}
+
+// Day weather component
+function DayWeather({ date, items }: { date: string; items: Item[] }) {
+  const location = getFirstLocationForDay(items)
+  const { weather, loading } = useWeather(location, date)
+
+  if (!location) {
+    return null
+  }
+
+  return <WeatherIcon weather={weather} loading={loading} size="medium" />
 }
 
 // Draggable item component using HTML5 Drag and Drop API
@@ -632,6 +649,12 @@ export function TripEditPage() {
 
   // Embed modal state
   const [showEmbedModal, setShowEmbedModal] = useState(false)
+
+  // Save as template modal state
+  const [showSaveAsTemplateModal, setShowSaveAsTemplateModal] = useState(false)
+
+  // Expense modal state
+  const [showExpenseModal, setShowExpenseModal] = useState(false)
 
   // Tag state
   const [tags, setTags] = useState<string[]>([])
@@ -1728,11 +1751,15 @@ export function TripEditPage() {
           <button className="btn-icon" onClick={duplicateTrip} title="複製">
             <CopyIcon size={16} />
           </button>
+          <PdfExportButton tripId={trip.id} tripTitle={trip.title} />
           <button className="btn-icon" onClick={() => setShowReminderModal(true)} title="リマインダー">
             <BellIcon size={16} />
           </button>
           <button className="btn-icon" onClick={() => setShowEmbedModal(true)} title="埋め込み">
             <CodeIcon size={16} />
+          </button>
+          <button className="btn-icon" onClick={() => setShowSaveAsTemplateModal(true)} title="テンプレートとして保存">
+            <BookmarkIcon size={16} />
           </button>
           {currentUserRole === 'owner' && (
             <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
@@ -1799,6 +1826,7 @@ export function TripEditPage() {
                 <div className="day-header">
                   <span className="day-label">{label}</span>
                   <span className="day-date">{dateStr}</span>
+                  <DayWeather date={day.date} items={items} />
                   <button
                     className="btn-icon btn-danger no-print"
                     onClick={() => deleteDay(day.id)}
@@ -2025,13 +2053,23 @@ export function TripEditPage() {
 
       {/* Expense Splitting Section */}
       <div className="expense-section-wrapper no-print">
-        <button
-          type="button"
-          className="btn-outline expense-toggle-btn"
-          onClick={() => setShowMemberManager(!showMemberManager)}
-        >
-          {showMemberManager ? '− 費用分割を閉じる' : '+ 費用分割・精算'}
-        </button>
+        <div className="expense-button-row">
+          <button
+            type="button"
+            className="btn btn-outline expense-modal-btn"
+            onClick={() => setShowExpenseModal(true)}
+          >
+            <WalletIcon size={16} />
+            <span>割り勘計算</span>
+          </button>
+          <button
+            type="button"
+            className="btn-outline expense-toggle-btn"
+            onClick={() => setShowMemberManager(!showMemberManager)}
+          >
+            {showMemberManager ? '− 詳細を閉じる' : '+ 詳細を表示'}
+          </button>
+        </div>
 
         {showMemberManager && trip && (
           <div className="expense-management">
@@ -2190,6 +2228,23 @@ export function TripEditPage() {
           tripId={trip.id}
           tripTitle={trip.title}
           onClose={() => setShowEmbedModal(false)}
+        />
+      )}
+
+      {showSaveAsTemplateModal && (
+        <SaveAsTemplateModal
+          tripId={trip.id}
+          tripTitle={trip.title}
+          onClose={() => setShowSaveAsTemplateModal(false)}
+          onSaved={() => {}}
+        />
+      )}
+
+      {showExpenseModal && (
+        <ExpenseModal
+          tripId={trip.id}
+          isOpen={showExpenseModal}
+          onClose={() => setShowExpenseModal(false)}
         />
       )}
     </>

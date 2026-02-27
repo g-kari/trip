@@ -13,7 +13,10 @@ import { ReminderSettings } from '../components/ReminderSettings'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
+import { PdfExportButton } from '../components/PdfExportButton'
 import { MarkdownText } from '../components/MarkdownText'
+import { WeatherIcon } from '../components/WeatherIcon'
+import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -112,6 +115,18 @@ function StarRating({ rating, onRate, readonly = false }: {
 function formatFeedbackDate(dateStr: string): string {
   const date = new Date(dateStr)
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
+}
+
+// Day weather component
+function DayWeather({ date, items }: { date: string; items: Item[] }) {
+  const location = getFirstLocationForDay(items)
+  const { weather, loading } = useWeather(location, date)
+
+  if (!location) {
+    return null
+  }
+
+  return <WeatherIcon weather={weather} loading={loading} size="medium" />
 }
 
 export function TripViewPage() {
@@ -644,6 +659,7 @@ export function TripViewPage() {
           <button className="btn-icon" onClick={printTrip} title="印刷">
             <PrintIcon size={16} />
           </button>
+          <PdfExportButton tripId={trip.id} tripTitle={trip.title} />
           {user && (
             <button className="btn-icon" onClick={duplicateTrip} title="複製">
               <CopyIcon size={16} />
@@ -707,6 +723,7 @@ export function TripViewPage() {
                 <div className="day-header">
                   <span className="day-label">{label}</span>
                   <span className="day-date">{dateStr}</span>
+                  <DayWeather date={day.date} items={items} />
                 </div>
                 {items.length === 0 ? (
                   <div className="timeline-item">
