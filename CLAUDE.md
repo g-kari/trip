@@ -278,13 +278,18 @@ Example feature categories:
 
 ### Project Manager Agent (プロジェクトマネージャー)
 
-新機能の提案時には、プロジェクトマネージャーエージェントを通して妥当性を検証します。
+新機能の提案時には、プロジェクトマネージャーサブエージェントを通して妥当性を検証します。
 
-#### 使用方法
+#### サブエージェント設定
+
+**subagent_type**: `project-manager`
+
+このサブエージェントは機能提案の評価専用です。以下のプロンプトで呼び出します：
 
 ```
-Task tool with subagent_type=general-purpose
-prompt: "プロジェクトマネージャーとして以下の機能提案を評価してください: [機能リスト]"
+Task tool:
+  subagent_type: project-manager
+  prompt: "[機能リスト]"
 ```
 
 #### 評価基準
