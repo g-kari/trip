@@ -117,3 +117,19 @@
   border-color: #c9b99a;
   background-color: #f5f0e1;
 }
+
+/* Dark mode overrides for theme badges */
+[data-color-mode="dark"] .trip-card-theme-retro {
+  background-color: rgba(245, 240, 225, 0.12);
+  color: #d97b4a;
+  border-color: #3d352a;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .trip-card-theme-retro,
+  :root:not([data-color-mode]) .trip-card-theme-retro {
+    background-color: rgba(245, 240, 225, 0.12);
+    color: #d97b4a;
+    border-color: #3d352a;
+  }
+}

@@ -65,6 +65,17 @@
   }
 }
 
+[data-color-mode="dark"] .star.filled {
+  color: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .star.filled,
+  :root:not([data-color-mode]) .star.filled {
+    color: #fbbf24;
+  }
+}
+
 /* Feedback Form */
 .feedback-form {
   @apply flex flex-col

@@ -356,6 +356,57 @@
   }
 }
 
+/* Dark mode overrides */
+[data-color-mode="dark"] .compare-stat-highlight {
+  background: rgba(34, 197, 94, 0.15);
+
+  & .compare-stat-value {
+    color: #4ade80;
+  }
+}
+
+[data-color-mode="dark"] .compare-stat-badge {
+  background: #22c55e;
+}
+
+[data-color-mode="dark"] .compare-stat-theme-photo {
+  background: rgba(254, 243, 199, 0.12);
+  color: #fbbf24;
+}
+
+[data-color-mode="dark"] .compare-stat-theme-retro {
+  background: rgba(224, 231, 255, 0.12);
+  color: #a5b4fc;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .compare-stat-highlight,
+  :root:not([data-color-mode]) .compare-stat-highlight {
+    background: rgba(34, 197, 94, 0.15);
+
+    & .compare-stat-value {
+      color: #4ade80;
+    }
+  }
+
+  [data-color-mode="system"] .compare-stat-badge,
+  :root:not([data-color-mode]) .compare-stat-badge {
+    background: #22c55e;
+  }
+
+  [data-color-mode="system"] .compare-stat-theme-photo,
+  :root:not([data-color-mode]) .compare-stat-theme-photo {
+    background: rgba(254, 243, 199, 0.12);
+    color: #fbbf24;
+  }
+
+  [data-color-mode="system"] .compare-stat-theme-retro,
+  :root:not([data-color-mode]) .compare-stat-theme-retro {
+    background: rgba(224, 231, 255, 0.12);
+    color: #a5b4fc;
+  }
+}
+
 /* Print styles */
 @media print {
   .compare-selection-bar,

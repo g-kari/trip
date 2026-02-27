@@ -92,6 +92,30 @@
   color: #6b7b8c;
 }
 
+[data-color-mode="dark"] .trip-template-theme-quiet {
+  background-color: rgba(245, 240, 235, 0.1);
+  color: #a89a85;
+}
+
+[data-color-mode="dark"] .trip-template-theme-photo {
+  background-color: rgba(240, 244, 245, 0.1);
+  color: #a0a0b0;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .trip-template-theme-quiet,
+  :root:not([data-color-mode]) .trip-template-theme-quiet {
+    background-color: rgba(245, 240, 235, 0.1);
+    color: #a89a85;
+  }
+
+  [data-color-mode="system"] .trip-template-theme-photo,
+  :root:not([data-color-mode]) .trip-template-theme-photo {
+    background-color: rgba(240, 244, 245, 0.1);
+    color: #a0a0b0;
+  }
+}
+
 .trip-template-description {
   @apply text-[0.8125rem] text-text-muted
          m-0 mb-[var(--space-1)]

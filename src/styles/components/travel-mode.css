@@ -121,7 +121,9 @@
 
 /* Today indicator for day sections */
 .day-section.is-today {
-  @apply relative;
+  @apply relative pl-[var(--space-4)] py-[var(--space-3)]
+         rounded-m;
+  background: rgba(var(--color-accent-rgb, 61, 46, 31), 0.04);
 
   &::before {
     content: '';
@@ -133,11 +135,12 @@
 
 .day-header .today-badge {
   @apply inline-flex items-center
-         py-[var(--space-1)] px-[var(--space-2)]
+         py-[var(--space-1)] px-[var(--space-3)]
          bg-accent text-xs font-medium
          ml-[var(--space-2)];
   color: white;
   border-radius: 4px;
+  letter-spacing: 0.02em;
 }
 
 /* Responsive */

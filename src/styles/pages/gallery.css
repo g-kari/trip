@@ -135,6 +135,7 @@
   &.like-btn.active {
     background-color: #e74c3c;
     border-color: #e74c3c;
+    color: #fff;
   }
 
   &.save-btn.active {
