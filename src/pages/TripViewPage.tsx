@@ -16,6 +16,7 @@ import { PackingList } from '../components/PackingList'
 import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
 import { PdfExportButton } from '../components/PdfExportButton'
 import { MarkdownText } from '../components/MarkdownText'
+import { ItemInsightsButton } from '../components/ItemInsights'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 import { TravelModeIndicator } from '../components/TravelModeIndicator'
@@ -928,6 +929,17 @@ export function TripViewPage() {
                             <MarkdownText text={item.note} />
                           </p>
                         )}
+                        <ItemInsightsButton
+                          tripId={trip.id}
+                          item={item}
+                          editable={isOwner}
+                          onInsightsUpdate={(insights) => {
+                            const updatedItems = (trip.items || []).map(i =>
+                              i.id === item.id ? { ...i, insights } : i
+                            )
+                            setTrip({ ...trip, items: updatedItems })
+                          }}
+                        />
                         {item.photoUrl && (
                           <div className="item-photo">
                             <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />

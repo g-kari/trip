@@ -89,6 +89,15 @@ export type Day = {
   photos: DayPhoto[]
 }
 
+// AI-generated insights for a spot
+export type ItemInsights = {
+  genre: string | null
+  hours: string | null
+  priceRange: string | null
+  rating: string | null
+  tip: string | null
+}
+
 export type Item = {
   id: string
   dayId: string
@@ -107,6 +116,7 @@ export type Item = {
   photoUploadedAt: string | null
   checkedInAt: string | null
   checkedInLocation: { lat: number; lng: number } | null
+  insights: ItemInsights | null
 }
 
 // Item template for quick item creation
