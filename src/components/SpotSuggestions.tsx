@@ -144,11 +144,11 @@ export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: Spo
                 className="btn-filled"
                 onClick={fetchSuggestions}
               >
-                周辺スポットを検索
+                周辺スポットを検索（1クレジット）
               </button>
               {remaining !== null && remaining < 3 && (
                 <p className="spot-suggestions-remaining">
-                  本日の残り利用回数: {remaining}回
+                  残りクレジット: {remaining}
                 </p>
               )}
             </div>
@@ -174,7 +174,7 @@ export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: Spo
             <div className="spot-suggestions-list">
               {remaining !== null && (
                 <p className="spot-suggestions-remaining">
-                  本日の残り利用回数: {remaining}回
+                  残りクレジット: {remaining}
                 </p>
               )}
               {suggestions.map((suggestion, index) => (

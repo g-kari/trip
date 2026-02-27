@@ -3475,36 +3475,10 @@ app.post('/api/trips/:tripId/items/:itemId/suggestions', async (c) => {
     return c.json({ error: '周辺スポット提案にはログインが必要です' }, 401);
   }
 
-  const today = new Date().toISOString().split('T')[0];
-
-  // Check user rate limit
-  const userUsageResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(user.id, today).first<{ count: number }>();
-
-  const userUsedToday = userUsageResult?.count || 0;
-  if (userUsedToday >= AI_DAILY_LIMIT_USER) {
-    return c.json({
-      error: `本日の利用上限（${AI_DAILY_LIMIT_USER}回）に達しました。明日また利用できます。`,
-      limitReached: true,
-      remaining: 0,
-    }, 429);
-  }
-
-  // Check IP rate limit
-  const ipUsageResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(ip, today).first<{ count: number }>();
-
-  const ipUsedToday = ipUsageResult?.count || 0;
-  if (ipUsedToday >= AI_DAILY_LIMIT_IP) {
-    return c.json({
-      error: 'このIPアドレスからの利用上限に達しました。明日また利用できます。',
-      limitReached: true,
-      remaining: 0,
-    }, 429);
+  // Check and deduct credits
+  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'suggestions');
+  if (!creditCheck.ok) {
+    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
   }
 
   // Check if user can edit this trip (spot suggestions require edit access)
@@ -3581,20 +3555,10 @@ app.post('/api/trips/:tripId/items/:itemId/suggestions', async (c) => {
       return c.json({ error: 'AIの応答を解析できませんでした' }, 500);
     }
 
-    // Record AI usage
-    const usageId = generateId();
-    await c.env.DB.prepare(
-      'INSERT INTO ai_usage (id, user_id, ip_address) VALUES (?, ?, ?)'
-    ).bind(usageId, user.id, ip).run();
-
-    // Calculate remaining uses
-    const userRemaining = AI_DAILY_LIMIT_USER - userUsedToday - 1;
-    const ipRemaining = AI_DAILY_LIMIT_IP - ipUsedToday - 1;
-    const remaining = Math.min(userRemaining, ipRemaining);
-
     return c.json({
       suggestions: suggestionsData.suggestions || [],
-      remaining,
+      remaining: creditCheck.creditsRemaining,
+      creditCost: AI_CREDIT_COSTS.suggestions,
     });
   } catch (error) {
     console.error('AI suggestion error:', error);
@@ -3624,36 +3588,10 @@ app.post('/api/trips/:tripId/days/:dayId/optimize', async (c) => {
     return c.json({ error: 'ルート最適化にはログインが必要です' }, 401);
   }
 
-  const today = new Date().toISOString().split('T')[0];
-
-  // Check user rate limit (shares limit with spot suggestions)
-  const userUsageResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(user.id, today).first<{ count: number }>();
-
-  const userUsedToday = userUsageResult?.count || 0;
-  if (userUsedToday >= AI_DAILY_LIMIT_USER) {
-    return c.json({
-      error: `本日の利用上限（${AI_DAILY_LIMIT_USER}回）に達しました。明日また利用できます。`,
-      limitReached: true,
-      remaining: 0,
-    }, 429);
-  }
-
-  // Check IP rate limit
-  const ipUsageResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(ip, today).first<{ count: number }>();
-
-  const ipUsedToday = ipUsageResult?.count || 0;
-  if (ipUsedToday >= AI_DAILY_LIMIT_IP) {
-    return c.json({
-      error: 'このIPアドレスからの利用上限に達しました。明日また利用できます。',
-      limitReached: true,
-      remaining: 0,
-    }, 429);
+  // Check and deduct credits
+  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'optimize');
+  if (!creditCheck.ok) {
+    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
   }
 
   // Check if user can edit this trip
@@ -3821,17 +3759,6 @@ ${fixedItems.length > 0 ? `- 以下のスポットは時間が固定されてい
       optimizationData.optimizedOrder = fixedOrder;
     }
 
-    // Record AI usage
-    const usageId = generateId();
-    await c.env.DB.prepare(
-      'INSERT INTO ai_usage (id, user_id, ip_address) VALUES (?, ?, ?)'
-    ).bind(usageId, user.id, ip).run();
-
-    // Calculate remaining uses
-    const userRemaining = AI_DAILY_LIMIT_USER - userUsedToday - 1;
-    const ipRemaining = AI_DAILY_LIMIT_IP - ipUsedToday - 1;
-    const remaining = Math.min(userRemaining, ipRemaining);
-
     return c.json({
       originalOrder: items.map(item => ({
         id: item.id,
@@ -3841,7 +3768,8 @@ ${fixedItems.length > 0 ? `- 以下のスポットは時間が固定されてい
       optimizedOrder: optimizationData.optimizedOrder,
       totalSavings: optimizationData.totalSavings || '移動効率が向上します',
       warnings: optimizationData.warnings || [],
-      remaining,
+      remaining: creditCheck.creditsRemaining,
+      creditCost: AI_CREDIT_COSTS.optimize,
     });
   } catch (error) {
     console.error('AI optimization error:', error);
@@ -4868,9 +4796,10 @@ interface GeneratedTrip {
   days: GeneratedDay[];
 }
 
-// AI usage limits
-const AI_DAILY_LIMIT_USER = 5;  // Per user per day
-const AI_DAILY_LIMIT_IP = 10;   // Per IP per day (to catch abuse)
+// AI credit system
+const AI_MONTHLY_CREDITS = 5;
+const AI_CREDIT_COSTS: Record<string, number> = { generate: 2, suggestions: 1, optimize: 1 };
+const AI_IP_DAILY_LIMIT = 10;
 
 // Helper to get client IP
 function getClientIp(c: { req: { header: (name: string) => string | undefined } }): string {
@@ -4880,39 +4809,102 @@ function getClientIp(c: { req: { header: (name: string) => string | undefined } 
          'unknown';
 }
 
-// Get AI usage stats for a user
-app.get('/api/ai/usage', async (c) => {
-  const user = c.get('user');
-  const ip = getClientIp(c);
-  const today = new Date().toISOString().split('T')[0];
+async function checkAndDeductCredits(
+  db: D1Database,
+  userId: string,
+  ip: string,
+  featureType: string,
+): Promise<{ ok: true; creditsRemaining: number } | { ok: false; error: string; status: number }> {
+  const cost = AI_CREDIT_COSTS[featureType] || 1;
 
-  let userUsedToday = 0;
-  let userRemaining = AI_DAILY_LIMIT_USER;
+  // Get user's current credits
+  const userData = await db.prepare(
+    'SELECT ai_credits, credits_reset_at FROM users WHERE id = ?'
+  ).bind(userId).first<{ ai_credits: number; credits_reset_at: string }>();
 
-  if (user) {
-    const userResult = await c.env.DB.prepare(
-      `SELECT COUNT(*) as count FROM ai_usage
-       WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
-    ).bind(user.id, today).first<{ count: number }>();
-    userUsedToday = userResult?.count || 0;
-    userRemaining = Math.max(0, AI_DAILY_LIMIT_USER - userUsedToday);
+  if (!userData) return { ok: false, error: 'ユーザーが見つかりません', status: 404 };
+
+  let currentCredits = userData.ai_credits;
+  const resetAt = new Date(userData.credits_reset_at);
+  const now = new Date();
+
+  // Monthly reset check
+  if (now.getUTCFullYear() > resetAt.getUTCFullYear() ||
+      (now.getUTCFullYear() === resetAt.getUTCFullYear() && now.getUTCMonth() > resetAt.getUTCMonth())) {
+    currentCredits = AI_MONTHLY_CREDITS;
+    await db.prepare(
+      "UPDATE users SET ai_credits = ?, credits_reset_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"
+    ).bind(AI_MONTHLY_CREDITS, userId).run();
   }
 
-  // Also check IP usage
-  const ipResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(ip, today).first<{ count: number }>();
-  const ipUsedToday = ipResult?.count || 0;
-  const ipRemaining = Math.max(0, AI_DAILY_LIMIT_IP - ipUsedToday);
+  // Credit check
+  if (currentCredits < cost) {
+    const nextReset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    return {
+      ok: false,
+      error: `AIクレジットが不足しています（残り${currentCredits}、必要${cost}）。${nextReset.getUTCMonth() + 1}月${nextReset.getUTCDate()}日にリセットされます。`,
+      status: 429,
+    };
+  }
 
-  // Return the more restrictive limit
-  const remaining = user ? Math.min(userRemaining, ipRemaining) : ipRemaining;
+  // IP daily limit (abuse prevention)
+  const today = now.toISOString().split('T')[0];
+  const ipResult = await db.prepare(
+    "SELECT COUNT(*) as count FROM ai_usage WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'"
+  ).bind(ip, today).first<{ count: number }>();
+  if ((ipResult?.count || 0) >= AI_IP_DAILY_LIMIT) {
+    return { ok: false, error: 'このIPアドレスからの利用上限に達しました。', status: 429 };
+  }
+
+  // Deduct and record
+  await db.prepare('UPDATE users SET ai_credits = ? WHERE id = ?').bind(currentCredits - cost, userId).run();
+  const usageId = generateId();
+  await db.prepare(
+    'INSERT INTO ai_usage (id, user_id, ip_address, credits_used, feature_type) VALUES (?, ?, ?, ?, ?)'
+  ).bind(usageId, userId, ip, cost, featureType).run();
+
+  return { ok: true, creditsRemaining: currentCredits - cost };
+}
+
+// Get AI credit info for a user
+app.get('/api/ai/usage', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({
+      credits: 0,
+      maxCredits: AI_MONTHLY_CREDITS,
+      costs: AI_CREDIT_COSTS,
+      resetDate: null,
+      loggedIn: false,
+    });
+  }
+
+  const userData = await c.env.DB.prepare(
+    'SELECT ai_credits, credits_reset_at FROM users WHERE id = ?'
+  ).bind(user.id).first<{ ai_credits: number; credits_reset_at: string }>();
+
+  let credits = userData?.ai_credits ?? AI_MONTHLY_CREDITS;
+  const resetAt = userData?.credits_reset_at ? new Date(userData.credits_reset_at) : new Date();
+  const now = new Date();
+
+  // Monthly reset check
+  if (now.getUTCFullYear() > resetAt.getUTCFullYear() ||
+      (now.getUTCFullYear() === resetAt.getUTCFullYear() && now.getUTCMonth() > resetAt.getUTCMonth())) {
+    credits = AI_MONTHLY_CREDITS;
+    await c.env.DB.prepare(
+      "UPDATE users SET ai_credits = ?, credits_reset_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?"
+    ).bind(AI_MONTHLY_CREDITS, user.id).run();
+  }
+
+  const nextReset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 
   return c.json({
-    usedToday: user ? userUsedToday : ipUsedToday,
-    remaining,
-    limit: user ? AI_DAILY_LIMIT_USER : AI_DAILY_LIMIT_IP,
+    credits,
+    maxCredits: AI_MONTHLY_CREDITS,
+    costs: AI_CREDIT_COSTS,
+    resetDate: nextReset.toISOString().split('T')[0],
+    loggedIn: true,
   });
 });
 
@@ -4947,36 +4939,10 @@ app.post('/api/trips/generate', async (c) => {
     }
   }
 
-  const today = new Date().toISOString().split('T')[0];
-
-  // Check user rate limit
-  const userUsageResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(user.id, today).first<{ count: number }>();
-
-  const userUsedToday = userUsageResult?.count || 0;
-  if (userUsedToday >= AI_DAILY_LIMIT_USER) {
-    return c.json({
-      error: `本日の利用上限（${AI_DAILY_LIMIT_USER}回）に達しました。明日また利用できます。`,
-      limitReached: true,
-      remaining: 0,
-    }, 429);
-  }
-
-  // Check IP rate limit
-  const ipUsageResult = await c.env.DB.prepare(
-    `SELECT COUNT(*) as count FROM ai_usage
-     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
-  ).bind(ip, today).first<{ count: number }>();
-
-  const ipUsedToday = ipUsageResult?.count || 0;
-  if (ipUsedToday >= AI_DAILY_LIMIT_IP) {
-    return c.json({
-      error: 'このIPアドレスからの利用上限に達しました。明日また利用できます。',
-      limitReached: true,
-      remaining: 0,
-    }, 429);
+  // Check and deduct credits
+  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'generate');
+  if (!creditCheck.ok) {
+    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
   }
 
   // Handle both JSON and FormData requests
@@ -5172,23 +5138,12 @@ ${notesInfo}${imageContext}
       }
     }
 
-    // Record AI usage (with both user_id and ip_address)
-    const usageId = generateId();
-    await c.env.DB.prepare(
-      'INSERT INTO ai_usage (id, user_id, ip_address) VALUES (?, ?, ?)'
-    ).bind(usageId, user.id, ip).run();
-
-    // Calculate remaining uses (use the more restrictive limit)
-    const userRemaining = AI_DAILY_LIMIT_USER - userUsedToday - 1;
-    const ipRemaining = AI_DAILY_LIMIT_IP - ipUsedToday - 1;
-    const remaining = Math.min(userRemaining, ipRemaining);
-
     // Fetch the created trip
     const trip = await c.env.DB.prepare(
       'SELECT id, title, start_date as startDate, end_date as endDate, theme, created_at as createdAt FROM trips WHERE id = ?'
     ).bind(tripId).first();
 
-    return c.json({ trip, tripId, remaining }, 201);
+    return c.json({ trip, tripId, remaining: creditCheck.creditsRemaining, creditCost: AI_CREDIT_COSTS.generate }, 201);
   } catch (error) {
     console.error('AI generation error:', error);
     return c.json({ error: 'AIによる旅程生成に失敗しました' }, 500);

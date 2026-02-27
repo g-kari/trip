@@ -58,7 +58,7 @@ export function OptimizeModal({ tripId, dayId, items, onClose, onApplied }: Opti
 
       if (!res.ok) {
         if (data.limitReached) {
-          setError(data.error || '利用上限に達しました')
+          setError(data.error || 'AIクレジットが不足しています')
         } else {
           setError(data.error || 'ルートの最適化に失敗しました')
         }
@@ -150,11 +150,11 @@ export function OptimizeModal({ tripId, dayId, items, onClose, onApplied }: Opti
                 className="btn-filled"
                 onClick={fetchOptimization}
               >
-                ルートを最適化
+                ルートを最適化（1クレジット）
               </button>
               {remaining !== null && remaining < 3 && (
                 <p className="optimize-remaining">
-                  本日の残り利用回数: {remaining}回
+                  残りクレジット: {remaining}
                 </p>
               )}
             </div>
@@ -183,7 +183,7 @@ export function OptimizeModal({ tripId, dayId, items, onClose, onApplied }: Opti
             <div className="optimize-results">
               {remaining !== null && (
                 <p className="optimize-remaining">
-                  本日の残り利用回数: {remaining}回
+                  残りクレジット: {remaining}
                 </p>
               )}
 

@@ -25,7 +25,7 @@ export function OptimizeButton({ tripId, day, items, onOptimized, isOwner }: Opt
         onClick={() => setShowModal(true)}
         title="AIがルートを最適化します"
       >
-        ルート最適化
+        ルート最適化（1クレジット）
       </button>
       {showModal && (
         <OptimizeModal

@@ -121,9 +121,9 @@ export function TripListPage() {
     try {
       const res = await fetch('/api/ai/usage')
       if (res.ok) {
-        const data = (await res.json()) as { remaining: number; limit: number }
-        setAiRemaining(data.remaining)
-        setAiLimitReached(data.remaining <= 0)
+        const data = (await res.json()) as { credits: number; maxCredits: number; costs: { generate: number; suggestions: number; optimize: number }; resetDate: string; loggedIn: boolean }
+        setAiRemaining(data.credits)
+        setAiLimitReached(data.credits <= 0)
       }
     } catch (err) {
       console.error('Failed to fetch AI usage:', err)
@@ -690,13 +690,13 @@ export function TripListPage() {
             </div>
           ) : aiLimitReached ? (
             <div className="ai-limit-reached">
-              <p>本日の利用上限に達しました</p>
-              <p className="ai-limit-hint">明日また利用できます</p>
+              <p>AIクレジットが不足しています</p>
+              <p className="ai-limit-hint">毎月1日にリセットされます</p>
             </div>
           ) : (
             <>
               {aiRemaining !== null && (
-                <p className="ai-remaining">本日の残り: {aiRemaining}回</p>
+                <p className="ai-remaining">残りクレジット: {aiRemaining} / 5</p>
               )}
               <input
                 type="text"
@@ -811,7 +811,7 @@ export function TripListPage() {
             className="btn-filled"
             disabled={generating || !aiDestination.trim() || !aiStartDate || !aiEndDate}
           >
-            {generating ? '生成中...' : 'AIで生成する'}
+            {generating ? '生成中...' : 'AIで生成する（2クレジット）'}
           </button>
           {generating && (
             <p className="generating-hint">AIが旅程を考えています...</p>
