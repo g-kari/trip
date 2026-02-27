@@ -100,8 +100,10 @@ export function AdSenseUnit({ adClient, adSlot, adFormat = 'auto', className = '
     // Push ad to AdSense when component mounts
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const adsbygoogle = (window as any).adsbygoogle || []
-      adsbygoogle.push({})
+      const w = window as any
+      // Initialize adsbygoogle array on window if not present (standard AdSense pattern)
+      w.adsbygoogle = w.adsbygoogle || []
+      w.adsbygoogle.push({})
     } catch (err) {
       console.error('AdSense error:', err)
     }
