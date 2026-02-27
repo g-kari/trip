@@ -1,3 +1,9 @@
+---
+name: review
+description: Codex CLIで未コミットの変更をコードレビューする。コミット前のレビューに使用。
+disable-model-invocation: true
+---
+
 # Review Changes with Codex
 
 Run codex to review uncommitted changes before committing.

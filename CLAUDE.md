@@ -72,11 +72,11 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 Co-Authored-By: Happy <yesreply@happy.engineering>
 ```
 
-### Available Skills
+### Available Skills (`.claude/skills/<name>/SKILL.md`)
 
-- `/review` — Codex によるコードレビュー
-- `/designer` — デザインレビュー・修正・作成・テーマ・監査
-- `/project-manager` — 新機能提案の評価（コンセプト適合性判定）
+- `/review` — Codex によるコードレビュー（手動呼び出しのみ）
+- `/designer` — デザインレビュー・修正・作成・テーマ・監査（自動/手動）
+- `/project-manager` — 新機能提案の評価・コンセプト適合性判定（手動呼び出しのみ、fork実行）
 
 ## Architecture
 
