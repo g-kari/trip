@@ -668,6 +668,13 @@ export function SharedTripPage() {
             <p className="hero-subtitle">{formatDateRange(trip.startDate, trip.endDate)}</p>
           )}
           <CountdownWidget startDate={trip.startDate} endDate={trip.endDate} />
+          <div className="hero-share-section no-print">
+            <p className="share-section-title">この旅程を共有</p>
+            <ShareButtons
+              url={window.location.href}
+              title={trip.title}
+            />
+          </div>
           <div className="hero-actions-row no-print">
             <div className="more-menu-wrapper" ref={exportDropdownRef}>
               <button
@@ -691,13 +698,6 @@ export function SharedTripPage() {
                 </div>
               )}
             </div>
-          </div>
-          <div className="hero-share-section no-print">
-            <p className="share-section-title">この旅程を共有</p>
-            <ShareButtons
-              url={window.location.href}
-              title={trip.title}
-            />
           </div>
         </section>
 
