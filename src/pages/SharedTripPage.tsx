@@ -9,7 +9,6 @@ import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { MarkdownText } from '../components/MarkdownText'
-import { ItemInsightsChips } from '../components/ItemInsights'
 import { formatCheckinTime } from '../hooks/useTravelMode'
 
 // Budget summary component
@@ -696,7 +695,6 @@ export function SharedTripPage() {
                             <MarkdownText text={item.note} />
                           </p>
                         )}
-                        {item.insights && <ItemInsightsChips insights={item.insights} />}
                         {item.photoUrl && (
                           <div className="item-photo">
                             <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />

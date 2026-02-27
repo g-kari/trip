@@ -717,14 +717,14 @@ app.get('/api/trips/:id', async (c) => {
     `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
      map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
      photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt,
-     checked_in_at as checkedInAt, checked_in_location as checkedInLocation, insights
+     checked_in_at as checkedInAt, checked_in_location as checkedInLocation
      FROM items WHERE trip_id = ? ORDER BY sort ASC`
   ).bind(id).all<{
     id: string; dayId: string; title: string; area: string | null;
     timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
     note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
     photoUploadedBy: string | null; photoUploadedAt: string | null;
-    checkedInAt: string | null; checkedInLocation: string | null; insights: string | null;
+    checkedInAt: string | null; checkedInLocation: string | null;
   }>();
 
   // Get day_photos from the new table
@@ -752,12 +752,11 @@ app.get('/api/trips/:id', async (c) => {
     }
   }
 
-  // Enrich items with uploader names, parse check-in location, and parse insights
+  // Enrich items with uploader names and parse check-in location
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
     checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
-    insights: item.insights ? JSON.parse(item.insights) : null,
   }));
 
   // Group day_photos by day_id
@@ -1999,14 +1998,14 @@ app.get('/api/shared/:token', async (c) => {
     `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
      map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
      photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt,
-     checked_in_at as checkedInAt, checked_in_location as checkedInLocation, insights
+     checked_in_at as checkedInAt, checked_in_location as checkedInLocation
      FROM items WHERE trip_id = ? ORDER BY sort ASC`
   ).bind(share.trip_id).all<{
     id: string; dayId: string; title: string; area: string | null;
     timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
     note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
     photoUploadedBy: string | null; photoUploadedAt: string | null;
-    checkedInAt: string | null; checkedInLocation: string | null; insights: string | null;
+    checkedInAt: string | null; checkedInLocation: string | null;
   }>();
 
   // Get day_photos from the new table
@@ -2034,12 +2033,11 @@ app.get('/api/shared/:token', async (c) => {
     }
   }
 
-  // Enrich items with uploader names, parse check-in location, and parse insights
+  // Enrich items with uploader names and parse check-in location
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
     checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
-    insights: item.insights ? JSON.parse(item.insights) : null,
   }));
 
   // Group day_photos by day_id
@@ -3396,117 +3394,6 @@ app.post('/api/trips/:tripId/items/:itemId/suggestions', async (c) => {
   }
 });
 
-// ============ AI Insights (Item Info Chips) ============
-
-// Generate AI insights for a trip item
-app.post('/api/trips/:tripId/items/:itemId/insights', async (c) => {
-  const { tripId, itemId } = c.req.param();
-  const user = c.get('user');
-  const ip = getClientIp(c);
-
-  if (!user) {
-    return c.json({ error: 'AI解析にはログインが必要です' }, 401);
-  }
-
-  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'insights');
-  if (!creditCheck.ok) {
-    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
-  }
-
-  const check = await checkCanEditTrip(c.env.DB, tripId, user);
-  if (!check.ok) {
-    return c.json({ error: check.error }, check.status as 403 | 404);
-  }
-
-  const item = await c.env.DB.prepare(
-    'SELECT id, title, area, note FROM items WHERE id = ? AND trip_id = ?'
-  ).bind(itemId, tripId).first<{ id: string; title: string; area: string | null; note: string | null }>();
-
-  if (!item) {
-    return c.json({ error: 'Item not found' }, 404);
-  }
-
-  const locationInfo = item.area ? `${item.title}（${item.area}）` : item.title;
-  const noteContext = item.note ? `\n補足情報: ${item.note}` : '';
-
-  const prompt = `あなたは旅行ガイドです。以下のスポットについて簡潔な情報チップスを生成してください。
-
-スポット: ${locationInfo}${noteContext}
-
-以下のJSON形式で出力してください。他の説明は不要です:
-{
-  "genre": "ジャンル（例: 和食、カフェ、神社、美術館、温泉、ショッピングなど。1-2語）",
-  "hours": "一般的な営業時間（例: 10:00-18:00）。不明な場合はnull",
-  "priceRange": "価格帯（例: ¥1,000-3,000）。無料の場合は'無料'。不明な場合はnull",
-  "rating": "おすすめ度（'定番'|'穴場'|'人気'|null）",
-  "tip": "一言アドバイス（20文字以内。例: '予約推奨', '午前が空いている', '雨天休業あり'）。なければnull"
-}
-
-注意:
-- 実在のスポットとして回答。架空の情報は含めない
-- 不明な項目はnullを返す
-- 簡潔に`;
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (c.env.AI as any).run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 512,
-    });
-
-    const responseText = typeof response === 'object' && 'response' in response
-      ? (response as { response: string }).response
-      : String(response);
-
-    let insightsData: {
-      genre: string | null;
-      hours: string | null;
-      priceRange: string | null;
-      rating: string | null;
-      tip: string | null;
-    };
-
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found');
-      insightsData = JSON.parse(jsonMatch[0]);
-    } catch {
-      console.error('Failed to parse AI insights response:', responseText);
-      return c.json({ error: 'AIの応答を解析できませんでした' }, 500);
-    }
-
-    // Save insights to DB
-    await c.env.DB.prepare(
-      'UPDATE items SET insights = ? WHERE id = ? AND trip_id = ?'
-    ).bind(JSON.stringify(insightsData), itemId, tripId).run();
-
-    return c.json({
-      insights: insightsData,
-      remaining: creditCheck.creditsRemaining,
-    });
-  } catch (error) {
-    console.error('AI insights error:', error);
-    return c.json({ error: 'スポット解析に失敗しました' }, 500);
-  }
-});
-
-// Delete insights for an item
-app.delete('/api/trips/:tripId/items/:itemId/insights', async (c) => {
-  const { tripId, itemId } = c.req.param();
-  const user = c.get('user');
-
-  if (!user) return c.json({ error: 'Unauthorized' }, 401);
-
-  const check = await checkCanEditTrip(c.env.DB, tripId, user);
-  if (!check.ok) return c.json({ error: check.error }, check.status as 403 | 404);
-
-  await c.env.DB.prepare(
-    'UPDATE items SET insights = NULL WHERE id = ? AND trip_id = ?'
-  ).bind(itemId, tripId).run();
-
-  return c.json({ ok: true });
-});
-
 // ============ Route Optimization (AI-powered) ============
 
 // Type for optimized item
@@ -4739,7 +4626,7 @@ interface GeneratedTrip {
 
 // AI credit system
 const AI_MONTHLY_CREDITS = 5;
-const AI_CREDIT_COSTS: Record<string, number> = { generate: 2, suggestions: 1, optimize: 1, insights: 1 };
+const AI_CREDIT_COSTS: Record<string, number> = { generate: 2, suggestions: 1, optimize: 1 };
 const AI_IP_DAILY_LIMIT = 10;
 
 // Helper to get client IP

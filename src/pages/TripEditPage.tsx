@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import type { Trip, Day, Item, TripTheme, CostCategory, ItemTemplate, ColorLabel, ItemInsights } from '../types'
+import type { Trip, Day, Item, TripTheme, CostCategory, ItemTemplate, ColorLabel } from '../types'
 import { COST_CATEGORIES, SUGGESTED_TAGS } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
@@ -18,7 +18,6 @@ import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
 import { SpotSuggestions } from '../components/SpotSuggestions'
-import { ItemInsightsButton } from '../components/ItemInsights'
 import { PublishModal } from '../components/PublishModal'
 import { TripHistory } from '../components/TripHistory'
 import { MarkdownText } from '../components/MarkdownText'
@@ -57,7 +56,6 @@ function DraggableItem({
   onDelete,
   onSaveAsTemplate,
   onShowSpotSuggestions,
-  onInsightsUpdate,
   editItemTime,
   setEditItemTime,
   editItemTitle,
@@ -91,7 +89,6 @@ function DraggableItem({
   onDelete: (id: string) => void
   onSaveAsTemplate: (item: Item) => void
   onShowSpotSuggestions: (item: Item) => void
-  onInsightsUpdate: (itemId: string, insights: ItemInsights | null) => void
   editItemTime: string
   setEditItemTime: (v: string) => void
   editItemTitle: string
@@ -309,13 +306,6 @@ function DraggableItem({
                 <MarkdownText text={item.note} />
               </p>
             )}
-            {/* AI Insights chips */}
-            <ItemInsightsButton
-              tripId={tripId}
-              item={item}
-              editable
-              onInsightsUpdate={(insights) => onInsightsUpdate(item.id, insights)}
-            />
             {/* Item photo (memory) */}
             {item.photoUrl && (
               <div className="item-photo">
@@ -1266,15 +1256,6 @@ export function TripEditPage() {
     }
   }
 
-  // Update item insights (optimistic update)
-  function updateItemInsights(itemId: string, insights: ItemInsights | null) {
-    if (!trip) return
-    const updatedItems = (trip.items || []).map(item =>
-      item.id === itemId ? { ...item, insights } : item
-    )
-    setTrip({ ...trip, items: updatedItems })
-  }
-
   // Create item from template
   async function createItemFromTemplate(dayId: string, template: ItemTemplate) {
     if (!trip) return
@@ -1959,7 +1940,6 @@ export function TripEditPage() {
                       onDelete={deleteItem}
                       onSaveAsTemplate={saveItemAsTemplate}
                       onShowSpotSuggestions={(item) => setSpotSuggestionsItem({ item, dayId: day.id })}
-                      onInsightsUpdate={updateItemInsights}
                       editItemTime={editItemTime}
                       setEditItemTime={setEditItemTime}
                       editItemTitle={editItemTitle}
