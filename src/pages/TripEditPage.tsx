@@ -12,12 +12,13 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon } from '../components/Icons'
 import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
 import { SpotSuggestions } from '../components/SpotSuggestions'
+import { PublishModal } from '../components/PublishModal'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
@@ -662,6 +663,9 @@ export function TripEditPage() {
 
   // Save as template modal state
   const [showSaveAsTemplateModal, setShowSaveAsTemplateModal] = useState(false)
+
+  // Publish modal state
+  const [showPublishModal, setShowPublishModal] = useState(false)
 
   // Expense modal state
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -1775,9 +1779,14 @@ export function TripEditPage() {
             <BookmarkIcon size={16} />
           </button>
           {currentUserRole === 'owner' && (
-            <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
-              <UsersIcon size={16} />
-            </button>
+            <>
+              <button className="btn-icon" onClick={() => setShowPublishModal(true)} title="ギャラリーに公開">
+                <GlobeIcon size={16} />
+              </button>
+              <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
+                <UsersIcon size={16} />
+              </button>
+            </>
           )}
           <button className="btn-icon btn-danger" onClick={deleteTrip} title="削除">
             <TrashIcon size={16} />
@@ -2251,6 +2260,14 @@ export function TripEditPage() {
           tripTitle={trip.title}
           onClose={() => setShowSaveAsTemplateModal(false)}
           onSaved={() => {}}
+        />
+      )}
+
+      {showPublishModal && (
+        <PublishModal
+          tripId={trip.id}
+          tripTitle={trip.title}
+          onClose={() => setShowPublishModal(false)}
         />
       )}
 

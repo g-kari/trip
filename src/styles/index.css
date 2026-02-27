@@ -59,6 +59,7 @@
 @import './pages/profile.css';
 @import './pages/invite.css';
 @import './pages/embed.css';
+@import './pages/gallery.css';
 
 /* Responsive - must be last */
 @import './base/responsive.css';

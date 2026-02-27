@@ -13,6 +13,11 @@ export function Layout() {
             旅程
           </Link>
 
+          <nav className="header-nav">
+            <Link to="/gallery" className="header-nav-link">
+              ギャラリー
+            </Link>
+          </nav>
 
           <div className="header-right">
             <ThemeToggle />

@@ -6552,8 +6552,508 @@ app.get('/api/payment/history', async (c) => {
   return c.json({ purchases: purchases.results });
 });
 
+// ============ Public Gallery ============
+
+// Get public gallery list
+app.get('/api/gallery', async (c) => {
+  const url = new URL(c.req.url);
+  const region = url.searchParams.get('region') || '';
+  const minDays = parseInt(url.searchParams.get('minDays') || '0', 10);
+  const maxDays = parseInt(url.searchParams.get('maxDays') || '0', 10);
+  const sort = url.searchParams.get('sort') || 'likes'; // 'likes' or 'recent'
+  const user = c.get('user');
+
+  // Build query
+  let query = `
+    SELECT
+      t.id,
+      COALESCE(t.public_title, t.title) as title,
+      t.start_date as startDate,
+      t.end_date as endDate,
+      t.theme,
+      t.cover_image_url as coverImageUrl,
+      t.like_count as likeCount,
+      t.created_at as createdAt,
+      (SELECT COUNT(*) FROM days WHERE trip_id = t.id) as dayCount
+    FROM trips t
+    WHERE t.is_public = 1
+  `;
+  const params: unknown[] = [];
+
+  // Region filter (search in title or items.area)
+  if (region) {
+    query += ` AND (
+      t.title LIKE ? OR t.public_title LIKE ? OR
+      EXISTS (SELECT 1 FROM items WHERE trip_id = t.id AND area LIKE ?)
+    )`;
+    const regionPattern = `%${region}%`;
+    params.push(regionPattern, regionPattern, regionPattern);
+  }
+
+  // Day count filter using subquery
+  if (minDays > 0) {
+    query += ` AND (SELECT COUNT(*) FROM days WHERE trip_id = t.id) >= ?`;
+    params.push(minDays);
+  }
+  if (maxDays > 0) {
+    query += ` AND (SELECT COUNT(*) FROM days WHERE trip_id = t.id) <= ?`;
+    params.push(maxDays);
+  }
+
+  // Sort order
+  if (sort === 'recent') {
+    query += ` ORDER BY t.created_at DESC`;
+  } else {
+    query += ` ORDER BY t.like_count DESC, t.created_at DESC`;
+  }
+
+  query += ` LIMIT 50`;
+
+  const { results } = await c.env.DB.prepare(query).bind(...params).all<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    likeCount: number;
+    createdAt: string;
+    dayCount: number;
+  }>();
+
+  // If user is logged in, check which trips they've liked/saved
+  let likedIds: Set<string> = new Set();
+  let savedIds: Set<string> = new Set();
+
+  if (user && results.length > 0) {
+    const tripIds = results.map(r => r.id);
+    const placeholders = tripIds.map(() => '?').join(',');
+
+    const { results: likes } = await c.env.DB.prepare(
+      `SELECT trip_id FROM trip_likes WHERE user_id = ? AND trip_id IN (${placeholders})`
+    ).bind(user.id, ...tripIds).all<{ trip_id: string }>();
+    likedIds = new Set(likes.map(l => l.trip_id));
+
+    const { results: saves } = await c.env.DB.prepare(
+      `SELECT trip_id FROM trip_saves WHERE user_id = ? AND trip_id IN (${placeholders})`
+    ).bind(user.id, ...tripIds).all<{ trip_id: string }>();
+    savedIds = new Set(saves.map(s => s.trip_id));
+  }
+
+  const trips = results.map(trip => ({
+    ...trip,
+    isLiked: likedIds.has(trip.id),
+    isSaved: savedIds.has(trip.id),
+  }));
+
+  return c.json({ trips });
+});
+
+// Get public gallery trip detail (anonymized)
+app.get('/api/gallery/:id', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  const trip = await c.env.DB.prepare(
+    `SELECT id, COALESCE(public_title, title) as title,
+            start_date as startDate, end_date as endDate,
+            theme, cover_image_url as coverImageUrl,
+            like_count as likeCount, created_at as createdAt
+     FROM trips WHERE id = ? AND is_public = 1`
+  ).bind(tripId).first<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    likeCount: number;
+    createdAt: string;
+  }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found or not public' }, 404);
+  }
+
+  // Get days
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{ id: string; date: string; sort: number }>();
+
+  // Get items (without private notes/comments)
+  const { results: items } = await c.env.DB.prepare(
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart,
+            time_end as timeEnd, map_url as mapUrl, cost, cost_category as costCategory, sort
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(tripId).all<{
+    id: string;
+    dayId: string;
+    title: string;
+    area: string | null;
+    timeStart: string | null;
+    timeEnd: string | null;
+    mapUrl: string | null;
+    cost: number | null;
+    costCategory: string | null;
+    sort: number;
+  }>();
+
+  // Check if user has liked/saved this trip
+  let isLiked = false;
+  let isSaved = false;
+  if (user) {
+    const like = await c.env.DB.prepare(
+      'SELECT id FROM trip_likes WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    isLiked = !!like;
+
+    const save = await c.env.DB.prepare(
+      'SELECT id FROM trip_saves WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    isSaved = !!save;
+  }
+
+  return c.json({
+    trip: {
+      ...trip,
+      days: days.map(d => ({ ...d, notes: null, photos: [] })), // Exclude notes
+      items: items.map(i => ({ ...i, note: null, photoUrl: null })), // Exclude notes and photos
+      isLiked,
+      isSaved,
+    },
+  });
+});
+
+// Publish/unpublish a trip to gallery
+app.put('/api/trips/:id/publish', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const body = await c.req.json<{
+    isPublic: boolean;
+    publicTitle?: string;
+    excludeNotes?: boolean;
+  }>();
+
+  // Check ownership
+  const ownerCheck = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!ownerCheck.ok) {
+    return c.json({ error: ownerCheck.error }, (ownerCheck.status || 403) as 403);
+  }
+
+  await c.env.DB.prepare(
+    `UPDATE trips SET
+      is_public = ?,
+      public_title = ?,
+      updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+     WHERE id = ?`
+  ).bind(
+    body.isPublic ? 1 : 0,
+    body.publicTitle?.trim() || null,
+    tripId
+  ).run();
+
+  return c.json({
+    isPublic: body.isPublic,
+    publicTitle: body.publicTitle || null,
+  });
+});
+
+// Toggle like on a public trip
+app.post('/api/gallery/:id/like', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Check if trip is public
+  const trip = await c.env.DB.prepare(
+    'SELECT id, like_count as likeCount FROM trips WHERE id = ? AND is_public = 1'
+  ).bind(tripId).first<{ id: string; likeCount: number }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found or not public' }, 404);
+  }
+
+  // Check if already liked
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM trip_likes WHERE trip_id = ? AND user_id = ?'
+  ).bind(tripId, user.id).first<{ id: string }>();
+
+  if (existing) {
+    // Unlike
+    await c.env.DB.prepare('DELETE FROM trip_likes WHERE id = ?').bind(existing.id).run();
+    await c.env.DB.prepare(
+      'UPDATE trips SET like_count = like_count - 1 WHERE id = ?'
+    ).bind(tripId).run();
+
+    return c.json({ liked: false, likeCount: trip.likeCount - 1 });
+  } else {
+    // Like
+    const likeId = generateId();
+    await c.env.DB.prepare(
+      'INSERT INTO trip_likes (id, trip_id, user_id) VALUES (?, ?, ?)'
+    ).bind(likeId, tripId, user.id).run();
+    await c.env.DB.prepare(
+      'UPDATE trips SET like_count = like_count + 1 WHERE id = ?'
+    ).bind(tripId).run();
+
+    return c.json({ liked: true, likeCount: trip.likeCount + 1 });
+  }
+});
+
+// Toggle save on a public trip
+app.post('/api/gallery/:id/save', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Check if trip is public
+  const trip = await c.env.DB.prepare(
+    'SELECT id FROM trips WHERE id = ? AND is_public = 1'
+  ).bind(tripId).first();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found or not public' }, 404);
+  }
+
+  // Check if already saved
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM trip_saves WHERE trip_id = ? AND user_id = ?'
+  ).bind(tripId, user.id).first<{ id: string }>();
+
+  if (existing) {
+    // Unsave
+    await c.env.DB.prepare('DELETE FROM trip_saves WHERE id = ?').bind(existing.id).run();
+    return c.json({ saved: false });
+  } else {
+    // Save
+    const saveId = generateId();
+    await c.env.DB.prepare(
+      'INSERT INTO trip_saves (id, trip_id, user_id) VALUES (?, ?, ?)'
+    ).bind(saveId, tripId, user.id).run();
+    return c.json({ saved: true });
+  }
+});
+
+// Get user's saved trips
+app.get('/api/gallery/saved', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const { results } = await c.env.DB.prepare(
+    `SELECT
+      t.id,
+      COALESCE(t.public_title, t.title) as title,
+      t.start_date as startDate,
+      t.end_date as endDate,
+      t.theme,
+      t.cover_image_url as coverImageUrl,
+      t.like_count as likeCount,
+      s.created_at as savedAt,
+      (SELECT COUNT(*) FROM days WHERE trip_id = t.id) as dayCount
+    FROM trip_saves s
+    JOIN trips t ON s.trip_id = t.id
+    WHERE s.user_id = ? AND t.is_public = 1
+    ORDER BY s.created_at DESC`
+  ).bind(user.id).all<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    likeCount: number;
+    savedAt: string;
+    dayCount: number;
+  }>();
+
+  const trips = results.map(trip => ({
+    ...trip,
+    isLiked: false, // Will check below
+    isSaved: true, // All saved trips are saved by definition
+  }));
+
+  // Check which trips are also liked
+  if (trips.length > 0) {
+    const tripIds = trips.map(t => t.id);
+    const placeholders = tripIds.map(() => '?').join(',');
+    const { results: likes } = await c.env.DB.prepare(
+      `SELECT trip_id FROM trip_likes WHERE user_id = ? AND trip_id IN (${placeholders})`
+    ).bind(user.id, ...tripIds).all<{ trip_id: string }>();
+    const likedIds = new Set(likes.map(l => l.trip_id));
+
+    for (const trip of trips) {
+      trip.isLiked = likedIds.has(trip.id);
+    }
+  }
+
+  return c.json({ trips });
+});
+
+// Use a public trip as template (create a copy)
+app.post('/api/gallery/:id/use', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Check if user has remaining trip slots
+  const userData = await c.env.DB.prepare(
+    'SELECT free_slots as freeSlots, purchased_slots as purchasedSlots FROM users WHERE id = ?'
+  ).bind(user.id).first<{ freeSlots: number; purchasedSlots: number }>();
+
+  if (userData) {
+    const totalSlots = userData.freeSlots + userData.purchasedSlots;
+    const usedSlots = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND (is_archived = 0 OR is_archived IS NULL)'
+    ).bind(user.id).first<{ count: number }>();
+
+    if (usedSlots && usedSlots.count >= totalSlots) {
+      return c.json({
+        error: '旅程枠が不足しています。プロフィールページから追加の枠を購入してください。',
+        code: 'SLOT_LIMIT_REACHED',
+      }, 403);
+    }
+  }
+
+  // Get the public trip
+  const sourceTripResult = await c.env.DB.prepare(
+    `SELECT id, COALESCE(public_title, title) as title, theme,
+            start_date as startDate, end_date as endDate
+     FROM trips WHERE id = ? AND is_public = 1`
+  ).bind(tripId).first<{
+    id: string;
+    title: string;
+    theme: string | null;
+    startDate: string | null;
+    endDate: string | null;
+  }>();
+
+  if (!sourceTripResult) {
+    return c.json({ error: '公開されている旅程が見つかりません' }, 404);
+  }
+
+  // Create new trip
+  const newTripId = generateId();
+  const newTitle = `${sourceTripResult.title}（コピー）`;
+
+  await c.env.DB.prepare(
+    `INSERT INTO trips (id, title, theme, start_date, end_date, user_id, is_template, template_uses)
+     VALUES (?, ?, ?, ?, ?, ?, 0, 0)`
+  ).bind(
+    newTripId,
+    newTitle,
+    sourceTripResult.theme || 'quiet',
+    sourceTripResult.startDate,
+    sourceTripResult.endDate,
+    user.id
+  ).run();
+
+  // Copy days
+  const { results: days } = await c.env.DB.prepare(
+    'SELECT id, date, sort FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<{ id: string; date: string; sort: number }>();
+
+  const dayIdMap = new Map<string, string>();
+
+  for (const day of days) {
+    const newDayId = generateId();
+    dayIdMap.set(day.id, newDayId);
+
+    await c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+    ).bind(newDayId, newTripId, day.date, day.sort).run();
+  }
+
+  // Copy items (without notes for privacy)
+  const { results: items } = await c.env.DB.prepare(
+    `SELECT day_id, title, area, time_start, time_end, map_url, cost, cost_category, sort
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(tripId).all<{
+    day_id: string;
+    title: string;
+    area: string | null;
+    time_start: string | null;
+    time_end: string | null;
+    map_url: string | null;
+    cost: number | null;
+    cost_category: string | null;
+    sort: number;
+  }>();
+
+  for (const item of items) {
+    const newDayId = dayIdMap.get(item.day_id);
+    if (!newDayId) continue;
+
+    const newItemId = generateId();
+    await c.env.DB.prepare(
+      `INSERT INTO items (id, trip_id, day_id, title, area, time_start, time_end, map_url, cost, cost_category, sort)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      newItemId,
+      newTripId,
+      newDayId,
+      item.title,
+      item.area,
+      item.time_start,
+      item.time_end,
+      item.map_url,
+      item.cost,
+      item.cost_category,
+      item.sort
+    ).run();
+  }
+
+  return c.json({ tripId: newTripId }, 201);
+});
+
+// Get trip's publish status
+app.get('/api/trips/:id/publish', async (c) => {
+  const tripId = c.req.param('id');
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  // Check ownership
+  const ownerCheck = await checkTripOwnership(c.env.DB, tripId, user);
+  if (!ownerCheck.ok) {
+    return c.json({ error: ownerCheck.error }, (ownerCheck.status || 403) as 403);
+  }
+
+  const trip = await c.env.DB.prepare(
+    'SELECT is_public as isPublic, public_title as publicTitle, like_count as likeCount FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ isPublic: number; publicTitle: string | null; likeCount: number }>();
+
+  if (!trip) {
+    return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  return c.json({
+    isPublic: !!trip.isPublic,
+    publicTitle: trip.publicTitle,
+    likeCount: trip.likeCount,
+  });
+});
+
 // SPA routes - serve index.html for client-side routing
-const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed', '/profile'];
+const spaRoutes = ['/trips', '/trips/', '/login', '/contact', '/invite', '/embed', '/profile', '/gallery', '/gallery/'];
 
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
@@ -6564,8 +7064,10 @@ app.get('*', async (c) => {
     path === '/' ||
     path.match(/^\/trips\/[^/]+$/) ||  // /trips/:id
     path.match(/^\/trips\/[^/]+\/edit$/) ||  // /trips/:id/edit
+    path.match(/^\/trips\/[^/]+\/album$/) ||  // /trips/:id/album
     path.match(/^\/invite\/[^/]+$/) ||  // /invite/:token
-    path.match(/^\/embed\/[^/]+$/);  // /embed/:id
+    path.match(/^\/embed\/[^/]+$/) ||  // /embed/:id
+    path.match(/^\/gallery\/[^/]+$/);  // /gallery/:id
 
   if (isSpaRoute) {
     url.pathname = '/index.html';
