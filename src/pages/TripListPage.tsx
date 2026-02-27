@@ -5,7 +5,7 @@ import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
-import { PinIcon, PinFilledIcon, CopyIcon, CompareIcon, MoreVerticalIcon, PlusIcon } from '../components/Icons'
+import { PinIcon, PinFilledIcon, CopyIcon, CompareIcon, MoreVerticalIcon, PlusIcon, ArchiveIcon, UnarchiveIcon } from '../components/Icons'
 import { TemplateListModal } from '../components/TemplateListModal'
 import { CompareSelectionBar } from '../components/CompareSelectionBar'
 import { AdBanner } from '../components/AdBanner'
@@ -1086,7 +1086,7 @@ export function TripListPage() {
           </button>
         </div>
       ) : (
-        <>
+        <div className="trip-card-list">
           {trips.map((trip, index) => (
             <div key={trip.id}>
               <div
@@ -1177,15 +1177,16 @@ export function TripListPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn-text btn-small archive-btn"
+                      className="btn-icon archive-btn"
                       onClick={(e) => toggleArchive(trip.id, e)}
                       disabled={archivingId === trip.id}
+                      title={trip.isArchived ? 'アーカイブ解除' : 'アーカイブ'}
                     >
                       {archivingId === trip.id
-                        ? '処理中...'
+                        ? '...'
                         : trip.isArchived
-                          ? 'アーカイブ解除'
-                          : 'アーカイブ'}
+                          ? <UnarchiveIcon size={16} />
+                          : <ArchiveIcon size={16} />}
                     </button>
                   </div>
                 )}
@@ -1199,7 +1200,7 @@ export function TripListPage() {
               )}
             </div>
           ))}
-        </>
+        </div>
       )}
 
       {showTemplateModal && (

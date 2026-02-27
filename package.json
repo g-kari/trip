@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "deploy": "npm run build && npx wrangler d1 migrations apply trip-itinerary --remote && npx wrangler deploy"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2",

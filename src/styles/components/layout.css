@@ -204,8 +204,10 @@
   border-color: var(--color-border);
 }
 
-.trip-card + .trip-card {
-  margin-top: var(--space-3);
+.trip-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 .trip-card-title {
