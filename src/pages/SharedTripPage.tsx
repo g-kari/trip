@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory, ReactionType, ReactionCounts, VisitorReactions } from '../types'
-import { COST_CATEGORIES, REACTION_TYPES, REACTION_CONFIG } from '../types'
+import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
+import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayDate } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
@@ -10,118 +10,6 @@ import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { MarkdownText } from '../components/MarkdownText'
 import { formatCheckinTime } from '../hooks/useTravelMode'
-
-// Get or create a persistent visitor ID for reaction dedup
-function getVisitorId(): string {
-  const KEY = 'trip_visitor_id'
-  try {
-    let id = localStorage.getItem(KEY)
-    if (!id) {
-      id = crypto.randomUUID()
-      localStorage.setItem(KEY, id)
-    }
-    return id
-  } catch {
-    return crypto.randomUUID()
-  }
-}
-
-// Emoji reactions component
-function TripReactions({ token }: { token: string }) {
-  const { showError } = useToast()
-  const [counts, setCounts] = useState<ReactionCounts>({
-    want_to_go: 0, like: 0, amazing: 0, helpful: 0,
-  })
-  const [myReactions, setMyReactions] = useState<VisitorReactions>({
-    want_to_go: false, like: false, amazing: false, helpful: false,
-  })
-  const [toggling, setToggling] = useState<ReactionType | null>(null)
-  const visitorId = useRef(getVisitorId())
-
-  useEffect(() => {
-    async function fetchReactions() {
-      try {
-        const res = await fetch(
-          `/api/shared/${token}/reactions?visitor_id=${encodeURIComponent(visitorId.current)}`
-        )
-        if (res.ok) {
-          const data = await res.json() as {
-            counts: ReactionCounts
-            visitorReactions: VisitorReactions
-          }
-          setCounts(data.counts)
-          setMyReactions(data.visitorReactions)
-        }
-      } catch {
-        // Silently fail — reactions are non-critical
-      }
-    }
-    fetchReactions()
-  }, [token])
-
-  async function toggleReaction(type: ReactionType) {
-    if (toggling) return
-    setToggling(type)
-
-    const wasActive = myReactions[type]
-    setMyReactions(prev => ({ ...prev, [type]: !wasActive }))
-    setCounts(prev => ({
-      ...prev,
-      [type]: prev[type] + (wasActive ? -1 : 1),
-    }))
-
-    try {
-      const res = await fetch(`/api/shared/${token}/reactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reaction_type: type,
-          visitor_id: visitorId.current,
-        }),
-      })
-
-      if (!res.ok) {
-        setMyReactions(prev => ({ ...prev, [type]: wasActive }))
-        setCounts(prev => ({
-          ...prev,
-          [type]: prev[type] + (wasActive ? 1 : -1),
-        }))
-        showError('リアクションに失敗しました')
-      }
-    } catch {
-      setMyReactions(prev => ({ ...prev, [type]: wasActive }))
-      setCounts(prev => ({
-        ...prev,
-        [type]: prev[type] + (wasActive ? 1 : -1),
-      }))
-    } finally {
-      setToggling(null)
-    }
-  }
-
-  return (
-    <div className="reactions-section">
-      <span className="reactions-label">この旅程どうでした？</span>
-      <div className="reactions-row">
-        {REACTION_TYPES.map((type) => (
-          <button
-            key={type}
-            className={`reaction-btn ${myReactions[type] ? 'active' : ''}`}
-            onClick={() => toggleReaction(type)}
-            disabled={toggling !== null}
-            type="button"
-          >
-            <span className="reaction-emoji">{REACTION_CONFIG[type].emoji}</span>
-            <span>{REACTION_CONFIG[type].label}</span>
-            {counts[type] > 0 && (
-              <span className="reaction-count">{counts[type]}</span>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
@@ -754,9 +642,6 @@ export function SharedTripPage() {
 
         {/* Map section */}
         <MapEmbed items={items} />
-
-        {/* Reactions */}
-        <TripReactions token={token!} />
 
         {days.map((day, index) => {
           const dayItems = itemsByDay.get(day.id) || []
