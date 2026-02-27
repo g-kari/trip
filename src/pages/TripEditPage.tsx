@@ -612,18 +612,6 @@ export function TripEditPage() {
   const [dragOverItem, setDragOverItem] = useState<{ itemId: string; dayId: string } | null>(null)
   const [dragOverDay, setDragOverDay] = useState<string | null>(null)
 
-  // Apply theme to document
-  useLayoutEffect(() => {
-    if (trip?.theme && trip.theme !== 'quiet') {
-      document.documentElement.setAttribute('data-theme', trip.theme)
-    } else {
-      document.documentElement.removeAttribute('data-theme')
-    }
-    return () => {
-      document.documentElement.removeAttribute('data-theme')
-    }
-  }, [trip?.theme])
-
   // Trip edit state
   const [editTripTitle, setEditTripTitle] = useState('')
   const [editTripStartDate, setEditTripStartDate] = useState('')
@@ -633,6 +621,18 @@ export function TripEditPage() {
   const [editTripColorLabel, setEditTripColorLabel] = useState<ColorLabel | null>(null)
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+
+  // Apply theme to document instantly on selection (not after save)
+  useLayoutEffect(() => {
+    if (editTripTheme && editTripTheme !== 'quiet') {
+      document.documentElement.setAttribute('data-theme', editTripTheme)
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+    }
+    return () => {
+      document.documentElement.removeAttribute('data-theme')
+    }
+  }, [editTripTheme])
 
   // Day form state
   const [showDayForm, setShowDayForm] = useState(false)
@@ -1637,6 +1637,7 @@ export function TripEditPage() {
               className={`theme-btn ${editTripTheme === 'quiet' ? 'active' : ''}`}
               onClick={() => setEditTripTheme('quiet')}
             >
+              <span className="theme-swatch theme-swatch-quiet" />
               しずか
             </button>
             <button
@@ -1644,6 +1645,7 @@ export function TripEditPage() {
               className={`theme-btn ${editTripTheme === 'photo' ? 'active' : ''}`}
               onClick={() => setEditTripTheme('photo')}
             >
+              <span className="theme-swatch theme-swatch-photo" />
               写真映え
             </button>
             <button
@@ -1651,6 +1653,7 @@ export function TripEditPage() {
               className={`theme-btn ${editTripTheme === 'retro' ? 'active' : ''}`}
               onClick={() => setEditTripTheme('retro')}
             >
+              <span className="theme-swatch theme-swatch-retro" />
               レトロ
             </button>
             <button
@@ -1658,6 +1661,7 @@ export function TripEditPage() {
               className={`theme-btn ${editTripTheme === 'natural' ? 'active' : ''}`}
               onClick={() => setEditTripTheme('natural')}
             >
+              <span className="theme-swatch theme-swatch-natural" />
               ナチュラル
             </button>
           </div>

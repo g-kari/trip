@@ -7,7 +7,7 @@
 }
 
 .theme-btn {
-  @apply px-[var(--space-4)] py-[var(--space-2)] text-[0.8125rem] font-[inherit] text-text-muted bg-transparent border border-border rounded-m cursor-pointer transition-all duration-150;
+  @apply flex items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-2)] text-[0.8125rem] font-[inherit] text-text-muted bg-transparent border border-border rounded-m cursor-pointer transition-all duration-150;
 
   &:hover {
     @apply border-text-muted text-text;
@@ -16,6 +16,21 @@
   &.active {
     @apply bg-accent border-accent text-bg;
   }
+}
+
+/* Theme color swatches */
+.theme-swatch {
+  @apply inline-block size-3 rounded-full shrink-0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-swatch-quiet { background: #3d2e1f; }
+.theme-swatch-photo { background: #e94560; }
+.theme-swatch-retro { background: #c25d30; }
+.theme-swatch-natural { background: #5a7a4a; }
+
+.theme-btn.active .theme-swatch {
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* ========================================
