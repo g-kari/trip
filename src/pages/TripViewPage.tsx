@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import type { Trip, Item, DayPhoto, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
+import type { Trip, Item, ItemPhoto, DayPhoto, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
 import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useToast } from '../hooks/useToast'
@@ -486,14 +486,18 @@ export function TripViewPage() {
     }
   }
 
-  // Delete item photo
-  async function deleteItemPhoto(itemId: string) {
+  // Delete item photo (supports both legacy single-photo and new multi-photo)
+  async function deleteItemPhoto(item: Item, photo: ItemPhoto) {
     if (!trip || !user) return
     if (!confirm('この写真を削除しますか？')) return
 
-    setDeletingItemPhoto(itemId)
+    setDeletingItemPhoto(photo.id)
     try {
-      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/photo`, {
+      // Legacy photos use the old endpoint, new photos use the per-photo endpoint
+      const url = photo.id.startsWith('legacy-')
+        ? `/api/trips/${trip.id}/items/${item.id}/photo`
+        : `/api/trips/${trip.id}/items/${item.id}/photos/${photo.id}`
+      const res = await fetch(url, {
         method: 'DELETE',
       })
       if (!res.ok) {
@@ -615,11 +619,15 @@ export function TripViewPage() {
   }
 
   // Check if user can delete item photo (owner can always delete, or uploader can delete their own)
-  function canDeleteItemPhoto(item: Item): boolean {
+  function canDeleteItemPhoto(item: Item, photo?: ItemPhoto): boolean {
     if (!user) return false
     // Trip owner can delete any photo
     if (isOwner) return true
-    // Photo uploader can delete their own photo
+    // For new multi-photo: check photo.uploadedBy
+    if (photo) {
+      return photo.uploadedBy === user.id
+    }
+    // Legacy single-photo fallback
     return item.photoUploadedBy === user.id
   }
 
@@ -931,22 +939,26 @@ export function TripViewPage() {
                             <MarkdownText text={item.note} />
                           </p>
                         )}
-                        {item.photoUrl && (
-                          <div className="item-photo">
-                            <FallbackImage src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
-                            {canDeleteItemPhoto(item) && (
-                              <button
-                                className="item-photo-delete no-print"
-                                onClick={() => deleteItemPhoto(item.id)}
-                                disabled={deletingItemPhoto === item.id}
-                                title="写真を削除"
-                              >
-                                {deletingItemPhoto === item.id ? '...' : '×'}
-                              </button>
-                            )}
-                            {item.photoUploadedByName && (
-                              <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
-                            )}
+                        {item.photos && item.photos.length > 0 && (
+                          <div className="item-photos-grid">
+                            {item.photos.map((photo) => (
+                              <div key={photo.id} className="item-photo-item">
+                                <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="memory-photo" />
+                                {canDeleteItemPhoto(item, photo) && (
+                                  <button
+                                    className="item-photo-delete no-print"
+                                    onClick={() => deleteItemPhoto(item, photo)}
+                                    disabled={deletingItemPhoto === photo.id}
+                                    title="写真を削除"
+                                  >
+                                    {deletingItemPhoto === photo.id ? '...' : '×'}
+                                  </button>
+                                )}
+                                {photo.uploadedByName && (
+                                  <span className="photo-uploader">📷 {photo.uploadedByName}</span>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>

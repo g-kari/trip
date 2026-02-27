@@ -22,6 +22,7 @@ import { PublishModal } from '../components/PublishModal'
 import { TripHistory } from '../components/TripHistory'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
+import { FallbackImage } from '../components/FallbackImage'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 import { ColorLabelPicker } from '../components/ColorLabelPicker'
 import type { TripMember } from '../types'
@@ -146,10 +147,13 @@ function DraggableItem({
     }
   }
 
-  async function deleteItemPhoto() {
+  async function deleteItemPhoto(photoId?: string) {
     if (!confirm('この写真を削除しますか？')) return
     try {
-      await fetch(`/api/trips/${tripId}/items/${item.id}/photo`, { method: 'DELETE' })
+      const url = photoId
+        ? `/api/trips/${tripId}/items/${item.id}/photos/${photoId}`
+        : `/api/trips/${tripId}/items/${item.id}/photo`
+      await fetch(url, { method: 'DELETE' })
       onPhotoUploaded()
     } catch (err) {
       console.error('Failed to delete photo:', err)
@@ -306,33 +310,52 @@ function DraggableItem({
                 <MarkdownText text={item.note} />
               </p>
             )}
-            {/* Item photo (memory) */}
-            {item.photoUrl && (
-              <div className="item-photo">
-                <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
-                {item.photoUploadedByName && (
-                  <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
-                )}
+            {/* Item photos (multi-photo grid) */}
+            {item.photos && item.photos.length > 0 && (
+              <div className="item-photos-grid">
+                {item.photos.map((photo) => (
+                  <div key={photo.id} className="item-photo-item">
+                    <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="memory-photo" />
+                    <button
+                      className="item-photo-delete no-print"
+                      onClick={() => deleteItemPhoto(photo.id.startsWith('legacy-') ? undefined : photo.id)}
+                      title="写真を削除"
+                    >×</button>
+                    {photo.uploadedByName && (
+                      <span className="photo-uploader">📷 {photo.uploadedByName}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Legacy single photo fallback (only when no photos array) */}
+            {(!item.photos || item.photos.length === 0) && item.photoUrl && (
+              <div className="item-photos-grid">
+                <div className="item-photo-item">
+                  <FallbackImage src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                  <button
+                    className="item-photo-delete no-print"
+                    onClick={() => deleteItemPhoto()}
+                    title="写真を削除"
+                  >×</button>
+                  {item.photoUploadedByName && (
+                    <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
+                  )}
+                </div>
               </div>
             )}
             <div className="item-actions no-print">
               <button className="btn-icon" onClick={() => onStartEdit(item)} title="編集">
                 <EditIcon size={16} />
               </button>
-              {item.photoUrl ? (
-                <button className="btn-icon btn-danger" onClick={deleteItemPhoto} title="写真削除">
-                  <TrashIcon size={16} />
-                </button>
-              ) : (
-                <button
-                  className="btn-icon"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  title="写真追加"
-                >
-                  {uploadingPhoto ? '...' : <ImageIcon size={16} />}
-                </button>
-              )}
+              <button
+                className="btn-icon"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                title="写真追加"
+              >
+                {uploadingPhoto ? '...' : <ImageIcon size={16} />}
+              </button>
               <button
                 className="btn-icon"
                 onClick={() => onShowSpotSuggestions(item)}
@@ -354,10 +377,14 @@ function DraggableItem({
                 ref={photoInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) uploadItemPhoto(file)
+                onChange={async (e) => {
+                  const files = e.target.files
+                  if (!files || files.length === 0) return
+                  for (const file of files) {
+                    await uploadItemPhoto(file)
+                  }
                   e.target.value = ''
                 }}
               />

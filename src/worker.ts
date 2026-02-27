@@ -737,6 +737,16 @@ app.get('/api/trips/:id', async (c) => {
     uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
   }>();
 
+  // Get item_photos from the new table
+  const { results: itemPhotos } = await c.env.DB.prepare(
+    `SELECT id, item_id as itemId, photo_url as photoUrl, uploaded_by as uploadedBy,
+     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
+     FROM item_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
+  ).bind(id).all<{
+    id: string; itemId: string; photoUrl: string;
+    uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
+  }>();
+
   // Get uploader names for items
   const uploaderIds = items.filter(i => i.photoUploadedBy).map(i => i.photoUploadedBy);
   const uniqueUploaderIds = [...new Set(uploaderIds)];
@@ -752,11 +762,20 @@ app.get('/api/trips/:id', async (c) => {
     }
   }
 
+  // Group item_photos by item_id
+  const itemPhotosMap = new Map<string, Array<{id: string; photoUrl: string; uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null}>>();
+  for (const ip of itemPhotos) {
+    const arr = itemPhotosMap.get(ip.itemId) || [];
+    arr.push({ id: ip.id, photoUrl: ip.photoUrl, uploadedBy: ip.uploadedBy, uploadedByName: ip.uploadedByName, uploadedAt: ip.uploadedAt });
+    itemPhotosMap.set(ip.itemId, arr);
+  }
+
   // Enrich items with uploader names and parse check-in location
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
     checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
+    photos: itemPhotosMap.get(item.id) || [],
   }));
 
   // Group day_photos by day_id
@@ -2018,6 +2037,16 @@ app.get('/api/shared/:token', async (c) => {
     uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
   }>();
 
+  // Get item_photos from the new table
+  const { results: itemPhotos } = await c.env.DB.prepare(
+    `SELECT id, item_id as itemId, photo_url as photoUrl, uploaded_by as uploadedBy,
+     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
+     FROM item_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
+  ).bind(share.trip_id).all<{
+    id: string; itemId: string; photoUrl: string;
+    uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
+  }>();
+
   // Get uploader names for items
   const uploaderIds = items.filter(i => i.photoUploadedBy).map(i => i.photoUploadedBy);
   const uniqueUploaderIds = [...new Set(uploaderIds)];
@@ -2033,11 +2062,20 @@ app.get('/api/shared/:token', async (c) => {
     }
   }
 
+  // Group item_photos by item_id
+  const itemPhotosMap = new Map<string, Array<{id: string; photoUrl: string; uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null}>>();
+  for (const ip of itemPhotos) {
+    const arr = itemPhotosMap.get(ip.itemId) || [];
+    arr.push({ id: ip.id, photoUrl: ip.photoUrl, uploadedBy: ip.uploadedBy, uploadedByName: ip.uploadedByName, uploadedAt: ip.uploadedAt });
+    itemPhotosMap.set(ip.itemId, arr);
+  }
+
   // Enrich items with uploader names and parse check-in location
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
     checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
+    photos: itemPhotosMap.get(item.id) || [],
   }));
 
   // Group day_photos by day_id
@@ -3111,8 +3149,9 @@ app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
     return c.json({ error: 'File too large (max 5MB)' }, 400);
   }
 
+  const photoId = crypto.randomUUID();
   const ext = contentType.split('/')[1] || 'jpg';
-  const key = `photos/items/${itemId}.${ext}`;
+  const key = `photos/items/${itemId}/${photoId}.${ext}`;
 
   try {
     const body = await c.req.arrayBuffer();
@@ -3123,9 +3162,15 @@ app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
     });
 
     const url = new URL(c.req.url);
-    const photoUrl = `${url.origin}/api/photos/items/${itemId}.${ext}`;
+    const photoUrl = `${url.origin}/api/photos/items/${itemId}/${photoId}.${ext}`;
 
-    // Update item with photo URL and uploader info
+    // Insert into item_photos table
+    await c.env.DB.prepare(
+      `INSERT INTO item_photos (id, item_id, trip_id, photo_url, uploaded_by, uploaded_by_name, uploaded_at)
+       VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`
+    ).bind(photoId, itemId, tripId, photoUrl, user.id, user.name || user.email || null).run();
+
+    // Update item with photo URL and uploader info (backward compatibility)
     await c.env.DB.prepare(
       `UPDATE items SET
         photo_url = ?,
@@ -3135,7 +3180,7 @@ app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
       WHERE id = ?`
     ).bind(photoUrl, user?.id || null, itemId).run();
 
-    return c.json({ photoUrl }, 201);
+    return c.json({ photoId, photoUrl }, 201);
   } catch (error) {
     console.error('Failed to upload item photo:', error);
     return c.json({ error: 'Failed to upload image' }, 500);
@@ -3175,12 +3220,64 @@ app.delete('/api/trips/:tripId/items/:itemId/photo', async (c) => {
       const key = `photos/items/${urlParts[1]}`;
       await c.env.COVERS.delete(key);
     }
+
+    // Delete from item_photos
+    await c.env.DB.prepare(
+      'DELETE FROM item_photos WHERE item_id = ? AND photo_url = ?'
+    ).bind(itemId, item.photoUrl).run();
   }
 
-  // Clear photo URL in database
+  // Set items.photo_url to latest remaining photo
+  const latestPhoto = await c.env.DB.prepare(
+    'SELECT photo_url FROM item_photos WHERE item_id = ? ORDER BY uploaded_at DESC LIMIT 1'
+  ).bind(itemId).first<{ photo_url: string }>();
+
   await c.env.DB.prepare(
-    'UPDATE items SET photo_url = NULL, photo_uploaded_by = NULL, photo_uploaded_at = NULL, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
-  ).bind(itemId).run();
+    'UPDATE items SET photo_url = ?, photo_uploaded_by = NULL, photo_uploaded_at = NULL, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ?'
+  ).bind(latestPhoto?.photo_url || null, itemId).run();
+
+  return c.json({ ok: true });
+});
+
+// Delete a specific photo from item_photos
+app.delete('/api/trips/:tripId/items/:itemId/photos/:photoId', async (c) => {
+  const { tripId, itemId, photoId } = c.req.param();
+  const user = c.get('user');
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) return c.json({ error: check.error }, check.status as 403 | 404);
+
+  const photo = await c.env.DB.prepare(
+    'SELECT id, photo_url, uploaded_by FROM item_photos WHERE id = ? AND item_id = ?'
+  ).bind(photoId, itemId).first<{ id: string; photo_url: string; uploaded_by: string | null }>();
+
+  if (!photo) return c.json({ error: 'Photo not found' }, 404);
+
+  // Only photo uploader or trip owner can delete
+  const isOwner = check.isOwner;
+  if (photo.uploaded_by !== user.id && !isOwner) {
+    return c.json({ error: '削除権限がありません' }, 403);
+  }
+
+  // Delete from R2
+  const urlParts = photo.photo_url.split('/api/photos/items/');
+  if (urlParts[1]) {
+    const key = `photos/items/${urlParts[1]}`;
+    try { await c.env.COVERS.delete(key); } catch { /* ignore R2 errors */ }
+  }
+
+  // Delete from DB
+  await c.env.DB.prepare('DELETE FROM item_photos WHERE id = ?').bind(photoId).run();
+
+  // Update items.photo_url to latest remaining or null
+  const latestPhoto = await c.env.DB.prepare(
+    'SELECT photo_url FROM item_photos WHERE item_id = ? ORDER BY uploaded_at DESC LIMIT 1'
+  ).bind(itemId).first<{ photo_url: string }>();
+
+  await c.env.DB.prepare(
+    'UPDATE items SET photo_url = ? WHERE id = ? AND trip_id = ?'
+  ).bind(latestPhoto?.photo_url || null, itemId, tripId).run();
 
   return c.json({ ok: true });
 });
@@ -3673,11 +3770,29 @@ app.post('/api/trips/:tripId/days/:dayId/apply-optimization', async (c) => {
   return c.json({ items: updatedItems });
 });
 
-// Get item photo
+// Get item photo (legacy single-photo format)
 app.get('/api/photos/items/:key', async (c) => {
   const key = `photos/items/${c.req.param('key')}`;
 
   const object = await c.env.COVERS.get(key);
+  if (!object) {
+    return c.json({ error: 'Image not found' }, 404);
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+  headers.set('Cache-Control', 'public, max-age=31536000');
+  headers.set('ETag', object.etag);
+
+  return new Response(object.body, { headers });
+});
+
+// Get item photo (multi-photo format)
+app.get('/api/photos/items/:itemId/:key', async (c) => {
+  const { itemId, key } = c.req.param();
+  const fullKey = `photos/items/${itemId}/${key}`;
+
+  const object = await c.env.COVERS.get(fullKey);
   if (!object) {
     return c.json({ error: 'Image not found' }, 404);
   }

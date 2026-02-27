@@ -89,6 +89,14 @@ export type Day = {
   photos: DayPhoto[]
 }
 
+export type ItemPhoto = {
+  id: string
+  photoUrl: string
+  uploadedBy: string | null
+  uploadedByName: string | null
+  uploadedAt: string | null
+}
+
 export type Item = {
   id: string
   dayId: string
@@ -105,6 +113,7 @@ export type Item = {
   photoUploadedBy: string | null
   photoUploadedByName: string | null
   photoUploadedAt: string | null
+  photos: ItemPhoto[]
   checkedInAt: string | null
   checkedInLocation: { lat: number; lng: number } | null
 }

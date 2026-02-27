@@ -25,13 +25,33 @@
    Item Photos (Memory Photos)
    ======================================== */
 
+.item-photos-grid {
+  @apply grid gap-[var(--space-3)] mt-[var(--space-3)];
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.item-photo-item {
+  @apply relative;
+
+  & .photo-uploader {
+    @apply absolute bottom-[var(--space-1)] left-[var(--space-1)] text-[0.625rem];
+    background: rgba(255, 255, 255, 0.85);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+}
+
+.item-photo-item:hover .item-photo-delete {
+  @apply opacity-100;
+}
+
 .item-photo {
   @apply mt-[var(--space-3)] relative inline-block;
 }
 
 .memory-photo {
-  @apply max-w-full object-cover;
-  max-height: 200px;
+  @apply w-full object-cover border border-border-light;
+  height: 100px;
   border-radius: 8px;
 }
 

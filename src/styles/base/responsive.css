@@ -223,12 +223,17 @@
     right: var(--space-1);
   }
 
-  .day-photos-grid {
+  .day-photos-grid,
+  .item-photos-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     @apply gap-[var(--space-2)];
   }
 
   .day-photo {
+    @apply h-20;
+  }
+
+  .item-photos-grid .memory-photo {
     @apply h-20;
   }
 
@@ -323,7 +328,8 @@
     @apply grid-cols-1;
   }
 
-  .day-photos-grid {
+  .day-photos-grid,
+  .item-photos-grid {
     @apply grid-cols-2;
   }
 

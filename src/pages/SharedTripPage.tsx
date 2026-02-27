@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory } from '../types'
+import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory, ItemPhoto } from '../types'
 import { COST_CATEGORIES } from '../types'
 import { formatDateRange, formatCost, formatDayLabel } from '../utils'
 import { useAuth } from '../hooks/useAuth'
@@ -9,7 +9,7 @@ import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
 import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { MarkdownText } from '../components/MarkdownText'
-import { formatCheckinTime } from '../hooks/useTravelMode'
+import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
 import { TravelModeIndicator } from '../components/TravelModeIndicator'
@@ -18,6 +18,7 @@ import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { CollapsibleSection } from '../components/CollapsibleSection'
 import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
+import { FallbackImage } from '../components/FallbackImage'
 
 // Day weather component
 function DayWeather({ date, items }: { date: string; items: Item[] }) {
@@ -164,6 +165,9 @@ export function SharedTripPage() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
   const [deletingFeedbackId, setDeletingFeedbackId] = useState<string | null>(null)
   const [hasSubmittedFeedback, setHasSubmittedFeedback] = useState(false)
+
+  // Travel mode hook
+  const { isTraveling } = useTravelMode(trip)
 
   // Apply theme to document
   useLayoutEffect(() => {
@@ -354,13 +358,16 @@ export function SharedTripPage() {
   }
 
   // Delete item photo
-  async function deleteItemPhoto(itemId: string) {
+  async function deleteItemPhoto(itemId: string, photoId?: string) {
     if (!trip || !user) return
     if (!confirm('この写真を削除しますか？')) return
 
     setDeletingItemPhoto(itemId)
     try {
-      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/photo`, {
+      const url = photoId
+        ? `/api/trips/${trip.id}/items/${itemId}/photos/${photoId}`
+        : `/api/trips/${trip.id}/items/${itemId}/photo`
+      const res = await fetch(url, {
         method: 'DELETE',
       })
       if (!res.ok) {
@@ -417,9 +424,11 @@ export function SharedTripPage() {
     }
   }
 
-  function canDeleteItemPhoto(item: Item): boolean {
+  function canDeleteItemPhoto(item: Item, photo?: ItemPhoto): boolean {
     if (!user) return false
-    return item.photoUploadedBy === user.id || tripOwnerId === user.id
+    if (tripOwnerId === user.id) return true
+    if (photo) return photo.uploadedBy === user.id
+    return item.photoUploadedBy === user.id
   }
 
   function canDeleteDayPhoto(photo: { uploadedBy: string | null }): boolean {
@@ -754,9 +763,27 @@ export function SharedTripPage() {
                             <MarkdownText text={item.note} />
                           </p>
                         )}
-                        {item.photoUrl && (
+                        {item.photos && item.photos.length > 0 ? (
+                          <div className="day-photos-grid">
+                            {item.photos.map((photo) => (
+                              <div key={photo.id} className="day-photo-item">
+                                <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                                {canDeleteItemPhoto(item, photo) && (
+                                  <button
+                                    className="item-photo-delete no-print"
+                                    onClick={() => deleteItemPhoto(item.id, photo.id)}
+                                    title="写真を削除"
+                                  >×</button>
+                                )}
+                                {photo.uploadedByName && (
+                                  <span className="photo-uploader">📷 {photo.uploadedByName}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : item.photoUrl ? (
                           <div className="item-photo">
-                            <img src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
+                            <FallbackImage src={item.photoUrl} alt="思い出の写真" className="memory-photo" />
                             {canDeleteItemPhoto(item) && (
                               <button
                                 className="item-photo-delete no-print"
@@ -771,20 +798,26 @@ export function SharedTripPage() {
                               <span className="photo-uploader">📷 {item.photoUploadedByName}</span>
                             )}
                           </div>
-                        )}
+                        ) : null}
                         {/* Photo upload for logged-in users */}
-                        {user && !item.photoUrl && (
+                        {user && (
                           <div className="photo-upload-section no-print">
                             <input
                               type="file"
                               accept="image/*"
+                              multiple
                               style={{ display: 'none' }}
                               ref={(el) => {
                                 if (el) itemPhotoInputRefs.current.set(item.id, el)
                               }}
                               onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) uploadItemPhoto(item.id, file)
+                                const files = e.target.files
+                                if (files) {
+                                  for (const file of Array.from(files)) {
+                                    uploadItemPhoto(item.id, file)
+                                  }
+                                }
+                                e.target.value = ''
                               }}
                             />
                             <button
@@ -815,7 +848,7 @@ export function SharedTripPage() {
                     <div className="day-photos-grid">
                       {day.photos.map((photo) => (
                         <div key={photo.id} className="day-photo-item">
-                          <img src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
+                          <FallbackImage src={photo.photoUrl} alt="思い出の写真" className="day-photo" />
                           {canDeleteDayPhoto(photo) && !photo.id.startsWith('legacy-') && (
                             <button
                               className="day-photo-delete no-print"
