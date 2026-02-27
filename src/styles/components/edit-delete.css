@@ -80,8 +80,9 @@
   grid-column: 1 / -1;
 }
 
-/* Day header — delete button alignment (base styles in timeline.css) */
-.day-header .btn-text {
+/* Day header — push last action to the right (base styles in timeline.css) */
+.day-header .btn-text,
+.day-header .btn-icon:last-child {
   @apply ml-auto;
 }
 
