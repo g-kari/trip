@@ -1,7 +1,6 @@
 ---
 name: project-manager
 description: 新機能の提案をサービスコンセプトに基づいて評価し、採用/却下/要検討を判定する。機能提案や「PMを通して」と言われた時に使用。
-disable-model-invocation: true
 context: fork
 agent: general-purpose
 ---
