@@ -269,3 +269,18 @@ export type StandaloneExpenseSplit = {
   shareType: ShareType
   shareValue: number | null
 }
+
+// ============ Reactions ============
+
+export const REACTION_TYPES = ['want_to_go', 'like', 'amazing', 'helpful'] as const
+export type ReactionType = typeof REACTION_TYPES[number]
+
+export const REACTION_CONFIG: Record<ReactionType, { emoji: string; label: string }> = {
+  want_to_go: { emoji: '\u{1F5FA}\uFE0F', label: '行きたい！' },
+  like:       { emoji: '\u{1F44D}', label: 'いいね' },
+  amazing:    { emoji: '\u2728', label: 'すごい' },
+  helpful:    { emoji: '\u{1F4DD}', label: '参考になった' },
+}
+
+export type ReactionCounts = Record<ReactionType, number>
+export type VisitorReactions = Record<ReactionType, boolean>

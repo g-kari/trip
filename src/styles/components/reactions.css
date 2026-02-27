@@ -1,0 +1,79 @@
+/* ========================================
+   Emoji Reactions for Shared Pages
+   ======================================== */
+
+.reactions-section {
+  @apply flex flex-col items-center
+         gap-[var(--space-3)]
+         py-[var(--space-5)]
+         mt-[var(--space-4)]
+         mb-[var(--space-4)];
+}
+
+.reactions-label {
+  @apply text-[0.8125rem]
+         text-text-muted
+         font-medium;
+}
+
+.reactions-row {
+  @apply flex flex-wrap justify-center
+         gap-[var(--space-2)];
+}
+
+.reaction-btn {
+  @apply inline-flex items-center
+         gap-[var(--space-1)]
+         py-[var(--space-2)] px-[var(--space-3)]
+         border border-border-light rounded-m
+         bg-bg-elevated
+         text-[0.8125rem] text-text-muted
+         cursor-pointer
+         select-none;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    @apply border-text-muted;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    @apply opacity-70 cursor-default;
+  }
+}
+
+.reaction-btn.active {
+  @apply border-accent text-accent;
+}
+
+.reaction-emoji {
+  @apply text-base leading-none;
+}
+
+.reaction-count {
+  @apply text-xs text-text-faint
+         min-w-[1ch];
+  transition: color 0.15s ease;
+}
+
+.reaction-btn.active .reaction-count {
+  @apply text-accent;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .reaction-btn {
+    @apply py-[var(--space-2)] px-[var(--space-2)]
+           text-xs;
+  }
+}
+
+/* Print: hide reactions */
+@media print {
+  .reactions-section {
+    display: none !important;
+  }
+}

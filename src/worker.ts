@@ -4773,6 +4773,99 @@ app.post('/api/shared/:token/feedback', async (c) => {
   return c.json({ feedback }, 201);
 });
 
+// ============ Shared Trip Reactions ============
+
+// Get reactions for shared trip
+app.get('/api/shared/:token/reactions', async (c) => {
+  const token = c.req.param('token');
+  const visitorId = c.req.query('visitor_id');
+
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    return c.json({ error: 'Invalid share link' }, 404);
+  }
+
+  const tripId = share.trip_id;
+
+  const { results: countRows } = await c.env.DB.prepare(
+    `SELECT reaction_type, COUNT(*) as count
+     FROM trip_reactions WHERE trip_id = ?
+     GROUP BY reaction_type`
+  ).bind(tripId).all<{ reaction_type: string; count: number }>();
+
+  const counts: Record<string, number> = {
+    want_to_go: 0, like: 0, amazing: 0, helpful: 0,
+  };
+  for (const row of countRows) {
+    counts[row.reaction_type] = row.count;
+  }
+
+  const visitorReactions: Record<string, boolean> = {
+    want_to_go: false, like: false, amazing: false, helpful: false,
+  };
+
+  if (visitorId) {
+    const { results: myReactions } = await c.env.DB.prepare(
+      'SELECT reaction_type FROM trip_reactions WHERE trip_id = ? AND visitor_id = ?'
+    ).bind(tripId, visitorId).all<{ reaction_type: string }>();
+
+    for (const r of myReactions) {
+      visitorReactions[r.reaction_type] = true;
+    }
+  }
+
+  return c.json({ counts, visitorReactions });
+});
+
+// Toggle a reaction on shared trip
+app.post('/api/shared/:token/reactions', async (c) => {
+  const token = c.req.param('token');
+  const user = c.get('user');
+  const body = await c.req.json<{
+    reaction_type: string;
+    visitor_id: string;
+  }>();
+
+  const validTypes = ['want_to_go', 'like', 'amazing', 'helpful'];
+  if (!body.reaction_type || !validTypes.includes(body.reaction_type)) {
+    return c.json({ error: '無効なリアクションタイプです' }, 400);
+  }
+
+  if (!body.visitor_id || body.visitor_id.length < 10) {
+    return c.json({ error: 'visitor_id が必要です' }, 400);
+  }
+
+  const share = await c.env.DB.prepare(
+    'SELECT trip_id FROM share_tokens WHERE token = ?'
+  ).bind(token).first<{ trip_id: string }>();
+
+  if (!share) {
+    return c.json({ error: 'Invalid share link' }, 404);
+  }
+
+  const tripId = share.trip_id;
+
+  const existing = await c.env.DB.prepare(
+    'SELECT id FROM trip_reactions WHERE trip_id = ? AND reaction_type = ? AND visitor_id = ?'
+  ).bind(tripId, body.reaction_type, body.visitor_id).first<{ id: string }>();
+
+  if (existing) {
+    await c.env.DB.prepare('DELETE FROM trip_reactions WHERE id = ?')
+      .bind(existing.id).run();
+    return c.json({ toggled: false, reaction_type: body.reaction_type });
+  } else {
+    const id = generateId();
+    await c.env.DB.prepare(
+      `INSERT INTO trip_reactions (id, trip_id, reaction_type, visitor_id, user_id)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(id, tripId, body.reaction_type, body.visitor_id, user?.id ?? null).run();
+    return c.json({ toggled: true, reaction_type: body.reaction_type });
+  }
+});
+
 // ============ AI Trip Generation ============
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing';
