@@ -28,7 +28,7 @@ async function loadFont(): Promise<ArrayBuffer> {
 interface OgpOptions {
   title: string;
   dateRange?: string;
-  theme: 'quiet' | 'photo';
+  theme: 'quiet' | 'photo' | 'retro';
   coverImageUrl?: string | null;
 }
 
@@ -40,10 +40,17 @@ export async function generateOgpImage(options: OgpOptions): Promise<Uint8Array>
   const { title, dateRange, theme, coverImageUrl } = options;
 
   // Theme colors
-  const isPhoto = theme === 'photo';
-  const bgColor = isPhoto ? '#1a1a1a' : '#f6f3ee';
-  const textColor = isPhoto ? '#ffffff' : '#3d2e1f';
-  const mutedColor = isPhoto ? '#a0a0a0' : '#8c7b6b';
+  const getThemeColors = () => {
+    switch (theme) {
+      case 'photo':
+        return { bgColor: '#1a1a1a', textColor: '#ffffff', mutedColor: '#a0a0a0' };
+      case 'retro':
+        return { bgColor: '#f5f0e1', textColor: '#3d2e1f', mutedColor: '#6b5c4a' };
+      default: // quiet
+        return { bgColor: '#f6f3ee', textColor: '#3d2e1f', mutedColor: '#8c7b6b' };
+    }
+  };
+  const { bgColor, textColor, mutedColor } = getThemeColors();
 
   // Truncate title if too long
   const displayTitle = title.length > 25 ? title.slice(0, 25) + '...' : title;

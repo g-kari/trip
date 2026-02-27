@@ -28,7 +28,11 @@ function formatMonth(month: string): string {
 }
 
 function getThemeLabel(theme: string): string {
-  return theme === 'photo' ? '写真映え' : 'しずか'
+  switch (theme) {
+    case 'photo': return '写真映え'
+    case 'retro': return 'レトロ'
+    default: return 'しずか'
+  }
 }
 
 // Get color for category bar

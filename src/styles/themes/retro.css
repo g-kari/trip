@@ -1,0 +1,226 @@
+/* ========================================
+   Theme: Retro (レトロ) — specific styles
+   Nostalgic film and vintage poster aesthetic
+   ======================================== */
+
+/* Apply serif fonts to body when retro theme is active */
+[data-theme="retro"] {
+  font-family: var(--font-body);
+}
+
+/* Headings use serif font */
+[data-theme="retro"] h1,
+[data-theme="retro"] h2,
+[data-theme="retro"] h3,
+[data-theme="retro"] h4,
+[data-theme="retro"] h5,
+[data-theme="retro"] h6,
+[data-theme="retro"] .hero-title,
+[data-theme="retro"] .day-label,
+[data-theme="retro"] .timeline-title {
+  font-family: var(--font-heading);
+}
+
+/* Hero title styling */
+[data-theme="retro"] .hero-title {
+  letter-spacing: 0.05em;
+}
+
+/* Day label with vintage styling */
+[data-theme="retro"] .day-label {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Timeline time display - bold for classic feel */
+[data-theme="retro"] .timeline-time {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Timeline title styling */
+[data-theme="retro"] .timeline-title {
+  font-weight: 500;
+}
+
+/* Cards with subtle vintage border */
+[data-theme="retro"] .trip-card,
+[data-theme="retro"] .create-form,
+[data-theme="retro"] .inline-form {
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+/* Cover image with sepia filter for vintage look */
+[data-theme="retro"] .cover-image,
+[data-theme="retro"] .memory-photo,
+[data-theme="retro"] .day-photo {
+  filter: sepia(20%) saturate(90%);
+  transition: filter var(--transition-normal);
+}
+
+[data-theme="retro"] .cover-image:hover,
+[data-theme="retro"] .memory-photo:hover,
+[data-theme="retro"] .day-photo:hover {
+  filter: sepia(10%) saturate(95%);
+}
+
+/* Hero with cover image - vintage overlay */
+[data-theme="retro"] .hero-with-cover::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(61, 46, 31, 0.25),
+    rgba(61, 46, 31, 0.55)
+  );
+}
+
+/* Buttons with vintage styling */
+[data-theme="retro"] .btn-outline {
+  border-width: 1.5px;
+}
+
+[data-theme="retro"] .btn-filled {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+[data-theme="retro"] .btn-filled:hover {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+}
+
+/* Theme selector button styling */
+[data-theme="retro"] .theme-btn.active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+/* Input fields with vintage styling */
+[data-theme="retro"] .input,
+[data-theme="retro"] .select {
+  font-family: var(--font-body);
+}
+
+/* Day section with classic styling */
+[data-theme="retro"] .day-section {
+  border-color: var(--color-border);
+}
+
+[data-theme="retro"] .day-header {
+  border-bottom-color: var(--color-border);
+}
+
+/* Timeline items with classic border */
+[data-theme="retro"] .timeline-item {
+  border-color: var(--color-border-light);
+}
+
+/* Total cost section */
+[data-theme="retro"] .total-cost {
+  border-color: var(--color-border);
+}
+
+/* Tags with vintage styling */
+[data-theme="retro"] .trip-tag {
+  border-radius: var(--radius-s);
+  border: 1px solid var(--color-border);
+}
+
+/* Trip card hover effect */
+[data-theme="retro"] .trip-card:hover {
+  border-color: var(--color-accent);
+}
+
+/* Select dropdown chevron for retro theme */
+[data-theme="retro"] select.input,
+[data-theme="retro"] select.select,
+[data-theme="retro"] select.sort-select,
+[data-theme="retro"] select.packing-category-select,
+[data-theme="retro"] select.expense-select,
+[data-theme="retro"] select.expense-select-small,
+[data-theme="retro"] select.collaborator-role-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%236b5c4a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-theme="retro"] select.input:focus,
+[data-theme="retro"] select.select:focus,
+[data-theme="retro"] select.sort-select:focus,
+[data-theme="retro"] select.packing-category-select:focus,
+[data-theme="retro"] select.expense-select:focus,
+[data-theme="retro"] select.expense-select-small:focus,
+[data-theme="retro"] select.collaborator-role-select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23c25d30' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Dark mode retro chevron */
+[data-color-mode="dark"][data-theme="retro"] select.input,
+[data-color-mode="dark"][data-theme="retro"] select.select,
+[data-color-mode="dark"][data-theme="retro"] select.sort-select,
+[data-color-mode="dark"][data-theme="retro"] select.packing-category-select,
+[data-color-mode="dark"][data-theme="retro"] select.expense-select,
+[data-color-mode="dark"][data-theme="retro"] select.expense-select-small,
+[data-color-mode="dark"][data-theme="retro"] select.collaborator-role-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23a89a85' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+[data-color-mode="dark"][data-theme="retro"] select.input:focus,
+[data-color-mode="dark"][data-theme="retro"] select.select:focus,
+[data-color-mode="dark"][data-theme="retro"] select.sort-select:focus,
+[data-color-mode="dark"][data-theme="retro"] select.packing-category-select:focus,
+[data-color-mode="dark"][data-theme="retro"] select.expense-select:focus,
+[data-color-mode="dark"][data-theme="retro"] select.expense-select-small:focus,
+[data-color-mode="dark"][data-theme="retro"] select.collaborator-role-select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23d97b4a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"][data-theme="retro"] select.input,
+  [data-color-mode="system"][data-theme="retro"] select.select,
+  [data-color-mode="system"][data-theme="retro"] select.sort-select,
+  [data-color-mode="system"][data-theme="retro"] select.packing-category-select,
+  [data-color-mode="system"][data-theme="retro"] select.expense-select,
+  [data-color-mode="system"][data-theme="retro"] select.expense-select-small,
+  [data-color-mode="system"][data-theme="retro"] select.collaborator-role-select,
+  [data-theme="retro"]:not([data-color-mode]) select.input,
+  [data-theme="retro"]:not([data-color-mode]) select.select,
+  [data-theme="retro"]:not([data-color-mode]) select.sort-select,
+  [data-theme="retro"]:not([data-color-mode]) select.packing-category-select,
+  [data-theme="retro"]:not([data-color-mode]) select.expense-select,
+  [data-theme="retro"]:not([data-color-mode]) select.expense-select-small,
+  [data-theme="retro"]:not([data-color-mode]) select.collaborator-role-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23a89a85' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  [data-color-mode="system"][data-theme="retro"] select.input:focus,
+  [data-color-mode="system"][data-theme="retro"] select.select:focus,
+  [data-color-mode="system"][data-theme="retro"] select.sort-select:focus,
+  [data-color-mode="system"][data-theme="retro"] select.packing-category-select:focus,
+  [data-color-mode="system"][data-theme="retro"] select.expense-select:focus,
+  [data-color-mode="system"][data-theme="retro"] select.expense-select-small:focus,
+  [data-color-mode="system"][data-theme="retro"] select.collaborator-role-select:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.input:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.select:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.sort-select:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.packing-category-select:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.expense-select:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.expense-select-small:focus,
+  [data-theme="retro"]:not([data-color-mode]) select.collaborator-role-select:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.5 4.5L6 8L9.5 4.5' stroke='%23d97b4a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+}
+
+/* Print styles for retro theme */
+@media print {
+  [data-theme="retro"] .cover-image,
+  [data-theme="retro"] .memory-photo,
+  [data-theme="retro"] .day-photo {
+    filter: sepia(15%) saturate(85%);
+  }
+
+  [data-theme="retro"] .hero-title,
+  [data-theme="retro"] .day-label,
+  [data-theme="retro"] .timeline-title {
+    font-family: serif;
+  }
+}

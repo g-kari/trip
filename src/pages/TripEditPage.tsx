@@ -1598,6 +1598,13 @@ export function TripEditPage() {
             >
               写真映え
             </button>
+            <button
+              type="button"
+              className={`theme-btn ${editTripTheme === 'retro' ? 'active' : ''}`}
+              onClick={() => setEditTripTheme('retro')}
+            >
+              レトロ
+            </button>
           </div>
           {/* Budget input */}
           <div className="budget-input-section">

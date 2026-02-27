@@ -81,7 +81,12 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
   }
 
   function getThemeLabel(theme: TripTheme): string {
-    return theme === 'quiet' ? 'しずか' : '写真映え'
+    switch (theme) {
+      case 'quiet': return 'しずか'
+      case 'photo': return '写真映え'
+      case 'retro': return 'レトロ'
+      default: return 'しずか'
+    }
   }
 
   function getDaysCount(template: TripTemplate): number {

@@ -1,4 +1,30 @@
 /* ========================================
+   Theme: Retro (レトロ) — nostalgic film aesthetic
+   ======================================== */
+
+[data-theme="retro"] {
+  /* Colors — sepia-toned warm palette */
+  --color-bg:          #f5f0e1;
+  --color-bg-elevated: #fdfbf5;
+  --color-text:        #3d2e1f;
+  --color-text-muted:  #6b5c4a;
+  --color-text-faint:  #9a8b76;
+  --color-border:      #c9b99a;
+  --color-border-light:#ddd5c5;
+  --color-accent:      #c25d30;
+  --color-accent-hover:#d4734a;
+
+  /* Typography — serif fonts for vintage feel */
+  --font-heading: "游明朝", "Yu Mincho", "Noto Serif JP", "Hiragino Mincho ProN", serif;
+  --font-body: "游明朝", "Yu Mincho", "Noto Serif JP", "Hiragino Mincho ProN", serif;
+
+  /* Borders — smaller radius for classic look */
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 6px;
+}
+
+/* ========================================
    Theme: Photo (写真映え) — vibrant aesthetic
    ======================================== */
 
@@ -113,5 +139,40 @@
     --color-border-light:#1e1e35;
     --color-accent:      #ff6b8a;
     --color-accent-hover:#ff8da8;
+  }
+}
+
+/* ========================================
+   Dark mode overrides for retro theme
+   ======================================== */
+
+[data-color-mode="dark"][data-theme="retro"],
+[data-theme="retro"][data-color-mode="dark"] {
+  /* Dark sepia tones */
+  --color-bg:          #1a1714;
+  --color-bg-elevated: #252119;
+  --color-text:        #e8dfd0;
+  --color-text-muted:  #a89a85;
+  --color-text-faint:  #706555;
+  --color-border:      #3d352a;
+  --color-border-light:#302820;
+  --color-accent:      #d97b4a;
+  --color-accent-hover:#e89060;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"][data-theme="retro"],
+  [data-theme="retro"]:not([data-color-mode]),
+  :root:not([data-color-mode])[data-theme="retro"] {
+    /* Dark sepia tones */
+    --color-bg:          #1a1714;
+    --color-bg-elevated: #252119;
+    --color-text:        #e8dfd0;
+    --color-text-muted:  #a89a85;
+    --color-text-faint:  #706555;
+    --color-border:      #3d352a;
+    --color-border-light:#302820;
+    --color-accent:      #d97b4a;
+    --color-accent-hover:#e89060;
   }
 }

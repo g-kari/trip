@@ -7,6 +7,9 @@
 @import './base/themes.css';
 @import './base/reset.css';
 
+/* Theme-specific styles */
+@import './themes/retro.css';
+
 /* Components */
 @import './components/buttons.css';
 @import './components/forms.css';

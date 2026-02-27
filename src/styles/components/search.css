@@ -176,3 +176,9 @@
   color: var(--color-accent);
   border-color: var(--color-border);
 }
+
+.trip-card-theme-retro {
+  color: #c25d30;
+  border-color: #c9b99a;
+  background-color: #f5f0e1;
+}

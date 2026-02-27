@@ -12,7 +12,7 @@ import { shouldShowAd } from '../utils/adUtils'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
-type ThemeFilter = '' | 'quiet' | 'photo'
+type ThemeFilter = '' | 'quiet' | 'photo' | 'retro'
 type ArchiveTab = 'active' | 'archived'
 
 export function TripListPage() {
@@ -762,6 +762,13 @@ export function TripListPage() {
             >
               写真映え
             </button>
+            <button
+              type="button"
+              className={`theme-btn ${newTripTheme === 'retro' ? 'active' : ''}`}
+              onClick={() => setNewTripTheme('retro')}
+            >
+              レトロ
+            </button>
           </div>
           <button
             type="submit"
@@ -818,6 +825,13 @@ export function TripListPage() {
                   onClick={() => setFilterTheme('photo')}
                 >
                   写真映え
+                </button>
+                <button
+                  type="button"
+                  className={`filter-btn ${filterTheme === 'retro' ? 'active' : ''}`}
+                  onClick={() => setFilterTheme('retro')}
+                >
+                  レトロ
                 </button>
               </div>
             </div>
@@ -902,7 +916,7 @@ export function TripListPage() {
             )}
             {filterTheme && (
               <span className="filter-tag">
-                {filterTheme === 'quiet' ? 'しずか' : '写真映え'}
+                {filterTheme === 'quiet' ? 'しずか' : filterTheme === 'photo' ? '写真映え' : 'レトロ'}
                 <button type="button" onClick={() => setFilterTheme('')} className="filter-tag-remove">x</button>
               </span>
             )}
@@ -978,7 +992,7 @@ export function TripListPage() {
                   </div>
                   {trip.theme && (
                     <span className={`trip-card-theme trip-card-theme-${trip.theme}`}>
-                      {trip.theme === 'quiet' ? 'しずか' : '写真映え'}
+                      {trip.theme === 'quiet' ? 'しずか' : trip.theme === 'photo' ? '写真映え' : 'レトロ'}
                     </span>
                   )}
                 </div>

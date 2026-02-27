@@ -359,7 +359,7 @@ app.get('/api/trips', async (c) => {
   }
 
   // Theme filter
-  if (theme === 'quiet' || theme === 'photo') {
+  if (theme === 'quiet' || theme === 'photo' || theme === 'retro') {
     conditions.push('theme = ?');
     params.push(theme);
   }
@@ -832,7 +832,7 @@ app.post('/api/trips', async (c) => {
   }
 
   const id = generateId();
-  const theme = body.theme === 'photo' ? 'photo' : 'quiet';
+  const theme = body.theme === 'photo' ? 'photo' : body.theme === 'retro' ? 'retro' : 'quiet';
 
   await c.env.DB.prepare(
     'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -866,7 +866,7 @@ app.put('/api/trips/:id', async (c) => {
 
   // Validate theme if provided
   const theme = body.theme !== undefined
-    ? (body.theme === 'photo' ? 'photo' : 'quiet')
+    ? (body.theme === 'photo' ? 'photo' : body.theme === 'retro' ? 'retro' : 'quiet')
     : null;
 
   // Handle budget - allow explicit null to clear it
@@ -1782,10 +1782,11 @@ app.get('/api/shared/:token/ogp.png', async (c) => {
   }
 
   try {
+    const ogpTheme = trip.theme === 'photo' ? 'photo' : trip.theme === 'retro' ? 'retro' : 'quiet';
     const png = await generateOgpImage({
       title: trip.title,
       dateRange,
-      theme: (trip.theme === 'photo' ? 'photo' : 'quiet') as 'quiet' | 'photo',
+      theme: ogpTheme as 'quiet' | 'photo' | 'retro',
       coverImageUrl: trip.coverImageUrl,
     });
 
@@ -2751,7 +2752,7 @@ app.post('/api/trips/import', async (c) => {
 
   // Create new trip with "(インポート)" suffix
   const tripId = generateId();
-  const theme = importData.trip.theme === 'photo' ? 'photo' : 'quiet';
+  const theme = importData.trip.theme === 'photo' ? 'photo' : importData.trip.theme === 'retro' ? 'retro' : 'quiet';
   const title = `${importData.trip.title}（インポート）`;
 
   await c.env.DB.prepare(

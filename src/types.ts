@@ -9,7 +9,7 @@ export type User = {
 }
 
 // Theme types
-export type TripTheme = 'quiet' | 'photo'
+export type TripTheme = 'quiet' | 'photo' | 'retro'
 
 // Cost categories for budget management
 export const COST_CATEGORIES = [
