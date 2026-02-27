@@ -321,9 +321,6 @@ export function ProfilePage() {
             <Link to="/stats" className="btn-outline profile-action-btn">
               詳細な統計を見る
             </Link>
-            <Link to="/gallery/saved" className="btn-outline profile-action-btn">
-              保存した旅程
-            </Link>
           </div>
         </div>
       )}

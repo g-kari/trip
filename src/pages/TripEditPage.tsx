@@ -12,13 +12,11 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon, MoreVerticalIcon, CameraIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, BookmarkIcon, WalletIcon, MapPinIcon, HistoryIcon, MoreVerticalIcon, CameraIcon } from '../components/Icons'
 import { VoiceInputButton } from '../components/VoiceInputButton'
-import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
 import { SpotSuggestions } from '../components/SpotSuggestions'
-import { PublishModal } from '../components/PublishModal'
 import { TripHistory } from '../components/TripHistory'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
@@ -710,14 +708,8 @@ export function TripEditPage() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [showMoreMenu])
 
-  // Embed modal state
-  const [showEmbedModal, setShowEmbedModal] = useState(false)
-
   // Save as template modal state
   const [showSaveAsTemplateModal, setShowSaveAsTemplateModal] = useState(false)
-
-  // Publish modal state
-  const [showPublishModal, setShowPublishModal] = useState(false)
 
   // Expense modal state
   const [showExpenseModal, setShowExpenseModal] = useState(false)
@@ -1845,14 +1837,6 @@ export function TripEditPage() {
                 <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowSaveAsTemplateModal(true) }}>
                   <BookmarkIcon size={14} /> テンプレートとして保存
                 </button>
-                {currentUserRole === 'owner' && (
-                  <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowPublishModal(true) }}>
-                    <GlobeIcon size={14} /> ギャラリーに公開
-                  </button>
-                )}
-                <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowEmbedModal(true) }}>
-                  <CodeIcon size={14} /> 埋め込みコード
-                </button>
                 <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowHistoryModal(true) }}>
                   <HistoryIcon size={14} /> 変更履歴
                 </button>
@@ -2347,28 +2331,12 @@ export function TripEditPage() {
         />
       )}
 
-      {showEmbedModal && (
-        <EmbedCodeModal
-          tripId={trip.id}
-          tripTitle={trip.title}
-          onClose={() => setShowEmbedModal(false)}
-        />
-      )}
-
       {showSaveAsTemplateModal && (
         <SaveAsTemplateModal
           tripId={trip.id}
           tripTitle={trip.title}
           onClose={() => setShowSaveAsTemplateModal(false)}
           onSaved={() => {}}
-        />
-      )}
-
-      {showPublishModal && (
-        <PublishModal
-          tripId={trip.id}
-          tripTitle={trip.title}
-          onClose={() => setShowPublishModal(false)}
         />
       )}
 

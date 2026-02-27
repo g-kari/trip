@@ -5,11 +5,8 @@ import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonTripCard } from '../components/Skeleton'
-import { PinIcon, PinFilledIcon, CopyIcon, CompareIcon, MoreVerticalIcon, PlusIcon, ArchiveIcon, UnarchiveIcon } from '../components/Icons'
+import { PinIcon, PinFilledIcon, CopyIcon, MoreVerticalIcon, PlusIcon, ArchiveIcon, UnarchiveIcon } from '../components/Icons'
 import { TemplateListModal } from '../components/TemplateListModal'
-import { CompareSelectionBar } from '../components/CompareSelectionBar'
-import { AdBanner } from '../components/AdBanner'
-import { shouldShowAd } from '../utils/adUtils'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { ColorLabelFilter, ColorLabelIndicator } from '../components/ColorLabelPicker'
 import { DatePicker } from '../components/DatePicker'
@@ -84,27 +81,6 @@ export function TripListPage() {
   // Action menu state
   const [activeMenu, setActiveMenu] = useState<'create' | 'more' | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-
-  // Compare selection state
-  const [compareMode, setCompareMode] = useState(false)
-  const [selectedForCompare, setSelectedForCompare] = useState<Trip[]>([])
-
-  const toggleCompareSelection = useCallback((trip: Trip) => {
-    setSelectedForCompare(prev => {
-      const isSelected = prev.some(t => t.id === trip.id)
-      if (isSelected) {
-        return prev.filter(t => t.id !== trip.id)
-      } else if (prev.length < 4) {
-        return [...prev, trip]
-      }
-      return prev
-    })
-  }, [])
-
-  const clearCompareSelection = useCallback(() => {
-    setSelectedForCompare([])
-    setCompareMode(false)
-  }, [])
 
   // Close action menu on click outside
   useEffect(() => {
@@ -609,17 +585,6 @@ export function TripListPage() {
                     </button>
                     <button
                       type="button"
-                      className={`action-dropdown-item ${compareMode ? 'active' : ''}`}
-                      onClick={() => {
-                        setCompareMode(!compareMode)
-                        if (compareMode) setSelectedForCompare([])
-                        setActiveMenu(null)
-                      }}
-                    >
-                      {compareMode ? '比較モード終了' : '比較'}
-                    </button>
-                    <button
-                      type="button"
                       className="action-dropdown-item"
                       onClick={() => {
                         importInputRef.current?.click()
@@ -1099,7 +1064,7 @@ export function TripListPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-[var(--space-3)]">
-          {trips.map((trip, index) => (
+          {trips.map((trip) => (
             <div key={trip.id}>
               <div
                 className={`trip-card ${trip.isArchived ? 'trip-card-archived' : ''} ${trip.pinned ? 'trip-card-pinned' : ''}`}
@@ -1156,19 +1121,6 @@ export function TripListPage() {
                 )}
                 {user && (
                   <div className="trip-card-actions">
-                    {compareMode && (
-                      <button
-                        type="button"
-                        className={`btn-icon trip-card-compare-btn ${selectedForCompare.some(t => t.id === trip.id) ? 'selected' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleCompareSelection(trip)
-                        }}
-                        title={selectedForCompare.some(t => t.id === trip.id) ? '比較から外す' : '比較に追加'}
-                      >
-                        <CompareIcon size={16} />
-                      </button>
-                    )}
                     <button
                       type="button"
                       className={`btn-icon pin-btn ${trip.pinned ? 'pin-btn-active' : ''}`}
@@ -1203,13 +1155,6 @@ export function TripListPage() {
                   </div>
                 )}
               </div>
-              {/* Show ad after every 3rd trip card for free users */}
-              {index === 2 && shouldShowAd({ isLoggedIn: !!user, isPremium: user?.isPremium }) && (
-                <AdBanner
-                  slot={{ id: 'trip-list-1', type: 'native', position: 'list-inline' }}
-                  className="trip-list-ad"
-                />
-              )}
             </div>
           ))}
         </div>
@@ -1222,14 +1167,6 @@ export function TripListPage() {
         />
       )}
 
-      {/* Compare selection bar */}
-      {compareMode && (
-        <CompareSelectionBar
-          selectedTrips={selectedForCompare}
-          onRemove={(tripId) => setSelectedForCompare(prev => prev.filter(t => t.id !== tripId))}
-          onClear={clearCompareSelection}
-        />
-      )}
     </div>
   )
 }

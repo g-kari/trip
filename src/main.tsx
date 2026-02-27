@@ -15,16 +15,11 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m
 const ContactPage = lazy(() => import('./pages/ContactPage').then(m => ({ default: m.ContactPage })))
 const SharedTripPage = lazy(() => import('./pages/SharedTripPage').then(m => ({ default: m.SharedTripPage })))
 const InviteAcceptPage = lazy(() => import('./pages/InviteAcceptPage').then(m => ({ default: m.InviteAcceptPage })))
-const EmbedPage = lazy(() => import('./pages/EmbedPage').then(m => ({ default: m.EmbedPage })))
 const TripListPage = lazy(() => import('./pages/TripListPage').then(m => ({ default: m.TripListPage })))
 const TripViewPage = lazy(() => import('./pages/TripViewPage').then(m => ({ default: m.TripViewPage })))
 const TripEditPage = lazy(() => import('./pages/TripEditPage').then(m => ({ default: m.TripEditPage })))
 const AlbumPage = lazy(() => import('./pages/AlbumPage').then(m => ({ default: m.AlbumPage })))
 const TemplatesPage = lazy(() => import('./pages/TemplatesPage').then(m => ({ default: m.TemplatesPage })))
-const GalleryPage = lazy(() => import('./pages/GalleryPage').then(m => ({ default: m.GalleryPage })))
-const GalleryDetailPage = lazy(() => import('./pages/GalleryDetailPage').then(m => ({ default: m.GalleryDetailPage })))
-const SavedTripsPage = lazy(() => import('./pages/SavedTripsPage').then(m => ({ default: m.SavedTripsPage })))
-const ComparePage = lazy(() => import('./pages/ComparePage').then(m => ({ default: m.ComparePage })))
 const StatsPage = lazy(() => import('./pages/StatsPage').then(m => ({ default: m.StatsPage })))
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
 const FeedbackListPage = lazy(() => import('./pages/FeedbackListPage').then(m => ({ default: m.FeedbackListPage })))
@@ -58,7 +53,6 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/s/:token" element={<SharedTripPage />} />
               <Route path="/invite/:token" element={<InviteAcceptPage />} />
-              <Route path="/embed/:id" element={<EmbedPage />} />
 
               {/* メインレイアウト配下のページ */}
               <Route element={<Layout />}>
@@ -67,10 +61,6 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/trips/:id/edit" element={<TripEditPage />} />
                 <Route path="/trips/:id/album" element={<AlbumPage />} />
                 <Route path="/templates" element={<TemplatesPage />} />
-                <Route path="/gallery" element={<GalleryPage />} />
-                <Route path="/gallery/saved" element={<SavedTripsPage />} />
-                <Route path="/gallery/:id" element={<GalleryDetailPage />} />
-                <Route path="/compare/:groupId" element={<ComparePage />} />
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/feedback" element={<FeedbackListPage />} />

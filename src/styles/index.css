@@ -45,9 +45,7 @@
 @import './components/offline.css';
 @import './components/error-boundary.css';
 @import './components/print.css';
-@import './components/embed.css';
 @import './components/weather.css';
-@import './components/ads.css';
 @import './components/purchase.css';
 @import './components/spot-suggestions.css';
 @import './components/travel-mode.css';
@@ -69,9 +67,6 @@
 @import './pages/feedback.css';
 @import './pages/profile.css';
 @import './pages/invite.css';
-@import './pages/embed.css';
-@import './pages/gallery.css';
-@import './pages/compare.css';
 
 /* Responsive - must be last */
 @import './base/responsive.css';
