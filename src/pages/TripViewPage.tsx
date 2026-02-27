@@ -152,6 +152,8 @@ export function TripViewPage() {
   const [uploadingDayPhoto, setUploadingDayPhoto] = useState<string | null>(null)
   const [uploadingDayPhotoCount, setUploadingDayPhotoCount] = useState<number>(0)
   const dayPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const [uploadingItemPhoto, setUploadingItemPhoto] = useState<string | null>(null)
+  const itemPhotoInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
   // Feedback state
   const [feedbackList, setFeedbackList] = useState<TripFeedback[]>([])
   const [feedbackStats, setFeedbackStats] = useState<FeedbackStats>({ count: 0, averageRating: 0 })
@@ -168,7 +170,7 @@ export function TripViewPage() {
   const [showReminderModal, setShowReminderModal] = useState(false)
   // Check-in state
   const [checkingInItem, setCheckingInItem] = useState<string | null>(null)
-  const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const dayRefs = useRef<Map<string, HTMLElement>>(new Map())
 
   // Travel mode hook
   const { isTraveling, todayDayId, canCheckIn } = useTravelMode(trip)
@@ -618,6 +620,42 @@ export function TripViewPage() {
     }
   }
 
+  // Upload photo for item
+  async function uploadItemPhoto(itemId: string, file: File) {
+    if (!trip || !user) return
+    if (!file.type.startsWith('image/')) {
+      showError('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showError('ファイルサイズは5MB以下にしてください')
+      return
+    }
+
+    setUploadingItemPhoto(itemId)
+    try {
+      const res = await fetch(`/api/trips/${trip.id}/items/${itemId}/photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) {
+        if (res.status === 401) {
+          showError('ログインが必要です')
+          return
+        }
+        throw new Error('Upload failed')
+      }
+      showSuccess('写真をアップロードしました')
+      if (id) fetchTrip(id)
+    } catch (err) {
+      console.error('Failed to upload photo:', err)
+      showError('写真のアップロードに失敗しました')
+    } finally {
+      setUploadingItemPhoto(null)
+    }
+  }
+
   // Check if user can delete item photo (owner can always delete, or uploader can delete their own)
   function canDeleteItemPhoto(item: Item, photo?: ItemPhoto): boolean {
     if (!user) return false
@@ -765,15 +803,12 @@ export function TripViewPage() {
 
   return (
     <>
-      <div
-        className={`hero print-hero ${trip.coverImageUrl ? 'hero-with-cover' : ''}`}
-        style={{
-          padding: 'var(--space-7) 0 var(--space-5)',
-          ...(trip.coverImageUrl ? { backgroundImage: `url(${trip.coverImageUrl})` } : {}),
-        }}
+      <section
+        className={`hero ${trip.coverImageUrl ? 'hero-with-cover' : ''}`}
+        style={trip.coverImageUrl ? { backgroundImage: `url(${trip.coverImageUrl})` } : undefined}
       >
         <h1 className="hero-title">{trip.title}</h1>
-        {trip.startDate && trip.endDate && (
+        {(trip.startDate || trip.endDate) && (
           <p className="hero-subtitle">
             {formatDateRange(trip.startDate, trip.endDate)}
           </p>
@@ -782,6 +817,15 @@ export function TripViewPage() {
           startDate={trip.startDate}
           endDate={trip.endDate}
         />
+        {shareToken && (
+          <div className="hero-share-section no-print">
+            <p className="share-section-title">この旅程を共有</p>
+            <ShareButtons
+              url={`${window.location.origin}/s/${shareToken}`}
+              title={trip.title}
+            />
+          </div>
+        )}
         <div className="hero-actions-row no-print">
           {isOwner && (
             <>
@@ -809,20 +853,20 @@ export function TripViewPage() {
                 <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); printTrip() }}>
                   <PrintIcon size={14} /> 印刷
                 </button>
+                <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); exportCalendar() }}>
+                  <DownloadIcon size={14} /> カレンダー
+                </button>
                 {user && (
                   <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); duplicateTrip() }}>
                     <CopyIcon size={14} /> 複製
                   </button>
                 )}
-                <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); setShowReminderModal(true) }}>
-                  <BellIcon size={14} /> リマインダー
-                </button>
                 {isOwner && (
                   <>
-                    <hr className="more-menu-divider" />
-                    <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); exportCalendar() }}>
-                      <DownloadIcon size={14} /> カレンダー
+                    <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); setShowReminderModal(true) }}>
+                      <BellIcon size={14} /> リマインダー
                     </button>
+                    <hr className="more-menu-divider" />
                     <button className="more-menu-item" onClick={() => { setShowExportDropdown(false); exportData('json') }}>
                       <DownloadIcon size={14} /> JSON形式
                     </button>
@@ -835,7 +879,7 @@ export function TripViewPage() {
             )}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Map section */}
       <MapEmbed items={trip.items || []} />
@@ -867,7 +911,7 @@ export function TripViewPage() {
             const items = getItemsForDay(day.id)
             const isToday = isDayToday(day.date)
             return (
-              <div
+              <section
                 key={day.id}
                 className={`day-section ${isToday ? 'is-today' : ''}`}
                 ref={(el) => { if (el) dayRefs.current.set(day.id, el) }}
@@ -961,6 +1005,36 @@ export function TripViewPage() {
                             ))}
                           </div>
                         )}
+                        {/* Photo upload for logged-in users */}
+                        {user && (
+                          <div className="photo-upload-section no-print">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              style={{ display: 'none' }}
+                              ref={(el) => {
+                                if (el) itemPhotoInputRefs.current.set(item.id, el)
+                              }}
+                              onChange={(e) => {
+                                const files = e.target.files
+                                if (files) {
+                                  for (const file of Array.from(files)) {
+                                    uploadItemPhoto(item.id, file)
+                                  }
+                                }
+                                e.target.value = ''
+                              }}
+                            />
+                            <button
+                              className="btn-text btn-small"
+                              onClick={() => itemPhotoInputRefs.current.get(item.id)?.click()}
+                              disabled={uploadingItemPhoto === item.id}
+                            >
+                              {uploadingItemPhoto === item.id ? 'アップロード中...' : '📷 写真を追加'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                       </div>
                     </div>
@@ -1030,7 +1104,7 @@ export function TripViewPage() {
                     )}
                   </div>
                 )}
-              </div>
+              </section>
             )
           })
       )}

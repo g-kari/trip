@@ -17,7 +17,7 @@ import { CountdownWidget } from '../components/CountdownWidget'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { CollapsibleSection } from '../components/CollapsibleSection'
-import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon } from '../components/Icons'
+import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon, ImageIcon } from '../components/Icons'
 import { FallbackImage } from '../components/FallbackImage'
 
 // Day weather component
@@ -676,6 +676,11 @@ export function SharedTripPage() {
             />
           </div>
           <div className="hero-actions-row no-print">
+            {user && trip && (
+              <Link to={`/trips/${trip.id}/album`} className="btn-icon" title="アルバム">
+                <ImageIcon size={16} />
+              </Link>
+            )}
             <div className="more-menu-wrapper" ref={exportDropdownRef}>
               <button
                 className="btn-icon"
@@ -721,9 +726,14 @@ export function SharedTripPage() {
               </div>
 
               {dayItems.length === 0 ? (
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-faint)' }}>
-                  まだ予定がありません
-                </p>
+                <div className="timeline-item timeline-item-empty">
+                  <span className="timeline-time">—</span>
+                  <div className="timeline-content">
+                    <span className="timeline-title" style={{ color: 'var(--color-text-faint)' }}>
+                      予定がありません
+                    </span>
+                  </div>
+                </div>
               ) : (
                 dayItems.map((item) => (
                   <div key={item.id} className="timeline-item">
