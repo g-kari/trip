@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
-import type { Trip, TripTheme } from '../types'
+import type { Trip, TripTheme, ColorLabel } from '../types'
 import { formatDateRange } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
@@ -11,6 +11,7 @@ import { CompareSelectionBar } from '../components/CompareSelectionBar'
 import { AdBanner } from '../components/AdBanner'
 import { shouldShowAd } from '../utils/adUtils'
 import { CountdownWidget } from '../components/CountdownWidget'
+import { ColorLabelFilter, ColorLabelIndicator } from '../components/ColorLabelPicker'
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
@@ -45,9 +46,10 @@ export function TripListPage() {
   const [filterEndDate, setFilterEndDate] = useState(searchParams.get('dateTo') || '')
   const [filterTheme, setFilterTheme] = useState<ThemeFilter>((searchParams.get('theme') as ThemeFilter) || '')
   const [filterTag, setFilterTag] = useState(searchParams.get('tag') || '')
+  const [filterColor, setFilterColor] = useState<ColorLabel | ''>((searchParams.get('color') as ColorLabel | '') || '')
   const [sortOrder, setSortOrder] = useState<SortOption>((searchParams.get('sort') as SortOption) || 'created_desc')
   const [showFilters, setShowFilters] = useState(
-    !!(searchParams.get('dateFrom') || searchParams.get('dateTo') || searchParams.get('theme') || searchParams.get('sort') || searchParams.get('tag'))
+    !!(searchParams.get('dateFrom') || searchParams.get('dateTo') || searchParams.get('theme') || searchParams.get('sort') || searchParams.get('tag') || searchParams.get('color'))
   )
 
   // Available tags state
@@ -117,13 +119,14 @@ export function TripListPage() {
     if (searchQuery.trim()) params.set('q', searchQuery.trim())
     if (filterTheme) params.set('theme', filterTheme)
     if (filterTag) params.set('tag', filterTag)
+    if (filterColor) params.set('color', filterColor)
     if (filterStartDate) params.set('dateFrom', filterStartDate)
     if (filterEndDate) params.set('dateTo', filterEndDate)
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
     params.set('archived', archiveTab === 'archived' ? '1' : '0')
     const queryString = params.toString()
     return queryString ? `/api/trips?${queryString}` : '/api/trips'
-  }, [searchQuery, filterTheme, filterTag, filterStartDate, filterEndDate, sortOrder, archiveTab])
+  }, [searchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder, archiveTab])
 
   const fetchTrips = useCallback(async () => {
     try {
@@ -171,12 +174,13 @@ export function TripListPage() {
     if (searchQuery.trim()) params.set('q', searchQuery.trim())
     if (filterTheme) params.set('theme', filterTheme)
     if (filterTag) params.set('tag', filterTag)
+    if (filterColor) params.set('color', filterColor)
     if (filterStartDate) params.set('dateFrom', filterStartDate)
     if (filterEndDate) params.set('dateTo', filterEndDate)
     if (sortOrder !== 'created_desc') params.set('sort', sortOrder)
     if (archiveTab === 'archived') params.set('archived', '1')
     setSearchParams(params, { replace: true })
-  }, [searchQuery, filterTheme, filterTag, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
+  }, [searchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder, archiveTab, setSearchParams])
 
   // Debounced search to avoid too many API calls
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -193,14 +197,15 @@ export function TripListPage() {
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    return !!(searchQuery.trim() || filterTheme || filterTag || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
-  }, [searchQuery, filterTheme, filterTag, filterStartDate, filterEndDate, sortOrder])
+    return !!(searchQuery.trim() || filterTheme || filterTag || filterColor || filterStartDate || filterEndDate || sortOrder !== 'created_desc')
+  }, [searchQuery, filterTheme, filterTag, filterColor, filterStartDate, filterEndDate, sortOrder])
 
   // Clear all filters
   const clearFilters = useCallback(() => {
     setSearchQuery('')
     setFilterTheme('')
     setFilterTag('')
+    setFilterColor('')
     setFilterStartDate('')
     setFilterEndDate('')
     setSortOrder('created_desc')
@@ -869,6 +874,14 @@ export function TripListPage() {
                 </button>
               </div>
             </div>
+            {/* Color label filter */}
+            <div className="filter-row">
+              <label className="filter-label">カラー</label>
+              <ColorLabelFilter
+                value={filterColor}
+                onChange={setFilterColor}
+              />
+            </div>
             {/* Tag filter */}
             {availableTags.length > 0 && (
               <div className="filter-row">
@@ -960,6 +973,12 @@ export function TripListPage() {
                 <button type="button" onClick={() => setFilterTag('')} className="filter-tag-remove">x</button>
               </span>
             )}
+            {filterColor && (
+              <span className="filter-tag filter-tag-color">
+                <span className={`filter-tag-color-dot filter-tag-color-dot-${filterColor}`} />
+                <button type="button" onClick={() => setFilterColor('')} className="filter-tag-remove">x</button>
+              </span>
+            )}
             {(filterStartDate || filterEndDate) && (
               <span className="filter-tag">
                 {filterStartDate || '...'} 〜 {filterEndDate || '...'}
@@ -1015,6 +1034,7 @@ export function TripListPage() {
                 onClick={() => navigate(`/trips/${trip.id}`)}
                 style={{ cursor: 'pointer' }}
               >
+                <ColorLabelIndicator color={trip.colorLabel} />
                 <div className="trip-card-header">
                   <div className="trip-card-title-row">
                     {trip.pinned && (

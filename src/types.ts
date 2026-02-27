@@ -11,6 +11,22 @@ export type User = {
 // Theme types
 export type TripTheme = 'quiet' | 'photo' | 'retro'
 
+// Color label types for trip categorization
+export const COLOR_LABELS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'] as const
+export type ColorLabel = typeof COLOR_LABELS[number]
+
+// Color label display names (Japanese)
+export const COLOR_LABEL_NAMES: Record<ColorLabel, string> = {
+  red: '赤',
+  orange: 'オレンジ',
+  yellow: '黄',
+  green: '緑',
+  blue: '青',
+  purple: '紫',
+  pink: 'ピンク',
+  gray: 'グレー',
+}
+
 // Cost categories for budget management
 export const COST_CATEGORIES = [
   '交通費',
@@ -45,6 +61,7 @@ export type Trip = {
   theme: TripTheme
   coverImageUrl: string | null
   budget: number | null
+  colorLabel: ColorLabel | null
   isArchived: boolean
   pinned: boolean
   createdAt: string

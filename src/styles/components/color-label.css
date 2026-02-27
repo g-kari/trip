@@ -1,0 +1,254 @@
+/* ========================================
+   Color Label Styles
+   ======================================== */
+
+/* Color definitions */
+:root {
+  --color-label-red: #e53935;
+  --color-label-orange: #fb8c00;
+  --color-label-yellow: #fdd835;
+  --color-label-green: #43a047;
+  --color-label-blue: #1e88e5;
+  --color-label-purple: #8e24aa;
+  --color-label-pink: #d81b60;
+  --color-label-gray: #757575;
+}
+
+/* ========================================
+   Color Label Picker (for edit page)
+   ======================================== */
+
+.color-label-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.color-label-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+}
+
+.color-label-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.color-label-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.color-label-btn.active {
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-text);
+}
+
+.color-label-btn-none {
+  background: var(--color-bg);
+  border: 2px dashed var(--color-border);
+}
+
+.color-label-btn-none.active {
+  border-style: solid;
+  border-color: var(--color-text);
+}
+
+.color-label-none-icon {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.color-label-btn-red { background: var(--color-label-red); }
+.color-label-btn-orange { background: var(--color-label-orange); }
+.color-label-btn-yellow { background: var(--color-label-yellow); }
+.color-label-btn-green { background: var(--color-label-green); }
+.color-label-btn-blue { background: var(--color-label-blue); }
+.color-label-btn-purple { background: var(--color-label-purple); }
+.color-label-btn-pink { background: var(--color-label-pink); }
+.color-label-btn-gray { background: var(--color-label-gray); }
+
+.color-label-check {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Yellow needs dark check mark */
+.color-label-btn-yellow .color-label-check {
+  color: #333;
+  text-shadow: none;
+}
+
+/* ========================================
+   Color Label Filter (for list page)
+   ======================================== */
+
+.color-label-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.color-filter-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  padding: 0;
+}
+
+.color-filter-btn:hover {
+  transform: scale(1.15);
+}
+
+.color-filter-btn.active {
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-text);
+}
+
+.color-filter-btn-all {
+  width: auto;
+  min-width: 32px;
+  padding: 0 var(--space-1);
+  border-radius: 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.color-filter-btn-all.active {
+  background: var(--color-text);
+  border-color: var(--color-text);
+  box-shadow: none;
+}
+
+.color-filter-all-text {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.color-filter-btn-all.active .color-filter-all-text {
+  color: var(--color-bg);
+}
+
+.color-filter-btn-red { background: var(--color-label-red); }
+.color-filter-btn-orange { background: var(--color-label-orange); }
+.color-filter-btn-yellow { background: var(--color-label-yellow); }
+.color-filter-btn-green { background: var(--color-label-green); }
+.color-filter-btn-blue { background: var(--color-label-blue); }
+.color-filter-btn-purple { background: var(--color-label-purple); }
+.color-filter-btn-pink { background: var(--color-label-pink); }
+.color-filter-btn-gray { background: var(--color-label-gray); }
+
+/* ========================================
+   Color Label Indicator (for trip cards)
+   ======================================== */
+
+.color-label-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 10px 0 0 10px;
+}
+
+.color-label-indicator-red { background: var(--color-label-red); }
+.color-label-indicator-orange { background: var(--color-label-orange); }
+.color-label-indicator-yellow { background: var(--color-label-yellow); }
+.color-label-indicator-green { background: var(--color-label-green); }
+.color-label-indicator-blue { background: var(--color-label-blue); }
+.color-label-indicator-purple { background: var(--color-label-purple); }
+.color-label-indicator-pink { background: var(--color-label-pink); }
+.color-label-indicator-gray { background: var(--color-label-gray); }
+
+/* Trip card needs relative positioning for indicator */
+.trip-card {
+  position: relative;
+}
+
+/* Color label section in edit form */
+.color-label-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.color-label-section-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* ========================================
+   Dark Mode
+   ======================================== */
+
+[data-theme="dark"] .color-label-btn.active {
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-text);
+}
+
+[data-theme="dark"] .color-filter-btn.active {
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-text);
+}
+
+[data-theme="dark"] .color-label-btn-none {
+  border-color: var(--color-border);
+}
+
+/* ========================================
+   Filter Tag Color Dot (for active filters summary)
+   ======================================== */
+
+.filter-tag-color {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.filter-tag-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.filter-tag-color-dot-red { background: var(--color-label-red); }
+.filter-tag-color-dot-orange { background: var(--color-label-orange); }
+.filter-tag-color-dot-yellow { background: var(--color-label-yellow); }
+.filter-tag-color-dot-green { background: var(--color-label-green); }
+.filter-tag-color-dot-blue { background: var(--color-label-blue); }
+.filter-tag-color-dot-purple { background: var(--color-label-purple); }
+.filter-tag-color-dot-pink { background: var(--color-label-pink); }
+.filter-tag-color-dot-gray { background: var(--color-label-gray); }
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 480px) {
+  .color-label-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .color-filter-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  .color-filter-btn-all {
+    min-width: 36px;
+  }
+}

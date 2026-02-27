@@ -331,8 +331,9 @@ app.get('/api/trips', async (c) => {
   const sort = url.searchParams.get('sort') || 'created_desc';
   const archived = url.searchParams.get('archived') || '0'; // '0' = active, '1' = archived, 'all' = all
   const tag = url.searchParams.get('tag') || ''; // Tag filter
+  const color = url.searchParams.get('color') || ''; // Color label filter
 
-  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, is_archived as isArchived, pinned, created_at as createdAt FROM trips';
+  let query = 'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, color_label as colorLabel, is_archived as isArchived, pinned, created_at as createdAt FROM trips';
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
@@ -368,6 +369,13 @@ app.get('/api/trips', async (c) => {
   if (tag) {
     conditions.push('id IN (SELECT trip_id FROM trip_tags WHERE tag = ?)');
     params.push(tag);
+  }
+
+  // Color label filter
+  const validColors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'];
+  if (color && validColors.includes(color)) {
+    conditions.push('color_label = ?');
+    params.push(color);
   }
 
   // Date range filter (using start_date for dateFrom, end_date for dateTo)
@@ -414,6 +422,7 @@ app.get('/api/trips', async (c) => {
     theme: string | null;
     coverImageUrl: string | null;
     budget: number | null;
+    colorLabel: string | null;
     isArchived: number | null;
     pinned: number | null;
     createdAt: string;
@@ -654,7 +663,7 @@ app.get('/api/trips/:id', async (c) => {
   const shareToken = c.req.query('token');
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, color_label as colorLabel, user_id as userId, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
   ).bind(id).first<{
     id: string;
     title: string;
@@ -663,6 +672,7 @@ app.get('/api/trips/:id', async (c) => {
     theme: string | null;
     coverImageUrl: string | null;
     budget: number | null;
+    colorLabel: string | null;
     userId: string | null;
     createdAt: string;
     updatedAt: string;
@@ -849,7 +859,7 @@ app.post('/api/trips', async (c) => {
 app.put('/api/trips/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
-  const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string; budget?: number | null }>();
+  const body = await c.req.json<{ title?: string; startDate?: string; endDate?: string; theme?: string; coverImageUrl?: string; budget?: number | null; colorLabel?: string | null }>();
 
   const existing = await c.env.DB.prepare(
     'SELECT id, user_id as userId FROM trips WHERE id = ?'
@@ -872,6 +882,12 @@ app.put('/api/trips/:id', async (c) => {
   // Handle budget - allow explicit null to clear it
   const budgetValue = body.budget === null ? null : (body.budget ?? undefined);
 
+  // Validate and handle color label - allow explicit null to clear it
+  const validColorLabels = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'];
+  const colorLabelValue = body.colorLabel === null
+    ? null
+    : (body.colorLabel && validColorLabels.includes(body.colorLabel) ? body.colorLabel : undefined);
+
   await c.env.DB.prepare(
     `UPDATE trips SET
       title = COALESCE(?, title),
@@ -880,6 +896,7 @@ app.put('/api/trips/:id', async (c) => {
       theme = COALESCE(?, theme),
       cover_image_url = COALESCE(?, cover_image_url),
       budget = CASE WHEN ?1 = 1 THEN ?2 ELSE COALESCE(?2, budget) END,
+      color_label = CASE WHEN ?3 = 1 THEN ?4 ELSE COALESCE(?4, color_label) END,
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?`
   ).bind(
@@ -890,11 +907,13 @@ app.put('/api/trips/:id', async (c) => {
     body.coverImageUrl ?? null,
     body.budget === null ? 1 : 0,
     budgetValue === undefined ? null : budgetValue,
+    body.colorLabel === null ? 1 : 0,
+    colorLabelValue === undefined ? null : colorLabelValue,
     id
   ).run();
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, color_label as colorLabel, created_at as createdAt, updated_at as updatedAt FROM trips WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ trip });
@@ -991,7 +1010,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
 
   // Get the original trip
   const original = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, color_label as colorLabel, user_id as userId FROM trips WHERE id = ?'
   ).bind(id).first<{
     id: string;
     title: string;
@@ -1000,6 +1019,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
     theme: string | null;
     coverImageUrl: string | null;
     budget: number | null;
+    colorLabel: string | null;
     userId: string | null;
   }>();
 
@@ -1024,8 +1044,8 @@ app.post('/api/trips/:id/duplicate', async (c) => {
   const newTitle = `${original.title} (コピー)`;
 
   await c.env.DB.prepare(
-    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(newTripId, newTitle, original.startDate, original.endDate, original.theme, original.coverImageUrl, original.budget, user.id).run();
+    'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, color_label, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(newTripId, newTitle, original.startDate, original.endDate, original.theme, original.coverImageUrl, original.budget, original.colorLabel, user.id).run();
 
   // Copy days (including notes and photos for owner's trips)
   const { results: days } = await c.env.DB.prepare(
@@ -1633,7 +1653,7 @@ app.get('/api/shared/:token', async (c) => {
   }
 
   const trip = await c.env.DB.prepare(
-    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, user_id as userId FROM trips WHERE id = ?'
+    'SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, budget, color_label as colorLabel, user_id as userId FROM trips WHERE id = ?'
   ).bind(share.trip_id).first<{
     id: string;
     title: string;
@@ -1642,6 +1662,7 @@ app.get('/api/shared/:token', async (c) => {
     theme: string | null;
     coverImageUrl: string | null;
     budget: number | null;
+    colorLabel: string | null;
     userId: string | null;
   }>();
 

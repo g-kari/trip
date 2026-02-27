@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import type { Trip, Day, Item, TripTheme, CostCategory, ItemTemplate } from '../types'
+import type { Trip, Day, Item, TripTheme, CostCategory, ItemTemplate, ColorLabel } from '../types'
 import { COST_CATEGORIES, SUGGESTED_TAGS } from '../types'
 import { formatDateRange, formatCost, formatDayLabel, generateMapUrl } from '../utils'
 import { useDebounce } from '../hooks/useDebounce'
@@ -23,6 +23,7 @@ import { PublishModal } from '../components/PublishModal'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
+import { ColorLabelPicker } from '../components/ColorLabelPicker'
 import type { TripMember } from '../types'
 
 // Active editor type for collaborative editing
@@ -604,6 +605,7 @@ export function TripEditPage() {
   const [editTripEndDate, setEditTripEndDate] = useState('')
   const [editTripTheme, setEditTripTheme] = useState<TripTheme>('quiet')
   const [editTripBudget, setEditTripBudget] = useState('')
+  const [editTripColorLabel, setEditTripColorLabel] = useState<ColorLabel | null>(null)
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
@@ -711,6 +713,7 @@ export function TripEditPage() {
         setEditTripEndDate(data.trip.endDate || '')
         setEditTripTheme(data.trip.theme || 'quiet')
         setEditTripBudget(data.trip.budget?.toString() || '')
+        setEditTripColorLabel(data.trip.colorLabel || null)
         initialLoadComplete.current = true
       }
     } catch (err) {
@@ -922,7 +925,7 @@ export function TripEditPage() {
   }
 
   // Auto-save trip function
-  const saveTrip = useCallback(async (title: string, startDate: string, endDate: string, theme: TripTheme, budget: string) => {
+  const saveTrip = useCallback(async (title: string, startDate: string, endDate: string, theme: TripTheme, budget: string, colorLabel: ColorLabel | null) => {
     if (!trip || !title.trim()) return
 
     setSaving(true)
@@ -936,6 +939,7 @@ export function TripEditPage() {
           endDate: endDate || undefined,
           theme,
           budget: budget ? parseInt(budget, 10) : null,
+          colorLabel: colorLabel,
         }),
       })
       setLastSaved(new Date())
@@ -947,6 +951,7 @@ export function TripEditPage() {
         endDate: endDate || null,
         theme,
         budget: budget ? parseInt(budget, 10) : null,
+        colorLabel: colorLabel,
       } : null)
     } catch (err) {
       console.error('Failed to save trip:', err)
@@ -969,13 +974,14 @@ export function TripEditPage() {
       editTripStartDate === (trip.startDate || '') &&
       editTripEndDate === (trip.endDate || '') &&
       editTripTheme === (trip.theme || 'quiet') &&
-      editTripBudget === (trip.budget?.toString() || '')
+      editTripBudget === (trip.budget?.toString() || '') &&
+      editTripColorLabel === (trip.colorLabel || null)
     ) {
       return
     }
 
-    debouncedSaveTrip(editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, editTripBudget)
-  }, [editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, editTripBudget, debouncedSaveTrip, trip])
+    debouncedSaveTrip(editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, editTripBudget, editTripColorLabel)
+  }, [editTripTitle, editTripStartDate, editTripEndDate, editTripTheme, editTripBudget, editTripColorLabel, debouncedSaveTrip, trip])
 
   // Delete trip
   async function deleteTrip() {
@@ -1610,6 +1616,14 @@ export function TripEditPage() {
             >
               レトロ
             </button>
+          </div>
+          {/* Color label */}
+          <div className="color-label-section">
+            <span className="color-label-section-label">カラーラベル</span>
+            <ColorLabelPicker
+              value={editTripColorLabel}
+              onChange={setEditTripColorLabel}
+            />
           </div>
           {/* Budget input */}
           <div className="budget-input-section">
