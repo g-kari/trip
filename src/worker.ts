@@ -805,6 +805,29 @@ app.post('/api/trips', async (c) => {
     return c.json({ error: 'Title is required' }, 400);
   }
 
+  // Check if user has remaining trip slots
+  if (user) {
+    const userData = await c.env.DB.prepare(
+      'SELECT free_slots as freeSlots, purchased_slots as purchasedSlots FROM users WHERE id = ?'
+    ).bind(user.id).first<{ freeSlots: number; purchasedSlots: number }>();
+
+    if (userData) {
+      const totalSlots = userData.freeSlots + userData.purchasedSlots;
+      const usedSlots = await c.env.DB.prepare(
+        'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 0'
+      ).bind(user.id).first<{ count: number }>();
+
+      if (usedSlots && usedSlots.count >= totalSlots) {
+        return c.json({
+          error: '旅程枠が不足しています。プロフィールページから追加の枠を購入してください。',
+          code: 'SLOT_LIMIT_REACHED',
+          remainingSlots: 0,
+          totalSlots
+        }, 403);
+      }
+    }
+  }
+
   const id = generateId();
   const theme = body.theme === 'photo' ? 'photo' : 'quiet';
 
@@ -3543,6 +3566,27 @@ app.post('/api/trips/from-template/:templateId', async (c) => {
     return c.json({ error: 'ログインが必要です' }, 401);
   }
 
+  // Check if user has remaining trip slots
+  const userData = await c.env.DB.prepare(
+    'SELECT free_slots as freeSlots, purchased_slots as purchasedSlots FROM users WHERE id = ?'
+  ).bind(user.id).first<{ freeSlots: number; purchasedSlots: number }>();
+
+  if (userData) {
+    const totalSlots = userData.freeSlots + userData.purchasedSlots;
+    const usedSlots = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 0'
+    ).bind(user.id).first<{ count: number }>();
+
+    if (usedSlots && usedSlots.count >= totalSlots) {
+      return c.json({
+        error: '旅程枠が不足しています。プロフィールページから追加の枠を購入してください。',
+        code: 'SLOT_LIMIT_REACHED',
+        remainingSlots: 0,
+        totalSlots
+      }, 403);
+    }
+  }
+
   const body = await c.req.json<{
     title: string;
     startDate: string;
@@ -3974,6 +4018,27 @@ app.post('/api/trips/generate', async (c) => {
   // Require login for AI generation
   if (!user) {
     return c.json({ error: 'AI旅程生成にはログインが必要です' }, 401);
+  }
+
+  // Check if user has remaining trip slots
+  const userData = await c.env.DB.prepare(
+    'SELECT free_slots as freeSlots, purchased_slots as purchasedSlots FROM users WHERE id = ?'
+  ).bind(user.id).first<{ freeSlots: number; purchasedSlots: number }>();
+
+  if (userData) {
+    const totalSlots = userData.freeSlots + userData.purchasedSlots;
+    const usedSlots = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM trips WHERE user_id = ? AND is_archived = 0'
+    ).bind(user.id).first<{ count: number }>();
+
+    if (usedSlots && usedSlots.count >= totalSlots) {
+      return c.json({
+        error: '旅程枠が不足しています。プロフィールページから追加の枠を購入してください。',
+        code: 'SLOT_LIMIT_REACHED',
+        remainingSlots: 0,
+        totalSlots
+      }, 403);
+    }
   }
 
   const today = new Date().toISOString().split('T')[0];

@@ -273,7 +273,16 @@ export function TripListPage() {
           theme: newTripTheme,
         }),
       })
-      const data = (await res.json()) as { trip: Trip }
+      const data = (await res.json()) as { trip?: Trip; error?: string; code?: string }
+      if (!res.ok) {
+        if (data.code === 'SLOT_LIMIT_REACHED') {
+          showError('旅程枠が不足しています。プロフィールから追加の枠を購入してください。')
+          navigate('/profile')
+        } else {
+          showError(data.error || '旅程の作成に失敗しました')
+        }
+        return
+      }
       if (data.trip) {
         navigate(`/trips/${data.trip.id}/edit`)
       }
@@ -343,8 +352,13 @@ export function TripListPage() {
         })
       }
 
-      const data = (await res.json()) as { trip?: Trip; tripId?: string; error?: string; remaining?: number; limitReached?: boolean }
+      const data = (await res.json()) as { trip?: Trip; tripId?: string; error?: string; code?: string; remaining?: number; limitReached?: boolean }
       if (!res.ok) {
+        if (data.code === 'SLOT_LIMIT_REACHED') {
+          showError('旅程枠が不足しています。プロフィールから追加の枠を購入してください。')
+          navigate('/profile')
+          return
+        }
         setAiError(data.error || 'エラーが発生しました')
         if (data.limitReached) {
           setAiLimitReached(true)
@@ -375,9 +389,14 @@ export function TripListPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, startDate }),
       })
-      const data = (await res.json()) as { tripId?: string; error?: string }
+      const data = (await res.json()) as { tripId?: string; error?: string; code?: string }
 
       if (!res.ok) {
+        if (data.code === 'SLOT_LIMIT_REACHED') {
+          showError('旅程枠が不足しています。プロフィールから追加の枠を購入してください。')
+          navigate('/profile')
+          return
+        }
         showError(data.error || 'テンプレートからの作成に失敗しました')
         return
       }
