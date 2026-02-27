@@ -20,9 +20,8 @@ import { CollapsibleSection } from '../components/CollapsibleSection'
 import { SpotSuggestions } from '../components/SpotSuggestions'
 import { TripHistory } from '../components/TripHistory'
 import { MarkdownText } from '../components/MarkdownText'
-import { WeatherIcon } from '../components/WeatherIcon'
 import { FallbackImage } from '../components/FallbackImage'
-import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
+import { DayWeather } from '../components/DayWeather'
 import { ColorLabelPicker } from '../components/ColorLabelPicker'
 import type { TripMember } from '../types'
 
@@ -32,18 +31,6 @@ type ActiveEditor = {
   lastActiveAt: string
   userName: string | null
   avatarUrl: string | null
-}
-
-// Day weather component
-function DayWeather({ date, items }: { date: string; items: Item[] }) {
-  const location = getFirstLocationForDay(items)
-  const { weather, loading } = useWeather(location, date)
-
-  if (!location) {
-    return null
-  }
-
-  return <WeatherIcon weather={weather} loading={loading} size="medium" />
 }
 
 // Draggable item component using HTML5 Drag and Drop API

@@ -10,8 +10,7 @@ import { ShareButtons } from '../components/ShareButtons'
 import { MapEmbed } from '../components/MapEmbed'
 import { MarkdownText } from '../components/MarkdownText'
 import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
-import { WeatherIcon } from '../components/WeatherIcon'
-import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
+import { DayWeather } from '../components/DayWeather'
 import { TravelModeIndicator } from '../components/TravelModeIndicator'
 import { CountdownWidget } from '../components/CountdownWidget'
 import { SettlementSummary } from '../components/SettlementSummary'
@@ -20,18 +19,6 @@ import { CollapsibleSection } from '../components/CollapsibleSection'
 import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon, ImageIcon } from '../components/Icons'
 import { FallbackImage } from '../components/FallbackImage'
 import { useScrollReveal } from '../hooks/useScrollReveal'
-
-// Day weather component
-function DayWeather({ date, items }: { date: string; items: Item[] }) {
-  const location = getFirstLocationForDay(items)
-  const { weather, loading } = useWeather(location, date)
-
-  if (!location) {
-    return null
-  }
-
-  return <WeatherIcon weather={weather} loading={loading} size="medium" />
-}
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {

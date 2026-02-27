@@ -15,8 +15,7 @@ import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { EditIcon, ShareIcon, CopyIcon, PrintIcon, ImageIcon, BellIcon, MoreVerticalIcon, TrashIcon, DownloadIcon } from '../components/Icons'
 import { MarkdownText } from '../components/MarkdownText'
-import { WeatherIcon } from '../components/WeatherIcon'
-import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
+import { DayWeather } from '../components/DayWeather'
 import { TravelModeIndicator } from '../components/TravelModeIndicator'
 import { useTravelMode, formatCheckinTime } from '../hooks/useTravelMode'
 import { OptimizeButton } from '../components/OptimizeButton'
@@ -122,18 +121,6 @@ function StarRating({ rating, onRate, readonly = false }: {
 function formatFeedbackDate(dateStr: string): string {
   const date = new Date(dateStr)
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-}
-
-// Day weather component
-function DayWeather({ date, items }: { date: string; items: Item[] }) {
-  const location = getFirstLocationForDay(items)
-  const { weather, loading } = useWeather(location, date)
-
-  if (!location) {
-    return null
-  }
-
-  return <WeatherIcon weather={weather} loading={loading} size="medium" />
 }
 
 export function TripViewPage() {
