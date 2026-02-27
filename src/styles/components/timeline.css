@@ -34,7 +34,7 @@
 .timeline-item::after {
   content: '';
   position: absolute;
-  left: 67px;
+  left: 59px;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -59,7 +59,7 @@
 .timeline-item::before {
   content: '';
   position: absolute;
-  left: 64px;
+  left: 56px;
   top: 19px;
   width: 8px;
   height: 8px;
@@ -176,7 +176,7 @@
 }
 
 .timeline-content {
-  @apply flex flex-col gap-[var(--space-1)] pl-[var(--space-2)];
+  @apply flex flex-col gap-[var(--space-1)];
 }
 
 .timeline-title {
