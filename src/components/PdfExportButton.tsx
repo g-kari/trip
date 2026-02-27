@@ -8,6 +8,8 @@ import { DownloadIcon } from './Icons'
 type PdfExportButtonProps = {
   tripId: string
   tripTitle: string
+  asMenuItem?: boolean
+  onComplete?: () => void
 }
 
 // Format date for PDF display
@@ -98,7 +100,7 @@ function getTotalCost(items: Item[]): number {
   return items.reduce((sum, item) => sum + (item.cost || 0), 0)
 }
 
-export function PdfExportButton({ tripId, tripTitle }: PdfExportButtonProps) {
+export function PdfExportButton({ tripId, tripTitle, asMenuItem, onComplete }: PdfExportButtonProps) {
   const [generating, setGenerating] = useState(false)
 
   const generatePdf = async () => {
@@ -182,7 +184,20 @@ export function PdfExportButton({ tripId, tripTitle }: PdfExportButtonProps) {
       alert('PDFの生成に失敗しました')
     } finally {
       setGenerating(false)
+      onComplete?.()
     }
+  }
+
+  if (asMenuItem) {
+    return (
+      <button
+        className="more-menu-item"
+        onClick={generatePdf}
+        disabled={generating}
+      >
+        <DownloadIcon size={14} /> {generating ? 'PDF生成中…' : 'PDF出力'}
+      </button>
+    )
   }
 
   return (

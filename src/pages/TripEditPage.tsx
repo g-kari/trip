@@ -12,7 +12,7 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon, HistoryIcon, MoreVerticalIcon } from '../components/Icons'
 import { VoiceInputButton } from '../components/VoiceInputButton'
 import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
@@ -678,6 +678,21 @@ export function TripEditPage() {
 
   // History modal state
   const [showHistoryModal, setShowHistoryModal] = useState(false)
+
+  // More menu state
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showMoreMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showMoreMenu])
 
   // Embed modal state
   const [showEmbedModal, setShowEmbedModal] = useState(false)
@@ -1821,35 +1836,45 @@ export function TripEditPage() {
           <Link to={`/trips/${trip.id}`} className="btn-icon" title="プレビュー">
             <EyeIcon size={16} />
           </Link>
+          {currentUserRole === 'owner' && (
+            <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
+              <UsersIcon size={16} />
+            </button>
+          )}
           <button className="btn-icon" onClick={duplicateTrip} title="複製">
             <CopyIcon size={16} />
           </button>
-          <PdfExportButton tripId={trip.id} tripTitle={trip.title} />
-          <button className="btn-icon" onClick={() => setShowReminderModal(true)} title="リマインダー">
-            <BellIcon size={16} />
-          </button>
-          <button className="btn-icon" onClick={() => setShowEmbedModal(true)} title="埋め込み">
-            <CodeIcon size={16} />
-          </button>
-          <button className="btn-icon" onClick={() => setShowSaveAsTemplateModal(true)} title="テンプレートとして保存">
-            <BookmarkIcon size={16} />
-          </button>
-          {currentUserRole === 'owner' && (
-            <>
-              <button className="btn-icon" onClick={() => setShowPublishModal(true)} title="ギャラリーに公開">
-                <GlobeIcon size={16} />
-              </button>
-              <button className="btn-icon" onClick={() => setShowCollaboratorModal(true)} title="共同編集者">
-                <UsersIcon size={16} />
-              </button>
-            </>
-          )}
-          <button className="btn-icon" onClick={() => setShowHistoryModal(true)} title="変更履歴">
-            <HistoryIcon size={16} />
-          </button>
-          <button className="btn-icon btn-danger" onClick={deleteTrip} title="削除">
-            <TrashIcon size={16} />
-          </button>
+          <div className="more-menu-wrapper" ref={moreMenuRef}>
+            <button className="btn-icon" onClick={() => setShowMoreMenu(!showMoreMenu)} title="その他">
+              <MoreVerticalIcon size={16} />
+            </button>
+            {showMoreMenu && (
+              <div className="more-menu-dropdown">
+                <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowReminderModal(true) }}>
+                  <BellIcon size={14} /> リマインダー
+                </button>
+                <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowSaveAsTemplateModal(true) }}>
+                  <BookmarkIcon size={14} /> テンプレートとして保存
+                </button>
+                {currentUserRole === 'owner' && (
+                  <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowPublishModal(true) }}>
+                    <GlobeIcon size={14} /> ギャラリーに公開
+                  </button>
+                )}
+                <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowEmbedModal(true) }}>
+                  <CodeIcon size={14} /> 埋め込みコード
+                </button>
+                <button className="more-menu-item" onClick={() => { setShowMoreMenu(false); setShowHistoryModal(true) }}>
+                  <HistoryIcon size={14} /> 変更履歴
+                </button>
+                <PdfExportButton tripId={trip.id} tripTitle={trip.title} asMenuItem onComplete={() => setShowMoreMenu(false)} />
+                <hr className="more-menu-divider" />
+                <button className="more-menu-item more-menu-item-danger" onClick={() => { setShowMoreMenu(false); deleteTrip() }}>
+                  <TrashIcon size={14} /> 削除
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Active editors indicator */}

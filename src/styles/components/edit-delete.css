@@ -88,3 +88,43 @@
 .day-header .btn-text {
   @apply ml-auto;
 }
+
+/* More menu (submenu dropdown) */
+.more-menu-wrapper {
+  @apply relative;
+}
+
+.more-menu-dropdown {
+  @apply absolute top-full right-0 mt-[var(--space-1)] bg-bg-elevated border border-border rounded-m z-[100] overflow-hidden;
+  min-width: 180px;
+  animation: dropdown-fade-in var(--transition-fast) ease-out;
+}
+
+.more-menu-item {
+  @apply flex items-center gap-[var(--space-2)] w-full text-left text-[0.8125rem] text-text cursor-pointer;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  font-family: inherit;
+  transition: background-color var(--transition-fast);
+
+  &:hover {
+    @apply bg-bg;
+  }
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+.more-menu-item-danger {
+  @apply text-danger;
+
+  &:hover {
+    background-color: var(--color-warning-bg);
+  }
+}
+
+.more-menu-divider {
+  @apply border-t border-border-light m-0;
+}

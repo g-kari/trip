@@ -143,6 +143,25 @@
   letter-spacing: 0.02em;
 }
 
+/* Dark mode — use solid dark background instead of accent gradient */
+[data-color-mode="dark"] .travel-mode-banner {
+  background: linear-gradient(135deg, #2a3a2a 0%, #3a4a3a 100%);
+}
+[data-color-mode="dark"] .today-badge {
+  background: #3a4a3a;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .travel-mode-banner,
+  :root:not([data-color-mode]) .travel-mode-banner {
+    background: linear-gradient(135deg, #2a3a2a 0%, #3a4a3a 100%);
+  }
+  [data-color-mode="system"] .today-badge,
+  :root:not([data-color-mode]) .today-badge {
+    background: #3a4a3a;
+  }
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .travel-mode-banner {

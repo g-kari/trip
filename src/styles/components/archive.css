@@ -35,7 +35,7 @@
 
 /* Archive button on trip card */
 .archive-btn {
-  @apply mt-[var(--space-2)] pl-0 text-text-faint;
+  @apply mt-[var(--space-2)] text-text-faint;
 
   &:hover {
     @apply text-text-muted;
@@ -48,12 +48,12 @@
 
 /* Trip card actions container */
 .trip-card-actions {
-  @apply flex items-center gap-[var(--space-2)] mt-[var(--space-2)];
+  @apply flex items-center gap-[var(--space-1)] mt-[var(--space-2)] flex-wrap;
 }
 
 /* Duplicate button on trip card */
 .duplicate-btn {
-  @apply pl-0 text-text-faint;
+  @apply text-text-faint;
 
   &:hover {
     @apply text-text-muted;
@@ -70,7 +70,7 @@
 
 /* Pin button on trip card */
 .pin-btn {
-  @apply size-7 p-0
+  @apply size-8 p-0
          border-none bg-transparent
          text-text-faint cursor-pointer
          transition-colors duration-150;

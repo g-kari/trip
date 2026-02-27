@@ -7483,6 +7483,64 @@ app.get('/api/gallery', async (c) => {
   return c.json({ trips });
 });
 
+// Get user's saved trips (must be before :id route)
+app.get('/api/gallery/saved', async (c) => {
+  const user = c.get('user');
+
+  if (!user) {
+    return c.json({ error: 'ログインが必要です' }, 401);
+  }
+
+  const { results } = await c.env.DB.prepare(
+    `SELECT
+      t.id,
+      COALESCE(t.public_title, t.title) as title,
+      t.start_date as startDate,
+      t.end_date as endDate,
+      t.theme,
+      t.cover_image_url as coverImageUrl,
+      t.like_count as likeCount,
+      s.created_at as savedAt,
+      (SELECT COUNT(*) FROM days WHERE trip_id = t.id) as dayCount
+    FROM trip_saves s
+    JOIN trips t ON s.trip_id = t.id
+    WHERE s.user_id = ? AND t.is_public = 1
+    ORDER BY s.created_at DESC`
+  ).bind(user.id).all<{
+    id: string;
+    title: string;
+    startDate: string | null;
+    endDate: string | null;
+    theme: string | null;
+    coverImageUrl: string | null;
+    likeCount: number;
+    savedAt: string;
+    dayCount: number;
+  }>();
+
+  const trips = results.map(trip => ({
+    ...trip,
+    isLiked: false, // Will check below
+    isSaved: true, // All saved trips are saved by definition
+  }));
+
+  // Check which trips are also liked
+  if (trips.length > 0) {
+    const tripIds = trips.map(t => t.id);
+    const placeholders = tripIds.map(() => '?').join(',');
+    const { results: likes } = await c.env.DB.prepare(
+      `SELECT trip_id FROM trip_likes WHERE user_id = ? AND trip_id IN (${placeholders})`
+    ).bind(user.id, ...tripIds).all<{ trip_id: string }>();
+    const likedIds = new Set(likes.map(l => l.trip_id));
+
+    for (const trip of trips) {
+      trip.isLiked = likedIds.has(trip.id);
+    }
+  }
+
+  return c.json({ trips });
+});
+
 // Get public gallery trip detail (anonymized)
 app.get('/api/gallery/:id', async (c) => {
   const tripId = c.req.param('id');
@@ -7677,64 +7735,6 @@ app.post('/api/gallery/:id/save', async (c) => {
     ).bind(saveId, tripId, user.id).run();
     return c.json({ saved: true });
   }
-});
-
-// Get user's saved trips
-app.get('/api/gallery/saved', async (c) => {
-  const user = c.get('user');
-
-  if (!user) {
-    return c.json({ error: 'ログインが必要です' }, 401);
-  }
-
-  const { results } = await c.env.DB.prepare(
-    `SELECT
-      t.id,
-      COALESCE(t.public_title, t.title) as title,
-      t.start_date as startDate,
-      t.end_date as endDate,
-      t.theme,
-      t.cover_image_url as coverImageUrl,
-      t.like_count as likeCount,
-      s.created_at as savedAt,
-      (SELECT COUNT(*) FROM days WHERE trip_id = t.id) as dayCount
-    FROM trip_saves s
-    JOIN trips t ON s.trip_id = t.id
-    WHERE s.user_id = ? AND t.is_public = 1
-    ORDER BY s.created_at DESC`
-  ).bind(user.id).all<{
-    id: string;
-    title: string;
-    startDate: string | null;
-    endDate: string | null;
-    theme: string | null;
-    coverImageUrl: string | null;
-    likeCount: number;
-    savedAt: string;
-    dayCount: number;
-  }>();
-
-  const trips = results.map(trip => ({
-    ...trip,
-    isLiked: false, // Will check below
-    isSaved: true, // All saved trips are saved by definition
-  }));
-
-  // Check which trips are also liked
-  if (trips.length > 0) {
-    const tripIds = trips.map(t => t.id);
-    const placeholders = tripIds.map(() => '?').join(',');
-    const { results: likes } = await c.env.DB.prepare(
-      `SELECT trip_id FROM trip_likes WHERE user_id = ? AND trip_id IN (${placeholders})`
-    ).bind(user.id, ...tripIds).all<{ trip_id: string }>();
-    const likedIds = new Set(likes.map(l => l.trip_id));
-
-    for (const trip of trips) {
-      trip.isLiked = likedIds.has(trip.id);
-    }
-  }
-
-  return c.json({ trips });
 });
 
 // Use a public trip as template (create a copy)
