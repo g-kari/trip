@@ -13,6 +13,7 @@ import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
 import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon, GlobeIcon } from '../components/Icons'
+import { VoiceInputButton } from '../components/VoiceInputButton'
 import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
@@ -215,6 +216,10 @@ function DraggableItem({
               className="input"
               placeholder="タイトル"
               autoFocus
+            />
+            <VoiceInputButton
+              onResult={(transcript) => setEditItemTitle(transcript)}
+              disabled={savingItem}
             />
           </div>
           <div className="form-row">
@@ -1922,14 +1927,20 @@ export function TripEditPage() {
                 {/* Add item form */}
                 {showItemFormForDay === day.id ? (
                   <form className="inline-form no-print" onSubmit={(e) => createItem(e, day.id)}>
-                    <input
-                      type="text"
-                      placeholder="予定のタイトル"
-                      value={newItemTitle}
-                      onChange={(e) => setNewItemTitle(e.target.value)}
-                      className="input"
-                      autoFocus
-                    />
+                    <div className="input-with-voice">
+                      <input
+                        type="text"
+                        placeholder="予定のタイトル"
+                        value={newItemTitle}
+                        onChange={(e) => setNewItemTitle(e.target.value)}
+                        className="input"
+                        autoFocus
+                      />
+                      <VoiceInputButton
+                        onResult={(transcript) => setNewItemTitle(transcript)}
+                        disabled={creatingItem}
+                      />
+                    </div>
                     <div className="form-row">
                       <TimePicker
                         value={newItemTime}

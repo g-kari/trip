@@ -55,6 +55,7 @@
 @import './components/optimize.css';
 @import './components/qrcode.css';
 @import './components/countdown.css';
+@import './components/voice-input.css';
 
 /* Pages */
 @import './pages/login.css';
