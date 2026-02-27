@@ -2805,14 +2805,28 @@ app.get('/s/:token', async (c) => {
     return new Response('Not found', { status: 404 });
   }
 
-  // Format description
-  let description = '旅程で作成された旅行プラン';
+  // Fetch areas from items for richer description
+  const { results: areas } = await c.env.DB.prepare(
+    `SELECT DISTINCT i.area FROM items i
+     JOIN days d ON i.day_id = d.id
+     WHERE d.trip_id = ? AND i.area IS NOT NULL AND i.area != ''
+     LIMIT 5`
+  ).bind(share.trip_id).all<{ area: string }>();
+  const areaList = areas.map(a => a.area);
+
+  // Format description with day count and areas
+  const parts: string[] = [];
   if (trip.startDate && trip.endDate) {
     const start = new Date(trip.startDate);
     const end = new Date(trip.endDate);
+    const dayCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const formatDate = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
-    description = `${formatDate(start)} - ${formatDate(end)} の旅行プラン`;
+    parts.push(`${formatDate(start)} - ${formatDate(end)}（${dayCount}日間）`);
   }
+  if (areaList.length > 0) {
+    parts.push(areaList.slice(0, 3).join('・'));
+  }
+  const description = parts.length > 0 ? parts.join(' | ') : '旅程で作成された旅行プラン';
 
   const url = new URL(c.req.url);
   const pageUrl = url.toString();

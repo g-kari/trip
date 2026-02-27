@@ -249,21 +249,34 @@ app.get('/api/shared/:token/ogp.png', async (c) => {
     return c.json({ error: 'Trip not found' }, 404);
   }
 
-  // Format date range
+  // Format date range and day count
   let dateRange: string | undefined;
+  let dayCount: number | undefined;
   if (trip.startDate && trip.endDate) {
     const start = new Date(trip.startDate);
     const end = new Date(trip.endDate);
+    dayCount = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const formatDate = (d: Date) =>
       `${d.getMonth() + 1}/${d.getDate()}`;
     dateRange = `${formatDate(start)} - ${formatDate(end)}`;
   }
+
+  // Fetch areas for the subtitle
+  const { results: areas } = await c.env.DB.prepare(
+    `SELECT DISTINCT i.area FROM items i
+     JOIN days d ON i.day_id = d.id
+     WHERE d.trip_id = ? AND i.area IS NOT NULL AND i.area != ''
+     LIMIT 4`
+  ).bind(share.trip_id).all<{ area: string }>();
+  const subtitle = areas.length > 0 ? areas.map(a => a.area).join(' / ') : undefined;
 
   try {
     const ogpTheme = trip.theme === 'photo' ? 'photo' : trip.theme === 'retro' ? 'retro' : trip.theme === 'natural' ? 'natural' : 'quiet';
     const png = await generateOgpImage({
       title: trip.title,
       dateRange,
+      dayCount,
+      subtitle,
       theme: ogpTheme as 'quiet' | 'photo' | 'retro' | 'natural',
       coverImageUrl: trip.coverImageUrl,
     });

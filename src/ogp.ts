@@ -28,6 +28,8 @@ async function loadFont(): Promise<ArrayBuffer> {
 interface OgpOptions {
   title: string;
   dateRange?: string;
+  dayCount?: number;
+  subtitle?: string;
   theme: 'quiet' | 'photo' | 'retro' | 'natural';
   coverImageUrl?: string | null;
 }
@@ -37,68 +39,114 @@ export async function generateOgpImage(options: OgpOptions): Promise<Uint8Array>
 
   const fontData = await loadFont();
 
-  const { title, dateRange, theme, coverImageUrl } = options;
+  const { title, dateRange, dayCount, subtitle, theme, coverImageUrl } = options;
 
-  // Theme colors
+  // Theme colors with accent
   const getThemeColors = () => {
     switch (theme) {
       case 'photo':
-        return { bgColor: '#1a1a1a', textColor: '#ffffff', mutedColor: '#a0a0a0' };
+        return { bgColor: '#1a1a2e', textColor: '#f0f0f0', mutedColor: '#a0a0a0', accentColor: '#e94560' };
       case 'retro':
-        return { bgColor: '#f5f0e1', textColor: '#3d2e1f', mutedColor: '#6b5c4a' };
+        return { bgColor: '#f5f0e1', textColor: '#3d2e1f', mutedColor: '#6b5c4a', accentColor: '#c25d30' };
       case 'natural':
-        return { bgColor: '#f4f1eb', textColor: '#2d3a2d', mutedColor: '#6b7c6b' };
+        return { bgColor: '#f4f1eb', textColor: '#2d3a2d', mutedColor: '#6b7c6b', accentColor: '#5a7a4a' };
       default: // quiet
-        return { bgColor: '#f6f3ee', textColor: '#3d2e1f', mutedColor: '#8c7b6b' };
+        return { bgColor: '#f6f3ee', textColor: '#3d2e1f', mutedColor: '#8c7b6b', accentColor: '#3d2e1f' };
     }
   };
-  const { bgColor, textColor, mutedColor } = getThemeColors();
+  const { bgColor, textColor, mutedColor, accentColor } = getThemeColors();
+  const hasCover = !!coverImageUrl;
 
   // Truncate title if too long
   const displayTitle = title.length > 25 ? title.slice(0, 25) + '...' : title;
 
   // Build the element tree (using any to bypass satori's complex types)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const children: any[] = [
-    // Title
-    {
+  const children: any[] = [];
+
+  // Day count badge (top-right area)
+  if (dayCount) {
+    children.push({
       type: 'div',
       props: {
         style: {
-          fontSize: 56,
-          fontWeight: 600,
-          color: coverImageUrl ? '#ffffff' : textColor,
-          textAlign: 'center',
-          lineHeight: 1.4,
-          marginBottom: 24,
+          fontSize: 20,
+          color: hasCover ? '#ffffff' : accentColor,
+          letterSpacing: '0.05em',
+          marginBottom: 16,
         },
-        children: displayTitle,
+        children: `${dayCount}日間の旅`,
       },
-    },
-  ];
+    });
+  }
 
-  // Add date range if present
+  // Title
+  children.push({
+    type: 'div',
+    props: {
+      style: {
+        fontSize: 56,
+        fontWeight: 600,
+        color: hasCover ? '#ffffff' : textColor,
+        textAlign: 'center',
+        lineHeight: 1.4,
+        marginBottom: 16,
+      },
+      children: displayTitle,
+    },
+  });
+
+  // Date range
   if (dateRange) {
     children.push({
       type: 'div',
       props: {
         style: {
-          fontSize: 32,
-          color: coverImageUrl ? '#b0b0b0' : mutedColor,
-          marginBottom: 40,
+          fontSize: 28,
+          color: hasCover ? '#b0b0b0' : mutedColor,
+          marginBottom: 12,
         },
         children: dateRange,
       },
     });
   }
 
-  // Add branding
+  // Subtitle (areas)
+  if (subtitle) {
+    children.push({
+      type: 'div',
+      props: {
+        style: {
+          fontSize: 22,
+          color: hasCover ? '#909090' : mutedColor,
+          marginBottom: 24,
+          letterSpacing: '0.03em',
+        },
+        children: subtitle,
+      },
+    });
+  }
+
+  // Accent line
   children.push({
     type: 'div',
     props: {
       style: {
-        fontSize: 24,
-        color: coverImageUrl ? '#707070' : mutedColor,
+        width: 60,
+        height: 3,
+        backgroundColor: hasCover ? '#ffffff40' : accentColor,
+        marginBottom: 24,
+      },
+    },
+  });
+
+  // Branding
+  children.push({
+    type: 'div',
+    props: {
+      style: {
+        fontSize: 22,
+        color: hasCover ? '#707070' : mutedColor,
         letterSpacing: '0.15em',
         marginTop: 'auto',
       },
@@ -117,7 +165,7 @@ export async function generateOgpImage(options: OgpOptions): Promise<Uint8Array>
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: coverImageUrl ? '#1a1a1a' : bgColor,
+        backgroundColor: hasCover ? '#1a1a1a' : bgColor,
         padding: 60,
         fontFamily: 'Noto Sans JP',
       },
