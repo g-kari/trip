@@ -1,0 +1,93 @@
+/* ========================================
+   Theme: Natural (ナチュラル) — specific styles
+   Earth tones & outdoor, approachable aesthetic
+   ======================================== */
+
+/* Headings use rounded font */
+[data-theme="natural"] h1,
+[data-theme="natural"] h2,
+[data-theme="natural"] h3,
+[data-theme="natural"] h4,
+[data-theme="natural"] h5,
+[data-theme="natural"] h6,
+[data-theme="natural"] .hero-title,
+[data-theme="natural"] .day-label,
+[data-theme="natural"] .timeline-title {
+  font-family: var(--font-heading);
+}
+
+/* Hero title — slightly wider letter spacing */
+[data-theme="natural"] .hero-title {
+  letter-spacing: 0.04em;
+}
+
+/* Day label — medium weight */
+[data-theme="natural"] .day-label {
+  font-weight: 500;
+}
+
+/* Cover image — warm tone filter */
+[data-theme="natural"] .cover-image,
+[data-theme="natural"] .memory-photo,
+[data-theme="natural"] .day-photo {
+  filter: saturate(90%) brightness(102%);
+  transition: filter var(--transition-normal);
+}
+
+[data-theme="natural"] .cover-image:hover,
+[data-theme="natural"] .memory-photo:hover,
+[data-theme="natural"] .day-photo:hover {
+  filter: saturate(100%) brightness(105%);
+}
+
+/* Hero with cover image — earthy overlay */
+[data-theme="natural"] .hero-with-cover::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(45, 58, 45, 0.2),
+    rgba(45, 58, 45, 0.5)
+  );
+}
+
+/* Theme selector button */
+[data-theme="natural"] .theme-btn.active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+/* Cards with soft border */
+[data-theme="natural"] .trip-card,
+[data-theme="natural"] .create-form,
+[data-theme="natural"] .inline-form {
+  border: 1px solid var(--color-border);
+}
+
+/* Trip card hover */
+[data-theme="natural"] .trip-card:hover {
+  border-color: var(--color-accent);
+}
+
+/* Timeline items */
+[data-theme="natural"] .timeline-item {
+  border-color: var(--color-border-light);
+}
+
+/* Timeline dot — leaf green */
+[data-theme="natural"] .timeline-dot {
+  background-color: var(--color-accent);
+}
+
+/* Tags with natural styling */
+[data-theme="natural"] .trip-tag {
+  border: 1px solid var(--color-border);
+}
+
+/* Print styles */
+@media print {
+  [data-theme="natural"] .cover-image,
+  [data-theme="natural"] .memory-photo,
+  [data-theme="natural"] .day-photo {
+    filter: saturate(85%);
+  }
+}

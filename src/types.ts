@@ -9,7 +9,7 @@ export type User = {
 }
 
 // Theme types
-export type TripTheme = 'quiet' | 'photo' | 'retro'
+export type TripTheme = 'quiet' | 'photo' | 'retro' | 'natural'
 
 // Color label types for trip categorization
 export const COLOR_LABELS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'] as const

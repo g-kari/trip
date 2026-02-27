@@ -1620,6 +1620,13 @@ export function TripEditPage() {
             >
               レトロ
             </button>
+            <button
+              type="button"
+              className={`theme-btn ${editTripTheme === 'natural' ? 'active' : ''}`}
+              onClick={() => setEditTripTheme('natural')}
+            >
+              ナチュラル
+            </button>
           </div>
           {/* Color label */}
           <div className="color-label-section">

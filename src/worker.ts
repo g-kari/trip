@@ -360,7 +360,7 @@ app.get('/api/trips', async (c) => {
   }
 
   // Theme filter
-  if (theme === 'quiet' || theme === 'photo' || theme === 'retro') {
+  if (theme === 'quiet' || theme === 'photo' || theme === 'retro' || theme === 'natural') {
     conditions.push('theme = ?');
     params.push(theme);
   }
@@ -842,7 +842,7 @@ app.post('/api/trips', async (c) => {
   }
 
   const id = generateId();
-  const theme = body.theme === 'photo' ? 'photo' : body.theme === 'retro' ? 'retro' : 'quiet';
+  const theme = body.theme === 'photo' ? 'photo' : body.theme === 'retro' ? 'retro' : body.theme === 'natural' ? 'natural' : 'quiet';
 
   await c.env.DB.prepare(
     'INSERT INTO trips (id, title, start_date, end_date, theme, cover_image_url, budget, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -876,7 +876,7 @@ app.put('/api/trips/:id', async (c) => {
 
   // Validate theme if provided
   const theme = body.theme !== undefined
-    ? (body.theme === 'photo' ? 'photo' : body.theme === 'retro' ? 'retro' : 'quiet')
+    ? (body.theme === 'photo' ? 'photo' : body.theme === 'retro' ? 'retro' : body.theme === 'natural' ? 'natural' : 'quiet')
     : null;
 
   // Handle budget - allow explicit null to clear it
@@ -2121,11 +2121,11 @@ app.get('/api/shared/:token/ogp.png', async (c) => {
   }
 
   try {
-    const ogpTheme = trip.theme === 'photo' ? 'photo' : trip.theme === 'retro' ? 'retro' : 'quiet';
+    const ogpTheme = trip.theme === 'photo' ? 'photo' : trip.theme === 'retro' ? 'retro' : trip.theme === 'natural' ? 'natural' : 'quiet';
     const png = await generateOgpImage({
       title: trip.title,
       dateRange,
-      theme: ogpTheme as 'quiet' | 'photo' | 'retro',
+      theme: ogpTheme as 'quiet' | 'photo' | 'retro' | 'natural',
       coverImageUrl: trip.coverImageUrl,
     });
 
@@ -3091,7 +3091,7 @@ app.post('/api/trips/import', async (c) => {
 
   // Create new trip with "(インポート)" suffix
   const tripId = generateId();
-  const theme = importData.trip.theme === 'photo' ? 'photo' : importData.trip.theme === 'retro' ? 'retro' : 'quiet';
+  const theme = importData.trip.theme === 'photo' ? 'photo' : importData.trip.theme === 'retro' ? 'retro' : importData.trip.theme === 'natural' ? 'natural' : 'quiet';
   const title = `${importData.trip.title}（インポート）`;
 
   await c.env.DB.prepare(

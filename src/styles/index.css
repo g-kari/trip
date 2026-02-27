@@ -9,6 +9,7 @@
 
 /* Theme-specific styles */
 @import './themes/retro.css';
+@import './themes/natural.css';
 
 /* Components */
 @import './components/buttons.css';

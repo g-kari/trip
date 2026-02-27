@@ -15,7 +15,7 @@ import { ColorLabelFilter, ColorLabelIndicator } from '../components/ColorLabelP
 
 type TripStyle = 'relaxed' | 'active' | 'gourmet' | 'sightseeing'
 type SortOption = 'created_desc' | 'created_asc' | 'start_date_desc' | 'start_date_asc'
-type ThemeFilter = '' | 'quiet' | 'photo' | 'retro'
+type ThemeFilter = '' | 'quiet' | 'photo' | 'retro' | 'natural'
 type ArchiveTab = 'active' | 'archived'
 
 export function TripListPage() {
@@ -868,6 +868,13 @@ export function TripListPage() {
             >
               レトロ
             </button>
+            <button
+              type="button"
+              className={`theme-btn ${newTripTheme === 'natural' ? 'active' : ''}`}
+              onClick={() => setNewTripTheme('natural')}
+            >
+              ナチュラル
+            </button>
           </div>
           <button
             type="submit"
@@ -931,6 +938,13 @@ export function TripListPage() {
                   onClick={() => setFilterTheme('retro')}
                 >
                   レトロ
+                </button>
+                <button
+                  type="button"
+                  className={`filter-btn ${filterTheme === 'natural' ? 'active' : ''}`}
+                  onClick={() => setFilterTheme('natural')}
+                >
+                  ナチュラル
                 </button>
               </div>
             </div>
@@ -1023,7 +1037,7 @@ export function TripListPage() {
             )}
             {filterTheme && (
               <span className="filter-tag">
-                {filterTheme === 'quiet' ? 'しずか' : filterTheme === 'photo' ? '写真映え' : 'レトロ'}
+                {filterTheme === 'quiet' ? 'しずか' : filterTheme === 'photo' ? '写真映え' : filterTheme === 'retro' ? 'レトロ' : 'ナチュラル'}
                 <button type="button" onClick={() => setFilterTheme('')} className="filter-tag-remove">x</button>
               </span>
             )}
@@ -1106,7 +1120,7 @@ export function TripListPage() {
                   </div>
                   {trip.theme && (
                     <span className={`trip-card-theme trip-card-theme-${trip.theme}`}>
-                      {trip.theme === 'quiet' ? 'しずか' : trip.theme === 'photo' ? '写真映え' : 'レトロ'}
+                      {trip.theme === 'quiet' ? 'しずか' : trip.theme === 'photo' ? '写真映え' : trip.theme === 'retro' ? 'レトロ' : 'ナチュラル'}
                     </span>
                   )}
                 </div>

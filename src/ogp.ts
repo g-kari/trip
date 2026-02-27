@@ -28,7 +28,7 @@ async function loadFont(): Promise<ArrayBuffer> {
 interface OgpOptions {
   title: string;
   dateRange?: string;
-  theme: 'quiet' | 'photo' | 'retro';
+  theme: 'quiet' | 'photo' | 'retro' | 'natural';
   coverImageUrl?: string | null;
 }
 
@@ -46,6 +46,8 @@ export async function generateOgpImage(options: OgpOptions): Promise<Uint8Array>
         return { bgColor: '#1a1a1a', textColor: '#ffffff', mutedColor: '#a0a0a0' };
       case 'retro':
         return { bgColor: '#f5f0e1', textColor: '#3d2e1f', mutedColor: '#6b5c4a' };
+      case 'natural':
+        return { bgColor: '#f4f1eb', textColor: '#2d3a2d', mutedColor: '#6b7c6b' };
       default: // quiet
         return { bgColor: '#f6f3ee', textColor: '#3d2e1f', mutedColor: '#8c7b6b' };
     }

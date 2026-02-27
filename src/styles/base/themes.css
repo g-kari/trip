@@ -41,6 +41,26 @@
 }
 
 /* ========================================
+   Theme: Natural (ナチュラル) — earth & outdoor aesthetic
+   ======================================== */
+
+[data-theme="natural"] {
+  /* Colors — earthy, warm greens and browns */
+  --color-bg:          #f4f1eb;
+  --color-bg-elevated: #faf8f4;
+  --color-text:        #2d3a2d;
+  --color-text-muted:  #6b7c6b;
+  --color-text-faint:  #97a897;
+  --color-border:      #c5cdbf;
+  --color-border-light:#dce2d8;
+  --color-accent:      #5a7a4a;
+  --color-accent-hover:#6d8f5c;
+
+  /* Typography — rounded sans for soft, approachable feel */
+  --font-heading: "Rounded Mplus 1c", "Hiragino Maru Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+}
+
+/* ========================================
    Dark Mode (Color Mode)
    システムワイドなカラーモード切り替え
    ======================================== */
@@ -174,5 +194,38 @@
     --color-border-light:#302820;
     --color-accent:      #d97b4a;
     --color-accent-hover:#e89060;
+  }
+}
+
+/* ========================================
+   Dark mode overrides for natural theme
+   ======================================== */
+
+[data-color-mode="dark"][data-theme="natural"],
+[data-theme="natural"][data-color-mode="dark"] {
+  --color-bg:          #161a14;
+  --color-bg-elevated: #1e231c;
+  --color-text:        #dce5d8;
+  --color-text-muted:  #8fa08a;
+  --color-text-faint:  #5a6b58;
+  --color-border:      #2e382c;
+  --color-border-light:#252e24;
+  --color-accent:      #7aaa66;
+  --color-accent-hover:#8dbd78;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"][data-theme="natural"],
+  [data-theme="natural"]:not([data-color-mode]),
+  :root:not([data-color-mode])[data-theme="natural"] {
+    --color-bg:          #161a14;
+    --color-bg-elevated: #1e231c;
+    --color-text:        #dce5d8;
+    --color-text-muted:  #8fa08a;
+    --color-text-faint:  #5a6b58;
+    --color-border:      #2e382c;
+    --color-border-light:#252e24;
+    --color-accent:      #7aaa66;
+    --color-accent-hover:#8dbd78;
   }
 }
