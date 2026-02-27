@@ -82,7 +82,7 @@
 
 /* Day header with delete button */
 .day-header {
-  @apply flex items-baseline gap-[var(--space-3)] mb-[var(--space-4)] pb-[var(--space-2)] border-b border-border-light;
+  @apply flex items-baseline gap-[var(--space-2)] mb-[var(--space-4)] pb-[var(--space-2)] border-b border-border-light flex-wrap;
 }
 
 .day-header .btn-text {
