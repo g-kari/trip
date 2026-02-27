@@ -3011,6 +3011,146 @@ app.delete('/api/trips/:tripId/items/:itemId/photo', async (c) => {
   return c.json({ ok: true });
 });
 
+// ============ Spot Suggestions (AI-powered) ============
+
+// Get nearby spot suggestions for an item
+app.post('/api/trips/:tripId/items/:itemId/suggestions', async (c) => {
+  const { tripId, itemId } = c.req.param();
+  const user = c.get('user');
+  const ip = getClientIp(c);
+
+  // Require login for AI spot suggestions
+  if (!user) {
+    return c.json({ error: '周辺スポット提案にはログインが必要です' }, 401);
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Check user rate limit
+  const userUsageResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE user_id = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(user.id, today).first<{ count: number }>();
+
+  const userUsedToday = userUsageResult?.count || 0;
+  if (userUsedToday >= AI_DAILY_LIMIT_USER) {
+    return c.json({
+      error: `本日の利用上限（${AI_DAILY_LIMIT_USER}回）に達しました。明日また利用できます。`,
+      limitReached: true,
+      remaining: 0,
+    }, 429);
+  }
+
+  // Check IP rate limit
+  const ipUsageResult = await c.env.DB.prepare(
+    `SELECT COUNT(*) as count FROM ai_usage
+     WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'`
+  ).bind(ip, today).first<{ count: number }>();
+
+  const ipUsedToday = ipUsageResult?.count || 0;
+  if (ipUsedToday >= AI_DAILY_LIMIT_IP) {
+    return c.json({
+      error: 'このIPアドレスからの利用上限に達しました。明日また利用できます。',
+      limitReached: true,
+      remaining: 0,
+    }, 429);
+  }
+
+  // Check if user can edit this trip (spot suggestions require edit access)
+  const check = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!check.ok) {
+    return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Get item details
+  const item = await c.env.DB.prepare(
+    'SELECT id, title, area FROM items WHERE id = ? AND trip_id = ?'
+  ).bind(itemId, tripId).first<{ id: string; title: string; area: string | null }>();
+
+  if (!item) {
+    return c.json({ error: 'Item not found' }, 404);
+  }
+
+  // Build prompt for AI
+  const locationInfo = item.area ? `${item.title}（${item.area}）` : item.title;
+
+  const prompt = `あなたは旅行アドバイザーです。「${locationInfo}」の近くにあるおすすめのスポットを3〜5件提案してください。
+
+以下のJSON形式で出力してください。他の説明は不要です:
+{
+  "suggestions": [
+    {
+      "name": "スポット名",
+      "area": "エリア名（例: 祇園、渋谷など。不明な場合はnull）",
+      "description": "おすすめポイントや特徴（50文字程度）",
+      "category": "restaurant|cafe|attraction|shop|other のいずれか",
+      "estimatedCost": 推定費用（数値、円単位。無料や不明な場合はnull）
+    }
+  ]
+}
+
+以下の点に注意してください:
+- 徒歩圏内または近くにある実在のスポットを提案
+- レストラン、カフェ、観光スポット、ショップなど多様なカテゴリを含める
+- 各スポットには具体的な説明を付ける
+- 費用は入場料や食事代の目安`;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (c.env.AI as any).run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 2048,
+    });
+
+    // Extract JSON from response
+    const responseText = typeof response === 'object' && 'response' in response
+      ? (response as { response: string }).response
+      : String(response);
+
+    // Try to parse JSON from the response
+    let suggestionsData: { suggestions: Array<{
+      name: string;
+      area: string | null;
+      description: string;
+      category: 'restaurant' | 'cafe' | 'attraction' | 'shop' | 'other';
+      estimatedCost: number | null;
+    }> };
+
+    try {
+      // Find JSON in the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      suggestionsData = JSON.parse(jsonMatch[0]);
+    } catch {
+      console.error('Failed to parse AI response:', responseText);
+      return c.json({ error: 'AIの応答を解析できませんでした' }, 500);
+    }
+
+    // Record AI usage
+    const usageId = generateId();
+    await c.env.DB.prepare(
+      'INSERT INTO ai_usage (id, user_id, ip_address) VALUES (?, ?, ?)'
+    ).bind(usageId, user.id, ip).run();
+
+    // Calculate remaining uses
+    const userRemaining = AI_DAILY_LIMIT_USER - userUsedToday - 1;
+    const ipRemaining = AI_DAILY_LIMIT_IP - ipUsedToday - 1;
+    const remaining = Math.min(userRemaining, ipRemaining);
+
+    return c.json({
+      suggestions: suggestionsData.suggestions || [],
+      remaining,
+    });
+  } catch (error) {
+    console.error('AI suggestion error:', error);
+    return c.json({ error: '周辺スポットの提案に失敗しました' }, 500);
+  }
+});
+
 // Get item photo
 app.get('/api/photos/items/:key', async (c) => {
   const key = `photos/items/${c.req.param('key')}`;

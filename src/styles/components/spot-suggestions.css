@@ -1,0 +1,214 @@
+/* ========================================
+   Spot Suggestions - AI-powered nearby spot recommendations
+   ======================================== */
+
+.spot-suggestions-modal {
+  max-width: 480px;
+  width: 90%;
+}
+
+.spot-suggestions-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border-radius: 8px;
+  margin-bottom: var(--space-4);
+}
+
+.spot-suggestions-source-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.spot-suggestions-source-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.spot-suggestions-source-area {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* Empty state */
+.spot-suggestions-empty {
+  text-align: center;
+  padding: var(--space-5);
+}
+
+.spot-suggestions-empty p {
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* Loading state */
+.spot-suggestions-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-7);
+  gap: var(--space-3);
+}
+
+.spot-suggestions-loading p {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.spot-suggestions-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spot-suggestions-spin 0.8s linear infinite;
+}
+
+@keyframes spot-suggestions-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state */
+.spot-suggestions-error {
+  text-align: center;
+  padding: var(--space-5);
+}
+
+.spot-suggestions-error p {
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+/* Remaining uses */
+.spot-suggestions-remaining {
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  margin-top: var(--space-3);
+  text-align: center;
+}
+
+/* Suggestions list */
+.spot-suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.spot-suggestion-item {
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: 10px;
+  transition: border-color 150ms ease;
+}
+
+.spot-suggestion-item:hover {
+  border-color: var(--color-border);
+}
+
+.spot-suggestion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.spot-suggestion-name {
+  font-weight: 500;
+  color: var(--color-text);
+  font-size: 0.9375rem;
+}
+
+.spot-suggestion-category {
+  font-size: 0.6875rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-border-light);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.spot-suggestion-category-restaurant {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.spot-suggestion-category-cafe {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.spot-suggestion-category-attraction {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.spot-suggestion-category-shop {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* Dark mode category colors */
+[data-color-mode="dark"] .spot-suggestion-category-restaurant {
+  background: rgba(254, 243, 199, 0.15);
+  color: #fbbf24;
+}
+
+[data-color-mode="dark"] .spot-suggestion-category-cafe {
+  background: rgba(254, 226, 226, 0.15);
+  color: #f87171;
+}
+
+[data-color-mode="dark"] .spot-suggestion-category-attraction {
+  background: rgba(219, 234, 254, 0.15);
+  color: #60a5fa;
+}
+
+[data-color-mode="dark"] .spot-suggestion-category-shop {
+  background: rgba(209, 250, 229, 0.15);
+  color: #34d399;
+}
+
+.spot-suggestion-area {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  margin-bottom: var(--space-2);
+}
+
+.spot-suggestion-description {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin-bottom: var(--space-3);
+}
+
+.spot-suggestion-cost {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.spot-suggestion-add {
+  width: 100%;
+  font-size: 0.8125rem;
+  padding: var(--space-2) var(--space-3);
+}
+
+/* Print: hide spot suggestions */
+@media print {
+  .spot-suggestions-modal {
+    display: none;
+  }
+}

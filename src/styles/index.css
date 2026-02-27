@@ -47,6 +47,7 @@
 @import './components/pdf-export.css';
 @import './components/ads.css';
 @import './components/purchase.css';
+@import './components/spot-suggestions.css';
 
 /* Pages */
 @import './pages/login.css';

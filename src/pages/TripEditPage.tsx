@@ -12,11 +12,12 @@ import { CollaboratorManager } from '../components/CollaboratorManager'
 import { TripMemberManager } from '../components/ExpenseSplitter'
 import { SettlementSummary } from '../components/SettlementSummary'
 import { PackingList } from '../components/PackingList'
-import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon } from '../components/Icons'
+import { EditIcon, TrashIcon, CopyIcon, BellIcon, EyeIcon, UsersIcon, ImageIcon, SaveIcon, CodeIcon, BookmarkIcon, WalletIcon, MapPinIcon } from '../components/Icons'
 import { PdfExportButton } from '../components/PdfExportButton'
 import { EmbedCodeModal } from '../components/EmbedCodeModal'
 import { SaveAsTemplateModal } from '../components/SaveAsTemplateModal'
 import { ExpenseModal } from '../components/ExpenseModal'
+import { SpotSuggestions } from '../components/SpotSuggestions'
 import { MarkdownText } from '../components/MarkdownText'
 import { WeatherIcon } from '../components/WeatherIcon'
 import { useWeather, getFirstLocationForDay } from '../hooks/useWeather'
@@ -51,6 +52,7 @@ function DraggableItem({
   onStartEdit,
   onDelete,
   onSaveAsTemplate,
+  onShowSpotSuggestions,
   editItemTime,
   setEditItemTime,
   editItemTitle,
@@ -83,6 +85,7 @@ function DraggableItem({
   onStartEdit: (item: Item) => void
   onDelete: (id: string) => void
   onSaveAsTemplate: (item: Item) => void
+  onShowSpotSuggestions: (item: Item) => void
   editItemTime: string
   setEditItemTime: (v: string) => void
   editItemTitle: string
@@ -323,6 +326,13 @@ function DraggableItem({
                   {uploadingPhoto ? '...' : <ImageIcon size={16} />}
                 </button>
               )}
+              <button
+                className="btn-icon"
+                onClick={() => onShowSpotSuggestions(item)}
+                title="周辺スポット"
+              >
+                <MapPinIcon size={16} />
+              </button>
               <button
                 className="btn-icon"
                 onClick={() => onSaveAsTemplate(item)}
@@ -655,6 +665,9 @@ export function TripEditPage() {
 
   // Expense modal state
   const [showExpenseModal, setShowExpenseModal] = useState(false)
+
+  // Spot suggestions modal state
+  const [spotSuggestionsItem, setSpotSuggestionsItem] = useState<{ item: Item; dayId: string } | null>(null)
 
   // Tag state
   const [tags, setTags] = useState<string[]>([])
@@ -1861,6 +1874,7 @@ export function TripEditPage() {
                       onStartEdit={startEditItem}
                       onDelete={deleteItem}
                       onSaveAsTemplate={saveItemAsTemplate}
+                      onShowSpotSuggestions={(item) => setSpotSuggestionsItem({ item, dayId: day.id })}
                       editItemTime={editItemTime}
                       setEditItemTime={setEditItemTime}
                       editItemTitle={editItemTitle}
@@ -2245,6 +2259,18 @@ export function TripEditPage() {
           tripId={trip.id}
           isOpen={showExpenseModal}
           onClose={() => setShowExpenseModal(false)}
+        />
+      )}
+
+      {spotSuggestionsItem && (
+        <SpotSuggestions
+          tripId={trip.id}
+          item={spotSuggestionsItem.item}
+          dayId={spotSuggestionsItem.dayId}
+          onClose={() => setSpotSuggestionsItem(null)}
+          onAddSpot={() => {
+            refreshTrip()
+          }}
         />
       )}
     </>
