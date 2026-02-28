@@ -1710,6 +1710,12 @@ app.delete('/api/trips/:tripId/items/:itemId/photos/:photoId', async (c) => {
   const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) return c.json({ error: check.error }, check.status as 403 | 404);
 
+  // Verify item belongs to this trip before accessing photo
+  const item = await c.env.DB.prepare(
+    'SELECT i.id FROM items i JOIN days d ON i.day_id = d.id WHERE i.id = ? AND d.trip_id = ?'
+  ).bind(itemId, tripId).first();
+  if (!item) return c.json({ error: 'Item not found' }, 404);
+
   const photo = await c.env.DB.prepare(
     'SELECT id, photo_url, uploaded_by FROM item_photos WHERE id = ? AND item_id = ?'
   ).bind(photoId, itemId).first<{ id: string; photo_url: string; uploaded_by: string | null }>();

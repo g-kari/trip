@@ -225,6 +225,14 @@ app.get('/api/trips/:tripId/items/:itemId/expense', async (c) => {
     return c.json({ error: 'アクセス権がありません' }, 403);
   }
 
+  // Verify item belongs to this trip
+  const item = await c.env.DB.prepare(
+    'SELECT i.id FROM items i JOIN days d ON i.day_id = d.id WHERE i.id = ? AND d.trip_id = ?'
+  ).bind(itemId, tripId).first();
+  if (!item) {
+    return c.json({ error: 'アイテムが見つかりません' }, 404);
+  }
+
   // Get payments with member names
   const { results: payments } = await c.env.DB.prepare(
     `SELECT p.id, p.item_id as itemId, p.paid_by as paidBy, p.amount, p.created_at as createdAt,

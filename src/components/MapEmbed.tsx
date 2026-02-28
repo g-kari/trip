@@ -21,6 +21,15 @@ type LocationInfo = {
  * - https://goo.gl/maps/...
  * - https://maps.app.goo.gl/...
  */
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 function extractEmbedUrl(mapUrl: string): string | null {
   try {
     const url = new URL(mapUrl)
@@ -142,28 +151,32 @@ export function MapEmbed({ items, className = '' }: MapEmbedProps) {
       )}
 
       {/* Map iframe */}
-      <div className="map-embed-container">
-        <iframe
-          src={selectedLocation.embedUrl}
-          className="map-embed-iframe"
-          allowFullScreen
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title={`${selectedLocation.title}の地図`}
-        />
-      </div>
+      {isSafeUrl(selectedLocation.embedUrl) && (
+        <div className="map-embed-container">
+          <iframe
+            src={selectedLocation.embedUrl}
+            className="map-embed-iframe"
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`${selectedLocation.title}の地図`}
+          />
+        </div>
+      )}
 
       {/* Link to Google Maps */}
-      <div className="map-embed-actions">
-        <a
-          href={selectedLocation.mapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="map-embed-link"
-        >
-          Google Mapsで開く
-        </a>
-      </div>
+      {isSafeUrl(selectedLocation.mapUrl) && (
+        <div className="map-embed-actions">
+          <a
+            href={selectedLocation.mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="map-embed-link"
+          >
+            Google Mapsで開く
+          </a>
+        </div>
+      )}
     </section>
   )
 }
