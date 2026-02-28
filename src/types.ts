@@ -163,7 +163,7 @@ export type TripTemplate = {
 
 export type TripFeedback = {
   id: string
-  userId: string | null
+  isCurrentUser?: boolean
   name: string
   rating: number
   comment: string | null

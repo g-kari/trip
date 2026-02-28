@@ -222,7 +222,7 @@ export function SharedTripPage() {
           setFeedbackList(data.feedback)
           setFeedbackStats(data.stats)
           if (user) {
-            const userFeedback = data.feedback.find(fb => fb.userId === user.id)
+            const userFeedback = data.feedback.find(fb => fb.isCurrentUser)
             setHasSubmittedFeedback(!!userFeedback)
           }
         }
@@ -621,7 +621,7 @@ export function SharedTripPage() {
         setFeedbackStats({ count: 0, averageRating: 0 })
       }
 
-      if (deletedFeedback?.userId === user?.id) {
+      if (deletedFeedback?.isCurrentUser) {
         setHasSubmittedFeedback(false)
       }
 
@@ -636,7 +636,7 @@ export function SharedTripPage() {
 
   function canDeleteFeedback(feedback: TripFeedback): boolean {
     if (!user) return false
-    return feedback.userId === user.id || isOwner
+    return feedback.isCurrentUser || isOwner
   }
 
   return (

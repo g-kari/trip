@@ -319,7 +319,7 @@ export function TripViewPage() {
           setFeedbackStats(data.stats)
           // Check if current user has already submitted
           if (user) {
-            const userFeedback = data.feedback.find(fb => fb.userId === user.id)
+            const userFeedback = data.feedback.find(fb => fb.isCurrentUser)
             setHasSubmittedFeedback(!!userFeedback)
           }
         }
@@ -749,7 +749,7 @@ export function TripViewPage() {
         setFeedbackStats({ count: 0, averageRating: 0 })
       }
 
-      if (deletedFeedback?.userId === user?.id) {
+      if (deletedFeedback?.isCurrentUser) {
         setHasSubmittedFeedback(false)
       }
 
@@ -765,8 +765,7 @@ export function TripViewPage() {
   // Check if user can delete feedback
   function canDeleteFeedback(feedback: TripFeedback): boolean {
     if (!user) return false
-    // User can delete their own feedback or trip owner can delete any
-    return feedback.userId === user.id || isOwner
+    return feedback.isCurrentUser || isOwner
   }
 
   if (loading) {
