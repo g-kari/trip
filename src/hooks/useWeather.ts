@@ -180,6 +180,9 @@ type WeatherResult = {
 
 export function useWeatherBatch(requests: WeatherRequest[]) {
   const [results, setResults] = useState<Map<string, WeatherResult>>(new Map())
+  const resultsRef = useRef(results)
+
+  useEffect(() => { resultsRef.current = results }, [results])
 
   const loadWeather = useCallback(async (request: WeatherRequest) => {
     const { id, location, date } = request
@@ -238,12 +241,12 @@ export function useWeatherBatch(requests: WeatherRequest[]) {
   useEffect(() => {
     // Load weather for each request that we don't have yet
     requests.forEach(request => {
-      const existing = results.get(request.id)
+      const existing = resultsRef.current.get(request.id)
       if (!existing && request.location) {
         loadWeather(request)
       }
     })
-  }, [requests, results, loadWeather])
+  }, [requests, loadWeather])
 
   const getWeather = useCallback((id: string): WeatherResult | undefined => {
     return results.get(id)

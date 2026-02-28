@@ -209,7 +209,7 @@ app.put('/api/trips/:tripId/packing/reorder', async (c) => {
 
   if (!trip) return c.json({ error: 'Trip not found' }, 404);
 
-  let canEdit = trip.user_id === user.id;
+  let canEdit = !trip.user_id || trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
       "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
@@ -225,17 +225,16 @@ app.put('/api/trips/:tripId/packing/reorder', async (c) => {
     return c.json({ error: 'Invalid or too many items (max 200)' }, 400);
   }
 
-  for (const item of body.items) {
-    if (item.category !== undefined) {
-      await c.env.DB.prepare(
-        'UPDATE packing_items SET sort = ?, category = ? WHERE id = ? AND trip_id = ?'
-      ).bind(item.sort, item.category, item.id, tripId).run();
-    } else {
-      await c.env.DB.prepare(
-        'UPDATE packing_items SET sort = ? WHERE id = ? AND trip_id = ?'
-      ).bind(item.sort, item.id, tripId).run();
-    }
-  }
+  const packingStatements = body.items.map((item) =>
+    item.category !== undefined
+      ? c.env.DB.prepare(
+          'UPDATE packing_items SET sort = ?, category = ? WHERE id = ? AND trip_id = ?'
+        ).bind(item.sort, item.category, item.id, tripId)
+      : c.env.DB.prepare(
+          'UPDATE packing_items SET sort = ? WHERE id = ? AND trip_id = ?'
+        ).bind(item.sort, item.id, tripId)
+  );
+  await c.env.DB.batch(packingStatements);
 
   return c.json({ success: true });
 });

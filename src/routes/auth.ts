@@ -484,22 +484,22 @@ app.delete('/api/profile', async (c) => {
     return c.json({ error: 'ログインが必要です' }, 401);
   }
 
-  // Delete all user's data
-  await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM trip_collaborators WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM trip_templates WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM item_templates WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM ai_usage WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM trip_feedback WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM trip_history WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('DELETE FROM active_editors WHERE user_id = ?').bind(user.id).run();
-  await c.env.DB.prepare('UPDATE trip_members SET user_id = NULL WHERE user_id = ?').bind(user.id).run();
-
-  // Delete trips (cascades to days, items, share_tokens, etc.)
-  await c.env.DB.prepare('DELETE FROM trips WHERE user_id = ?').bind(user.id).run();
-
-  // Delete user
-  await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user.id).run();
+  // Delete all user's data atomically
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM trip_collaborators WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM trip_templates WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM item_templates WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM ai_usage WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM trip_feedback WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM trip_history WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('DELETE FROM active_editors WHERE user_id = ?').bind(user.id),
+    c.env.DB.prepare('UPDATE trip_members SET user_id = NULL WHERE user_id = ?').bind(user.id),
+    // Delete trips (cascades to days, items, share_tokens, etc.)
+    c.env.DB.prepare('DELETE FROM trips WHERE user_id = ?').bind(user.id),
+    // Delete user
+    c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user.id),
+  ]);
 
   return c.json({ ok: true });
 });

@@ -22,15 +22,6 @@ interface MarkdownLine {
   nodes: MarkdownNode[]
 }
 
-// Escape HTML to prevent XSS
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 // Validate URL to prevent javascript: and data: URLs
 function isValidUrl(url: string): boolean {
@@ -116,9 +107,9 @@ function parseMarkdown(text: string): MarkdownLine[] {
 function renderNode(node: MarkdownNode, key: number): ReactNode {
   switch (node.type) {
     case 'bold':
-      return <strong key={key} className="md-bold">{escapeHtml(node.content)}</strong>
+      return <strong key={key} className="md-bold">{node.content}</strong>
     case 'italic':
-      return <em key={key} className="md-italic">{escapeHtml(node.content)}</em>
+      return <em key={key} className="md-italic">{node.content}</em>
     case 'link':
       return (
         <a
@@ -128,12 +119,12 @@ function renderNode(node: MarkdownNode, key: number): ReactNode {
           rel="noopener noreferrer"
           className="md-link"
         >
-          {escapeHtml(node.text)}
+          {node.text}
         </a>
       )
     case 'text':
     default:
-      return escapeHtml(node.content)
+      return node.content
   }
 }
 

@@ -22,6 +22,11 @@ export async function createSession(
     .bind(id, userId, expiresAt)
     .run()
 
+  // Probabilistic cleanup of expired sessions
+  if (Math.random() < 0.01) {
+    await db.prepare("DELETE FROM sessions WHERE created_at < datetime('now', '-31 days')").run().catch(() => {});
+  }
+
   return { id, userId, expiresAt }
 }
 
@@ -31,7 +36,7 @@ export async function getSession(
 ): Promise<Session | null> {
   const session = await db
     .prepare(
-      'SELECT id, user_id as userId, expires_at as expiresAt FROM sessions WHERE id = ?'
+      "SELECT id, user_id as userId, expires_at as expiresAt FROM sessions WHERE id = ? AND created_at > datetime('now', '-30 days')"
     )
     .bind(sessionId)
     .first<Session>()

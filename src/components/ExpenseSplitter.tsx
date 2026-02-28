@@ -39,6 +39,8 @@ export function ExpenseSplitter({
   const [addingMember, setAddingMember] = useState(false)
   const [splitMode, setSplitMode] = useState<'equal' | 'custom'>('equal')
 
+  const memberIds = members.map(m => m.id).join(',')
+
   // Fetch existing expense data
   useEffect(() => {
     async function fetchExpenseData() {
@@ -90,7 +92,8 @@ export function ExpenseSplitter({
     }
 
     fetchExpenseData()
-  }, [tripId, itemId, members])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId, itemId, memberIds])
 
   // Save expense data
   async function saveExpenseData() {

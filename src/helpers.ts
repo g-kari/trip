@@ -187,6 +187,18 @@ export async function recordTripHistory(
     id, tripId, userId, userName, action, entityType, entityId,
     summary, changes ? JSON.stringify(changes) : null, snapshot
   ).run();
+
+  // Trim old snapshots (keep latest 50 per trip)
+  await db.prepare(
+    `DELETE FROM trip_history
+     WHERE trip_id = ? AND snapshot IS NOT NULL
+     AND id NOT IN (
+       SELECT id FROM trip_history
+       WHERE trip_id = ? AND snapshot IS NOT NULL
+       ORDER BY created_at DESC
+       LIMIT 50
+     )`
+  ).bind(tripId, tripId).run().catch(() => {});
 }
 
 // ============ Permission Checks ============

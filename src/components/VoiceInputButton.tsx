@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { MicIcon } from './Icons'
 
 // Type definitions for Web Speech API (not available in standard TypeScript)
@@ -76,87 +76,89 @@ export function VoiceInputButton({
   className = '',
 }: VoiceInputButtonProps) {
   const [isListening, setIsListening] = useState(false)
-  const [isSupported, setIsSupported] = useState(false)
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null)
+  const [isSupported, setIsSupported] = useState(() => getSpeechRecognition() !== null)
+  const onResultRef = useRef(onResult)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
-  // Check for browser support on mount
+  useEffect(() => { onResultRef.current = onResult }, [onResult])
+
+  // Initialize speech recognition on mount
   useEffect(() => {
     const SpeechRecognitionAPI = getSpeechRecognition()
-    setIsSupported(SpeechRecognitionAPI !== null)
-
-    if (SpeechRecognitionAPI) {
-      const recognitionInstance = new SpeechRecognitionAPI()
-      recognitionInstance.continuous = false
-      recognitionInstance.interimResults = false
-      recognitionInstance.lang = 'ja-JP'
-      recognitionInstance.maxAlternatives = 1
-
-      recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-        const result = event.results[event.resultIndex]
-        if (result && result.isFinal) {
-          const transcript = result[0].transcript
-          onResult(transcript)
-        }
-      }
-
-      recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error)
-        setIsListening(false)
-
-        let errorMessage = '音声認識でエラーが発生しました'
-        switch (event.error) {
-          case 'no-speech':
-            errorMessage = '音声が検出されませんでした'
-            break
-          case 'audio-capture':
-            errorMessage = 'マイクが見つかりません'
-            break
-          case 'not-allowed':
-            errorMessage = 'マイクへのアクセスが許可されていません'
-            break
-          case 'network':
-            errorMessage = 'ネットワークエラーが発生しました'
-            break
-          case 'aborted':
-            // User aborted, no error message needed
-            return
-        }
-        onError?.(errorMessage)
-      }
-
-      recognitionInstance.onend = () => {
-        setIsListening(false)
-      }
-
-      recognitionInstance.onstart = () => {
-        setIsListening(true)
-      }
-
-      setRecognition(recognitionInstance)
+    if (!SpeechRecognitionAPI) {
+      setIsSupported(false)
+      return
     }
 
-    return () => {
-      if (recognition) {
-        recognition.abort()
+    const recognitionInstance = new SpeechRecognitionAPI()
+    recognitionInstance.continuous = false
+    recognitionInstance.interimResults = false
+    recognitionInstance.lang = 'ja-JP'
+    recognitionInstance.maxAlternatives = 1
+
+    recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+      const result = event.results[event.resultIndex]
+      if (result && result.isFinal) {
+        const transcript = result[0].transcript
+        onResultRef.current(transcript)
       }
+    }
+
+    recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error)
+      setIsListening(false)
+
+      let errorMessage = '音声認識でエラーが発生しました'
+      switch (event.error) {
+        case 'no-speech':
+          errorMessage = '音声が検出されませんでした'
+          break
+        case 'audio-capture':
+          errorMessage = 'マイクが見つかりません'
+          break
+        case 'not-allowed':
+          errorMessage = 'マイクへのアクセスが許可されていません'
+          break
+        case 'network':
+          errorMessage = 'ネットワークエラーが発生しました'
+          break
+        case 'aborted':
+          // User aborted, no error message needed
+          return
+      }
+      onError?.(errorMessage)
+    }
+
+    recognitionInstance.onend = () => {
+      setIsListening(false)
+    }
+
+    recognitionInstance.onstart = () => {
+      setIsListening(true)
+    }
+
+    recognitionRef.current = recognitionInstance
+
+    return () => {
+      recognitionRef.current?.abort()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const toggleListening = useCallback(() => {
-    if (!recognition) return
+    if (!recognitionRef.current) return
 
     if (isListening) {
-      recognition.stop()
+      recognitionRef.current.stop()
     } else {
       try {
-        recognition.start()
+        recognitionRef.current.start()
       } catch (err) {
         console.error('Failed to start speech recognition:', err)
         onError?.('音声認識を開始できませんでした')
       }
     }
-  }, [recognition, isListening, onError])
+  }, [isListening, onError])
 
   // Don't render if not supported
   if (!isSupported) {

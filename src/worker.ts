@@ -274,6 +274,12 @@ app.post('/api/trips', async (c) => {
     return c.json({ error: 'Title is required' }, 400);
   }
 
+  if (body.budget !== undefined && body.budget !== null) {
+    if (typeof body.budget !== 'number' || body.budget < 0) {
+      return c.json({ error: '予算は0以上の数値で指定してください' }, 400);
+    }
+  }
+
   // Check if user has remaining trip slots
   if (user) {
     const userData = await c.env.DB.prepare(
@@ -325,9 +331,16 @@ app.put('/api/trips/:id', async (c) => {
     return c.json({ error: 'Trip not found' }, 404);
   }
 
-  // Check ownership
-  if (existing.userId && (!user || existing.userId !== user.id)) {
-    return c.json({ error: 'Forbidden' }, 403);
+  // Check edit permission (owner + editors)
+  const editCheck = await checkCanEditTrip(c.env.DB, id, user);
+  if (!editCheck.ok) {
+    return c.json({ error: editCheck.error }, editCheck.status as 403 | 404);
+  }
+
+  if (body.budget !== undefined && body.budget !== null) {
+    if (typeof body.budget !== 'number' || body.budget < 0) {
+      return c.json({ error: '予算は0以上の数値で指定してください' }, 400);
+    }
   }
 
   // Validate theme if provided
@@ -1057,12 +1070,13 @@ app.put('/api/trips/:tripId/days/:dayId/reorder', async (c) => {
     return c.json({ error: 'itemIds array is required (max 200)' }, 400);
   }
 
-  // Update sort order for each item
-  for (let i = 0; i < body.itemIds.length; i++) {
-    await c.env.DB.prepare(
-      'UPDATE items SET sort = ?, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\') WHERE id = ? AND trip_id = ? AND day_id = ?'
-    ).bind(i, body.itemIds[i], tripId, dayId).run();
-  }
+  // Update sort order for each item (batched)
+  const statements = body.itemIds.map((itemId: string, i: number) =>
+    c.env.DB.prepare(
+      "UPDATE items SET sort = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? AND trip_id = ? AND day_id = ?"
+    ).bind(i, itemId, tripId, dayId)
+  );
+  await c.env.DB.batch(statements);
 
   if (user) {
     await recordTripHistory(c.env.DB, tripId, user.id, user.name, 'day.reorder',
@@ -1351,6 +1365,15 @@ app.post('/api/trips/import', async (c) => {
   // Validate days array
   if (!Array.isArray(importData.days)) {
     return c.json({ error: '日程データが見つかりません' }, 400);
+  }
+
+  if (importData.days.length > 365) {
+    return c.json({ error: '日程数が上限を超えています（最大365日）' }, 400);
+  }
+  for (const day of importData.days) {
+    if (Array.isArray(day.items) && day.items.length > 100) {
+      return c.json({ error: '1日あたりの予定数が上限を超えています（最大100件）' }, 400);
+    }
   }
 
   // Validate date format (YYYY-MM-DD)
@@ -1729,6 +1752,15 @@ app.post('/api/trips/:tripId/items/:itemId/checkin', async (c) => {
   const { tripId, itemId } = c.req.param();
   const user = c.get('user');
   const body = await c.req.json<{ location?: { lat: number; lng: number } }>().catch(() => ({ location: undefined }));
+
+  if (body.location) {
+    const { lat, lng } = body.location;
+    if (typeof lat !== 'number' || typeof lng !== 'number' ||
+        !isFinite(lat) || !isFinite(lng) ||
+        lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return c.json({ error: '無効な位置情報です' }, 400);
+    }
+  }
 
   // Check if user can edit the trip
   const check = await checkCanEditTrip(c.env.DB, tripId, user);

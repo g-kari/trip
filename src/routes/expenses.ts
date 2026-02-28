@@ -411,6 +411,18 @@ app.get('/api/trips/:tripId/settlement', async (c) => {
           totalOwedByMember.set(split.memberId, current + sharePerMember);
         }
       }
+
+      // If no equal splits exist but there's unassigned remainder, distribute proportionally
+      if (equalSplits.length === 0 && Math.abs(remainingAmount) > 1) {
+        const totalAssigned = itemTotal - remainingAmount;
+        if (totalAssigned > 0) {
+          for (const split of [...amountSplits, ...percentageSplits]) {
+            const memberOwed = totalOwedByMember.get(split.memberId) || 0;
+            const proportion = memberOwed / totalAssigned;
+            totalOwedByMember.set(split.memberId, memberOwed + (remainingAmount * proportion));
+          }
+        }
+      }
     }
   }
 
@@ -1230,7 +1242,9 @@ app.post('/api/payment/webhook', async (c) => {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    if (computedSignature !== expectedSignature) {
+    const a = encoder.encode(computedSignature);
+    const b = encoder.encode(expectedSignature);
+    if (a.byteLength !== b.byteLength || !(crypto.subtle as unknown as { timingSafeEqual(a: BufferSource, b: BufferSource): boolean }).timingSafeEqual(a, b)) {
       return c.json({ error: 'Invalid signature' }, 400);
     }
 

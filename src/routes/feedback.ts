@@ -132,11 +132,29 @@ app.post('/api/trips/:tripId/feedback', async (c) => {
 
   // Check if trip exists
   const trip = await c.env.DB.prepare(
-    'SELECT id FROM trips WHERE id = ?'
-  ).bind(tripId).first();
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
 
   if (!trip) {
     return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Check access: trip must be shared, legacy, or user is owner/collaborator
+  const hasShareToken = await c.env.DB.prepare(
+    'SELECT id FROM share_tokens WHERE trip_id = ? AND is_active = 1'
+  ).bind(tripId).first();
+  let hasAccess = !!hasShareToken || !trip.userId;
+  if (!hasAccess && user) {
+    hasAccess = trip.userId === user.id;
+    if (!hasAccess) {
+      const collab = await c.env.DB.prepare(
+        'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      ).bind(tripId, user.id).first();
+      hasAccess = !!collab;
+    }
+  }
+  if (!hasAccess) {
+    return c.json({ error: 'アクセス権がありません' }, 403);
   }
 
   // For logged-in users, prevent duplicate feedback

@@ -60,8 +60,16 @@ export function PurchaseModal({ onClose }: Props) {
       }
 
       if (data.url) {
-        // Redirect to Stripe checkout
-        window.location.href = data.url
+        try {
+          const parsed = new URL(data.url);
+          if (parsed.hostname === 'checkout.stripe.com' && parsed.protocol === 'https:') {
+            window.location.href = data.url;
+          } else {
+            setError('不正な決済URLです');
+          }
+        } catch {
+          setError('不正な決済URLです');
+        }
       }
     } catch (err) {
       console.error('Purchase error:', err)

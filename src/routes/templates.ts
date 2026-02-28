@@ -13,7 +13,7 @@ app.get('/api/templates', async (c) => {
     `SELECT id, title, start_date as startDate, end_date as endDate, theme, cover_image_url as coverImageUrl, template_uses as templateUses, created_at as createdAt
      FROM trips
      WHERE is_template = 1
-     ORDER BY template_uses DESC, created_at DESC`
+     ORDER BY template_uses DESC, created_at DESC LIMIT 100`
   ).all<{
     id: string;
     title: string;
