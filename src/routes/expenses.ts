@@ -159,31 +159,41 @@ app.put('/api/trips/:tripId/items/:itemId/payment', async (c) => {
 
   // Update payments
   if (body.payments !== undefined) {
-    // Delete existing payments
-    await c.env.DB.prepare('DELETE FROM expense_payments WHERE item_id = ?').bind(itemId).run();
-
-    // Insert new payments
+    if (!Array.isArray(body.payments) || body.payments.length > 50) {
+      return c.json({ error: '支払い情報が多すぎます（最大50件）' }, 400);
+    }
+    const paymentStatements = [
+      c.env.DB.prepare('DELETE FROM expense_payments WHERE item_id = ?').bind(itemId)
+    ];
     for (const payment of body.payments) {
       if (payment.amount <= 0) continue;
       const paymentId = generateId();
-      await c.env.DB.prepare(
-        'INSERT INTO expense_payments (id, item_id, paid_by, amount) VALUES (?, ?, ?, ?)'
-      ).bind(paymentId, itemId, payment.paidBy, payment.amount).run();
+      paymentStatements.push(
+        c.env.DB.prepare(
+          'INSERT INTO expense_payments (id, item_id, paid_by, amount) VALUES (?, ?, ?, ?)'
+        ).bind(paymentId, itemId, payment.paidBy, payment.amount)
+      );
     }
+    await c.env.DB.batch(paymentStatements);
   }
 
   // Update splits
   if (body.splits !== undefined) {
-    // Delete existing splits
-    await c.env.DB.prepare('DELETE FROM expense_splits WHERE item_id = ?').bind(itemId).run();
-
-    // Insert new splits
+    if (!Array.isArray(body.splits) || body.splits.length > 50) {
+      return c.json({ error: '分割情報が多すぎます（最大50件）' }, 400);
+    }
+    const splitStatements = [
+      c.env.DB.prepare('DELETE FROM expense_splits WHERE item_id = ?').bind(itemId)
+    ];
     for (const split of body.splits) {
       const splitId = generateId();
-      await c.env.DB.prepare(
-        'INSERT INTO expense_splits (id, item_id, member_id, share_type, share_value) VALUES (?, ?, ?, ?, ?)'
-      ).bind(splitId, itemId, split.memberId, split.shareType, split.shareValue ?? null).run();
+      splitStatements.push(
+        c.env.DB.prepare(
+          'INSERT INTO expense_splits (id, item_id, member_id, share_type, share_value) VALUES (?, ?, ?, ?, ?)'
+        ).bind(splitId, itemId, split.memberId, split.shareType, split.shareValue ?? null)
+      );
     }
+    await c.env.DB.batch(splitStatements);
   }
 
   return c.json({ ok: true });

@@ -88,7 +88,19 @@ export function AlbumPage() {
       })
 
       for (const item of dayItems) {
-        if (item.photoUrl) {
+        if (item.photos && item.photos.length > 0) {
+          for (const photo of item.photos) {
+            photos.push({
+              url: photo.photoUrl,
+              title: item.title,
+              time: item.timeStart,
+              dayLabel: label,
+              dayDate: dateStr,
+              type: 'item',
+              uploadedByName: photo.uploadedByName,
+            })
+          }
+        } else if (item.photoUrl) {
           photos.push({
             url: item.photoUrl,
             title: item.title,

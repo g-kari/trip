@@ -112,11 +112,16 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
     }
   }
 
-  function copyInviteLink(token: string) {
+  async function copyInviteLink(token: string) {
     const url = `${window.location.origin}/invite/${token}`
-    navigator.clipboard.writeText(url)
-    setCopiedToken(token)
-    setTimeout(() => setCopiedToken(null), 2000)
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedToken(token)
+      setTimeout(() => setCopiedToken(null), 2000)
+    } catch {
+      // Fallback: prompt user to copy manually
+      prompt('リンクをコピーしてください:', url)
+    }
   }
 
   function formatDate(dateStr: string) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 
 export type WeatherData = {
   available: boolean
@@ -24,6 +24,15 @@ const geocodeCache = new Map<string, GeocodeResult>()
 // Cache for weather data (lat,lon,date -> weather)
 const weatherCache = new Map<string, WeatherData>()
 
+const MAX_CACHE_SIZE = 200
+function addToCache<K, V>(cache: Map<K, V>, key: K, value: V) {
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const firstKey = cache.keys().next().value
+    if (firstKey !== undefined) cache.delete(firstKey)
+  }
+  cache.set(key, value)
+}
+
 // Fetch coordinates from location name
 async function fetchGeocode(location: string): Promise<GeocodeResult> {
   const cached = geocodeCache.get(location.toLowerCase())
@@ -35,7 +44,7 @@ async function fetchGeocode(location: string): Promise<GeocodeResult> {
     const response = await fetch(`/api/geocode?q=${encodeURIComponent(location)}`)
     const data = await response.json() as GeocodeResult
 
-    geocodeCache.set(location.toLowerCase(), data)
+    addToCache(geocodeCache, location.toLowerCase(), data)
     return data
   } catch (error) {
     console.error('Geocode fetch error:', error)
@@ -56,7 +65,7 @@ async function fetchWeather(lat: number, lon: number, date: string): Promise<Wea
     const data = await response.json() as WeatherData
 
     if (data.available) {
-      weatherCache.set(cacheKey, data)
+      addToCache(weatherCache, cacheKey, data)
     }
 
     return data
@@ -96,7 +105,6 @@ export function useWeather(location: string | null, date: string | null) {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
 
   // Memoize whether we should fetch
   const shouldFetch = useMemo(() => shouldFetchWeather(location, date), [location, date])
@@ -112,12 +120,6 @@ export function useWeather(location: string | null, date: string | null) {
       }
       return
     }
-
-    // Abort previous request
-    if (abortRef.current) {
-      abortRef.current.abort()
-    }
-    abortRef.current = new AbortController()
 
     let cancelled = false
     setLoading(true)
@@ -155,9 +157,6 @@ export function useWeather(location: string | null, date: string | null) {
 
     return () => {
       cancelled = true
-      if (abortRef.current) {
-        abortRef.current.abort()
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shouldFetch, location, date])

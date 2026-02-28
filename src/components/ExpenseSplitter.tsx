@@ -113,7 +113,7 @@ export function ExpenseSplitter({
             shareValue: s.shareValue,
           }))
 
-      await fetch(`/api/trips/${tripId}/items/${itemId}/payment`, {
+      const res = await fetch(`/api/trips/${tripId}/items/${itemId}/payment`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -121,8 +121,13 @@ export function ExpenseSplitter({
           splits: filteredSplits,
         }),
       })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        alert(data.error || '保存に失敗しました')
+      }
     } catch (err) {
       console.error('Failed to save expense data:', err)
+      alert('保存に失敗しました')
     } finally {
       setSaving(false)
     }

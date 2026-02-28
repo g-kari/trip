@@ -32,6 +32,7 @@ export function PackingList({ tripId, readOnly = false }: PackingListProps) {
   const [newItemCategory, setNewItemCategory] = useState('その他')
   const [isAdding, setIsAdding] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(DEFAULT_CATEGORIES))
+  const [error, setError] = useState<string | null>(null)
 
   const fetchItems = useCallback(async () => {
     try {
@@ -97,6 +98,7 @@ export function PackingList({ tripId, readOnly = false }: PackingListProps) {
       setItems(prev =>
         prev.map(i => (i.id === item.id ? { ...i, is_checked: item.is_checked } : i))
       )
+      setError('更新に失敗しました')
     }
   }
 
@@ -113,6 +115,7 @@ export function PackingList({ tripId, readOnly = false }: PackingListProps) {
     } catch (err) {
       console.error('Failed to delete item:', err)
       fetchItems() // Refetch on error
+      setError('削除に失敗しました')
     }
   }
 
@@ -154,6 +157,12 @@ export function PackingList({ tripId, readOnly = false }: PackingListProps) {
 
   return (
     <div className="packing-list-section">
+      {error && (
+        <div className="packing-error" style={{ color: 'var(--color-danger)', fontSize: '0.8rem', marginBottom: 'var(--space-2)' }}>
+          {error}
+          <button className="btn-text btn-small" onClick={() => setError(null)} style={{ marginLeft: 'var(--space-2)' }}>✕</button>
+        </div>
+      )}
       {totalItems > 0 && (
         <div className="packing-list-header">
           <span className="packing-list-progress">

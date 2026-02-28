@@ -771,20 +771,20 @@ app.post('/api/trips/:tripId/days/bulk', async (c) => {
     return c.json({ error: '追加する日程がありません（すべて既存の日程です）', days: [] }, 200);
   }
 
-  // Create all days
+  // Create all days using batch
   const createdDays: Array<{ id: string; date: string; sort: number }> = [];
   const baseSort = Date.now();
 
-  for (let i = 0; i < datesToCreate.length; i++) {
+  const dayStatements = datesToCreate.map((date, i) => {
     const id = generateId();
     const sort = baseSort + i;
-    const date = datesToCreate[i];
-
-    await c.env.DB.prepare(
-      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
-    ).bind(id, tripId, date, sort).run();
-
     createdDays.push({ id, date, sort });
+    return c.env.DB.prepare(
+      'INSERT INTO days (id, trip_id, date, sort) VALUES (?, ?, ?, ?)'
+    ).bind(id, tripId, date, sort);
+  });
+  if (dayStatements.length > 0) {
+    await c.env.DB.batch(dayStatements);
   }
 
   if (user && createdDays.length > 0) {
@@ -1125,26 +1125,25 @@ app.put('/api/trips/:tripId/items/:itemId/reorder', async (c) => {
      WHERE id = ?`
   ).bind(newDayId, newSort, itemId).run();
 
-  // Re-sort items in the old day (shift down items after the removed one)
+  // Re-sort items in both days using batch
   const { results: oldDayItems } = await c.env.DB.prepare(
     'SELECT id FROM items WHERE trip_id = ? AND day_id = ? ORDER BY sort ASC'
   ).bind(tripId, oldDayId).all<{ id: string }>();
 
-  for (let i = 0; i < oldDayItems.length; i++) {
-    await c.env.DB.prepare(
-      'UPDATE items SET sort = ? WHERE id = ?'
-    ).bind(i, oldDayItems[i].id).run();
-  }
-
-  // Re-sort items in the new day (shift up items after the inserted position)
   const { results: newDayItems } = await c.env.DB.prepare(
     'SELECT id FROM items WHERE trip_id = ? AND day_id = ? ORDER BY sort ASC'
   ).bind(tripId, newDayId).all<{ id: string }>();
 
-  for (let i = 0; i < newDayItems.length; i++) {
-    await c.env.DB.prepare(
-      'UPDATE items SET sort = ? WHERE id = ?'
-    ).bind(i, newDayItems[i].id).run();
+  const resortStatements = [
+    ...oldDayItems.map((item, i) =>
+      c.env.DB.prepare('UPDATE items SET sort = ? WHERE id = ?').bind(i, item.id)
+    ),
+    ...newDayItems.map((item, i) =>
+      c.env.DB.prepare('UPDATE items SET sort = ? WHERE id = ?').bind(i, item.id)
+    ),
+  ];
+  if (resortStatements.length > 0) {
+    await c.env.DB.batch(resortStatements);
   }
 
   if (user) {

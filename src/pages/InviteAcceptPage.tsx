@@ -9,6 +9,7 @@ export function InviteAcceptPage() {
   const [tripId, setTripId] = useState<string | null>(null)
   const [tripTitle, setTripTitle] = useState<string | null>(null)
   const acceptedRef = useRef(false)
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!token || acceptedRef.current) return
@@ -44,7 +45,7 @@ export function InviteAcceptPage() {
 
         // Redirect to the trip after 2 seconds
         if (data.tripId) {
-          setTimeout(() => {
+          redirectTimer.current = setTimeout(() => {
             navigate(`/trips/${data.tripId}/edit`)
           }, 2000)
         }
@@ -58,6 +59,7 @@ export function InviteAcceptPage() {
 
     return () => {
       controller.abort()
+      if (redirectTimer.current) clearTimeout(redirectTimer.current)
     }
   }, [token, navigate])
 

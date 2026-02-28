@@ -106,6 +106,13 @@ function DraggableItem({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const itemRef = useRef<HTMLDivElement>(null)
 
+  // Clean up long-press timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current)
+    }
+  }, [])
+
   async function uploadItemPhoto(file: File) {
     if (!file.type.startsWith('image/')) {
       alert('画像ファイルを選択してください')
@@ -869,6 +876,10 @@ export function TripEditPage() {
     }
   }, [id, fetchTrip, fetchMembers, fetchItemTemplates, fetchTags, fetchUserTags])
 
+  // Track editing state via ref to avoid restarting polling interval
+  const isEditingRef = useRef(false)
+  useEffect(() => { isEditingRef.current = editingItem !== null }, [editingItem])
+
   // Polling for collaborative editing - check for updates every 5 seconds
   useEffect(() => {
     if (!id) return
@@ -895,7 +906,7 @@ export function TripEditPage() {
         setCurrentUserRole(data.currentUserRole)
 
         // Update the trip data if there are updates (and we're not currently editing)
-        if (data.hasUpdates && !editingItem) {
+        if (data.hasUpdates && !isEditingRef.current) {
           // Fetch the latest trip data
           await fetchTrip(tripId)
         }
@@ -917,7 +928,8 @@ export function TripEditPage() {
         clearInterval(pollingInterval.current)
       }
     }
-  }, [id, editingItem, fetchTrip])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, fetchTrip])
 
   // Toggle template status
   async function toggleTemplate() {

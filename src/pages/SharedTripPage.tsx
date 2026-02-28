@@ -1,8 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import type { Trip, Item, TripFeedback, FeedbackStats, BudgetSummary, CostCategory, ItemPhoto } from '../types'
-import { COST_CATEGORIES } from '../types'
-import { formatDateRange, formatCost, formatDayLabel } from '../utils'
+import type { Trip, Item, TripFeedback, FeedbackStats, ItemPhoto } from '../types'
+import { formatDateRange, formatCost, formatDayLabel, isDayToday, getBudgetSummary } from '../utils'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { SkeletonHero, SkeletonDaySection } from '../components/Skeleton'
@@ -18,113 +17,14 @@ import { PackingList } from '../components/PackingList'
 import { CollapsibleSection } from '../components/CollapsibleSection'
 import { PrintIcon, CopyIcon, DownloadIcon, MoreVerticalIcon, TrashIcon, ImageIcon } from '../components/Icons'
 import { FallbackImage } from '../components/FallbackImage'
+import { BudgetSummaryCard } from '../components/BudgetSummaryCard'
+import { StarRating } from '../components/StarRating'
 import { useScrollReveal } from '../hooks/useScrollReveal'
-
-// Budget summary component
-function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
-  const formatCostLocal = (cost: number) => `¥${cost.toLocaleString()}`
-
-  return (
-    <div className="budget-summary-card">
-      <h3 className="budget-summary-title">予算サマリー</h3>
-
-      {/* Budget overview */}
-      <div className="budget-overview">
-        <div className="budget-row">
-          <span className="budget-label">合計費用</span>
-          <span className="budget-value">{formatCostLocal(summary.totalSpent)}</span>
-        </div>
-        {summary.totalBudget !== null && (
-          <>
-            <div className="budget-row">
-              <span className="budget-label">予算</span>
-              <span className="budget-value">{formatCostLocal(summary.totalBudget)}</span>
-            </div>
-            <div className="budget-row">
-              <span className="budget-label">残り</span>
-              <span className={`budget-value ${summary.isOverBudget ? 'budget-over' : 'budget-under'}`}>
-                {summary.remaining !== null && (summary.remaining >= 0 ? formatCostLocal(summary.remaining) : `-${formatCostLocal(Math.abs(summary.remaining))}`)}
-              </span>
-            </div>
-            {/* Progress bar */}
-            <div className="budget-progress-container">
-              <div
-                className={`budget-progress-bar ${summary.isOverBudget ? 'over' : ''}`}
-                style={{ width: `${Math.min((summary.totalSpent / summary.totalBudget) * 100, 100)}%` }}
-              />
-            </div>
-            {summary.isOverBudget && (
-              <div className="budget-warning">
-                予算を超過しています
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Category breakdown */}
-      {summary.byCategory.length > 0 && (
-        <div className="budget-categories">
-          <h4 className="budget-categories-title">カテゴリ別内訳</h4>
-          {summary.byCategory.map((cat) => (
-            <div key={cat.category} className="budget-category-row">
-              <span className="budget-category-name">{cat.category}</span>
-              <div className="budget-category-bar-container">
-                <div
-                  className="budget-category-bar"
-                  style={{ width: `${cat.percentage}%` }}
-                />
-              </div>
-              <span className="budget-category-amount">{formatCostLocal(cat.amount)}</span>
-              <span className="budget-category-percent">{cat.percentage}%</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Star rating component
-function StarRating({ rating, onRate, readonly = false }: {
-  rating: number
-  onRate?: (rating: number) => void
-  readonly?: boolean
-}) {
-  const [hoverRating, setHoverRating] = useState(0)
-
-  return (
-    <div className="star-rating" onMouseLeave={() => setHoverRating(0)}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          className={`star-btn ${readonly ? 'readonly' : ''}`}
-          onClick={() => !readonly && onRate?.(star)}
-          onMouseEnter={() => !readonly && setHoverRating(star)}
-          disabled={readonly}
-        >
-          <span className={`star ${(hoverRating || rating) >= star ? 'filled' : ''}`}>
-            {(hoverRating || rating) >= star ? '\u2605' : '\u2606'}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
 
 // Format date for feedback
 function formatFeedbackDate(dateStr: string): string {
   const date = new Date(dateStr)
   return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`
-}
-
-function isDayToday(dateStr: string): boolean {
-  const now = new Date()
-  const jstOffset = 9 * 60 * 60 * 1000
-  const jstNow = new Date(now.getTime() + jstOffset + now.getTimezoneOffset() * 60 * 1000)
-  const today = jstNow.toISOString().split('T')[0]
-  return dateStr === today
 }
 
 export function SharedTripPage() {
@@ -473,43 +373,7 @@ export function SharedTripPage() {
   }
 
   const totalCost = items.reduce((sum, item) => sum + (item.cost || 0), 0)
-
-  function getBudgetSummary(): BudgetSummary | null {
-    if (!trip) return null
-
-    const totalSpent = items.reduce((sum, item) => sum + (item.cost || 0), 0)
-    const totalBudget = trip.budget
-
-    const categoryTotals = new Map<CostCategory, number>()
-    for (const cat of COST_CATEGORIES) {
-      categoryTotals.set(cat, 0)
-    }
-
-    for (const item of items) {
-      if (item.cost && item.cost > 0) {
-        const category = (item.costCategory || 'その他') as CostCategory
-        categoryTotals.set(category, (categoryTotals.get(category) || 0) + item.cost)
-      }
-    }
-
-    const byCategory = COST_CATEGORIES
-      .map((category) => ({
-        category,
-        amount: categoryTotals.get(category) || 0,
-        percentage: totalSpent > 0 ? Math.round(((categoryTotals.get(category) || 0) / totalSpent) * 100) : 0,
-      }))
-      .filter((c) => c.amount > 0)
-
-    return {
-      totalBudget,
-      totalSpent,
-      remaining: totalBudget ? totalBudget - totalSpent : null,
-      isOverBudget: totalBudget ? totalSpent > totalBudget : false,
-      byCategory,
-    }
-  }
-
-  const budgetSummary = getBudgetSummary()
+  const budgetSummary = getBudgetSummary(items, trip.budget)
 
   function printTrip() {
     window.print()
