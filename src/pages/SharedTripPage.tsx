@@ -133,7 +133,7 @@ export function SharedTripPage() {
   const { user } = useAuth()
   const { showSuccess, showError } = useToast()
   const [trip, setTrip] = useState<Trip | null>(null)
-  const [tripOwnerId, setTripOwnerId] = useState<string | null>(null)
+  const [isOwner, setIsOwner] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [uploadingItemPhoto, setUploadingItemPhoto] = useState<string | null>(null)
@@ -176,11 +176,9 @@ export function SharedTripPage() {
     try {
       const res = await fetch(`/api/shared/${token}`)
       if (res.ok) {
-        const data = await res.json() as { trip: Trip; tripOwnerId?: string }
+        const data = await res.json() as { trip: Trip; isOwner?: boolean }
         setTrip(data.trip)
-        if (data.tripOwnerId) {
-          setTripOwnerId(data.tripOwnerId)
-        }
+        setIsOwner(!!data.isOwner)
       }
     } catch {
       // ignore
@@ -201,11 +199,9 @@ export function SharedTripPage() {
           }
           return
         }
-        const data = await res.json() as { trip: Trip; tripOwnerId?: string }
+        const data = await res.json() as { trip: Trip; isOwner?: boolean }
         setTrip(data.trip)
-        if (data.tripOwnerId) {
-          setTripOwnerId(data.tripOwnerId)
-        }
+        setIsOwner(!!data.isOwner)
       } catch {
         setError('読み込みに失敗しました')
       } finally {
@@ -417,14 +413,14 @@ export function SharedTripPage() {
 
   function canDeleteItemPhoto(item: Item, photo?: ItemPhoto): boolean {
     if (!user) return false
-    if (tripOwnerId === user.id) return true
+    if (isOwner) return true
     if (photo) return photo.uploadedBy === user.id
     return item.photoUploadedBy === user.id
   }
 
   function canDeleteDayPhoto(photo: { uploadedBy: string | null }): boolean {
     if (!user) return false
-    return photo.uploadedBy === user.id || tripOwnerId === user.id
+    return photo.uploadedBy === user.id || isOwner
   }
 
   if (loading) {
@@ -640,7 +636,7 @@ export function SharedTripPage() {
 
   function canDeleteFeedback(feedback: TripFeedback): boolean {
     if (!user) return false
-    return feedback.userId === user.id || tripOwnerId === user.id
+    return feedback.userId === user.id || isOwner
   }
 
   return (

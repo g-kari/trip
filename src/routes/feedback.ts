@@ -112,6 +112,15 @@ app.post('/api/trips/:tripId/feedback', async (c) => {
     if (existing) {
       return c.json({ error: '既にフィードバックを投稿しています' }, 409);
     }
+  } else {
+    // For anonymous users, limit to 5 per trip per day
+    const todayStart = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
+    const anonCount = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM trip_feedback WHERE trip_id = ? AND user_id IS NULL AND created_at >= ?'
+    ).bind(tripId, todayStart).first<{ count: number }>();
+    if (anonCount && anonCount.count >= 5) {
+      return c.json({ error: '本日の匿名フィードバック上限に達しました' }, 429);
+    }
   }
 
   const id = generateId();
@@ -244,6 +253,15 @@ app.post('/api/shared/:token/feedback', async (c) => {
 
     if (existing) {
       return c.json({ error: '既にフィードバックを投稿しています' }, 409);
+    }
+  } else {
+    // For anonymous users, limit to 5 per trip per day
+    const todayStart = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
+    const anonCount = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM trip_feedback WHERE trip_id = ? AND user_id IS NULL AND created_at >= ?'
+    ).bind(tripId, todayStart).first<{ count: number }>();
+    if (anonCount && anonCount.count >= 5) {
+      return c.json({ error: '本日の匿名フィードバック上限に達しました' }, 429);
     }
   }
 

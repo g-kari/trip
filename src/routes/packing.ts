@@ -20,11 +20,11 @@ app.get('/api/trips/:tripId/packing', async (c) => {
       'SELECT user_id FROM trips WHERE id = ?'
     ).bind(tripId).first<{ user_id: string }>();
 
-    if (trip?.user_id === user.id) {
+    if (!trip?.user_id || trip.user_id === user.id) {
       hasAccess = true;
     } else {
       const collab = await c.env.DB.prepare(
-        'SELECT id FROM collaborators WHERE trip_id = ? AND user_id = ?'
+        'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
       ).bind(tripId, user.id).first();
       if (collab) hasAccess = true;
     }
@@ -42,7 +42,7 @@ app.get('/api/trips/:tripId/packing', async (c) => {
   }
 
   const items = await c.env.DB.prepare(
-    'SELECT * FROM packing_items WHERE trip_id = ? ORDER BY category, sort, created_at'
+    'SELECT id, trip_id, name, category, is_checked, sort, created_at, updated_at FROM packing_items WHERE trip_id = ? ORDER BY category, sort, created_at'
   ).bind(tripId).all();
 
   return c.json({ items: items.results });
@@ -65,7 +65,7 @@ app.post('/api/trips/:tripId/packing', async (c) => {
   let canEdit = trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
-      "SELECT role FROM collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     canEdit = !!collab;
   }
@@ -92,7 +92,7 @@ app.post('/api/trips/:tripId/packing', async (c) => {
   ).bind(id, tripId, body.name.trim(), category, sort).run();
 
   const item = await c.env.DB.prepare(
-    'SELECT * FROM packing_items WHERE id = ?'
+    'SELECT id, trip_id, name, category, is_checked, sort, created_at, updated_at FROM packing_items WHERE id = ?'
   ).bind(id).first();
 
   return c.json({ item }, 201);
@@ -116,7 +116,7 @@ app.patch('/api/trips/:tripId/packing/:itemId', async (c) => {
   let canEdit = trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
-      "SELECT role FROM collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     canEdit = !!collab;
   }
@@ -157,7 +157,7 @@ app.patch('/api/trips/:tripId/packing/:itemId', async (c) => {
   ).bind(...values).run();
 
   const item = await c.env.DB.prepare(
-    'SELECT * FROM packing_items WHERE id = ?'
+    'SELECT id, trip_id, name, category, is_checked, sort, created_at, updated_at FROM packing_items WHERE id = ?'
   ).bind(itemId).first();
 
   return c.json({ item });
@@ -181,7 +181,7 @@ app.delete('/api/trips/:tripId/packing/:itemId', async (c) => {
   let canEdit = trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
-      "SELECT role FROM collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     canEdit = !!collab;
   }
@@ -212,7 +212,7 @@ app.put('/api/trips/:tripId/packing/reorder', async (c) => {
   let canEdit = trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
-      "SELECT role FROM collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     canEdit = !!collab;
   }
@@ -220,6 +220,10 @@ app.put('/api/trips/:tripId/packing/reorder', async (c) => {
   if (!canEdit) return c.json({ error: 'Forbidden' }, 403);
 
   const body = await c.req.json<{ items: { id: string; sort: number; category?: string }[] }>();
+
+  if (!Array.isArray(body.items) || body.items.length > 200) {
+    return c.json({ error: 'Invalid or too many items (max 200)' }, 400);
+  }
 
   for (const item of body.items) {
     if (item.category !== undefined) {

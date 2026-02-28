@@ -484,11 +484,15 @@ app.delete('/api/profile', async (c) => {
     return c.json({ error: 'ログインが必要です' }, 401);
   }
 
-  // Delete all user's data (cascade will handle trips, days, items, etc.)
-  // First delete sessions
+  // Delete all user's data
   await c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM trip_collaborators WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM trip_templates WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM item_templates WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM ai_usage WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM trip_feedback WHERE user_id = ?').bind(user.id).run();
 
-  // Delete trips (cascades to days, items, share_tokens, feedback)
+  // Delete trips (cascades to days, items, share_tokens, etc.)
   await c.env.DB.prepare('DELETE FROM trips WHERE user_id = ?').bind(user.id).run();
 
   // Delete user

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../worker-types';
 import { generateId } from '../auth/session';
-import { checkTripOwnership } from '../helpers';
+import { checkTripOwnership, safeJsonParse } from '../helpers';
 
 const app = new Hono<AppEnv>();
 
@@ -210,7 +210,7 @@ app.get('/api/trip-templates', async (c) => {
     name: t.name,
     description: t.description,
     theme: t.theme,
-    daysData: JSON.parse(t.daysData || '[]') as TripTemplateDay[],
+    daysData: (safeJsonParse(t.daysData) || []) as TripTemplateDay[],
     isPublic: t.isPublic === 1,
     isOwn: t.userId === user.id,
     createdAt: t.createdAt,
@@ -411,7 +411,10 @@ app.post('/api/trips/from-template/:templateId', async (c) => {
     return c.json({ error: 'アクセスが拒否されました' }, 403);
   }
 
-  const daysData = JSON.parse(template.daysData || '[]') as TripTemplateDay[];
+  const rawDaysData = safeJsonParse(template.daysData);
+  const daysData: TripTemplateDay[] = Array.isArray(rawDaysData)
+    ? rawDaysData.filter((d): d is TripTemplateDay => d && Array.isArray(d.items))
+    : [];
 
   // Calculate end date based on number of days
   const startDate = new Date(body.startDate);

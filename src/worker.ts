@@ -23,6 +23,7 @@ import {
   generateOgpHtml,
   getWeatherInfo,
   enrichTripData,
+  safeJsonParse,
 } from './helpers';
 import packingRoutes from './routes/packing';
 import feedbackRoutes from './routes/feedback';
@@ -32,6 +33,15 @@ import authRoutes from './routes/auth';
 import sharingRoutes from './routes/sharing';
 
 const app = new Hono<AppEnv>();
+
+// Allowed image extensions (whitelist)
+const ALLOWED_IMAGE_EXTS: Record<string, string> = { jpeg: 'jpg', jpg: 'jpg', png: 'png', gif: 'gif', webp: 'webp' };
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
+function sanitizeImageExt(contentType: string): string {
+  const raw = contentType.split('/')[1]?.split(';')[0]?.toLowerCase() || '';
+  return ALLOWED_IMAGE_EXTS[raw] || 'jpg';
+}
 
 // Auth middleware - sets user in context if logged in
 app.use('/api/*', async (c, next) => {
@@ -69,12 +79,12 @@ app.get('/api/trips', async (c) => {
   const conditions: string[] = [];
   const params: (string | number)[] = [];
 
-  // User filter (required)
+  // User filter (required — anonymous users get empty list)
   if (user) {
     conditions.push('user_id = ?');
     params.push(user.id);
   } else {
-    conditions.push('user_id IS NULL');
+    return c.json({ trips: [], total: 0 });
   }
 
   // Archive filter
@@ -396,7 +406,7 @@ app.put('/api/trips/:id', async (c) => {
       ).bind(id, user.id).first<{ id: string; changes: string | null }>();
 
       if (recentEntry) {
-        const existingChanges: Record<string, { old: unknown; new: unknown }> = recentEntry.changes ? JSON.parse(recentEntry.changes) : {};
+        const existingChanges: Record<string, { old: unknown; new: unknown }> = (recentEntry.changes ? safeJsonParse(recentEntry.changes) : {}) as Record<string, { old: unknown; new: unknown }>;
         for (const [key, val] of Object.entries(changes)) {
           if (existingChanges[key]) {
             existingChanges[key].new = val.new;
@@ -549,7 +559,7 @@ app.post('/api/trips/:id/duplicate', async (c) => {
   if (!isOwner) {
     // Check if it's shared
     const share = await c.env.DB.prepare(
-      'SELECT id FROM share_tokens WHERE trip_id = ?'
+      'SELECT id FROM share_tokens WHERE trip_id = ? AND is_active = 1'
     ).bind(id).first();
     if (!share) {
       return c.json({ error: 'Forbidden' }, 403);
@@ -905,29 +915,45 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
     return c.json({ error: 'Item not found' }, 404);
   }
 
-  // Handle costCategory - allow explicit null to clear it, or keep existing if undefined
-  const shouldClearCostCategory = body.costCategory === null;
-  const costCategoryValue = shouldClearCostCategory ? null : (body.costCategory ?? null);
+  // For nullable fields, distinguish between "not provided" (undefined) and "explicitly cleared" (null)
+  // CASE WHEN ?=1 THEN NULL WHEN ?=2 THEN ? ELSE field END
+  // flag=0: keep existing, flag=1: set to null, flag=2: set to new value
+  function fieldFlag(val: unknown): [number, unknown] {
+    if (val === undefined) return [0, null]; // not provided → keep existing
+    if (val === null) return [1, null]; // explicit null → clear
+    return [2, val]; // new value
+  }
+  const [areaF, areaV] = fieldFlag(body.area);
+  const [tsF, tsV] = fieldFlag(body.timeStart);
+  const [teF, teV] = fieldFlag(body.timeEnd);
+  const [muF, muV] = fieldFlag(body.mapUrl);
+  const [noteF, noteV] = fieldFlag(body.note);
+  const [costF, costV] = fieldFlag(body.cost);
+  const [ccF, ccV] = fieldFlag(body.costCategory);
 
   await c.env.DB.prepare(
     `UPDATE items SET
       day_id = COALESCE(?, day_id),
       title = COALESCE(?, title),
-      area = COALESCE(?, area),
-      time_start = COALESCE(?, time_start),
-      time_end = COALESCE(?, time_end),
-      map_url = COALESCE(?, map_url),
-      note = COALESCE(?, note),
-      cost = COALESCE(?, cost),
-      cost_category = CASE WHEN ? = 1 THEN ? ELSE COALESCE(?, cost_category) END,
+      area = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE area END,
+      time_start = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE time_start END,
+      time_end = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE time_end END,
+      map_url = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE map_url END,
+      note = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE note END,
+      cost = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE cost END,
+      cost_category = CASE WHEN ? = 1 THEN NULL WHEN ? = 2 THEN ? ELSE cost_category END,
       sort = COALESCE(?, sort),
       updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id = ?`
   ).bind(
-    body.dayId ?? null, body.title ?? null, body.area ?? null,
-    body.timeStart ?? null, body.timeEnd ?? null, body.mapUrl ?? null,
-    body.note ?? null, body.cost ?? null,
-    shouldClearCostCategory ? 1 : 0, costCategoryValue, costCategoryValue,
+    body.dayId ?? null, body.title ?? null,
+    areaF, areaF, areaV,
+    tsF, tsF, tsV,
+    teF, teF, teV,
+    muF, muF, muV,
+    noteF, noteF, noteV,
+    costF, costF, costV,
+    ccF, ccF, ccV,
     body.sort ?? null, itemId
   ).run();
 
@@ -954,7 +980,7 @@ app.put('/api/trips/:tripId/items/:itemId', async (c) => {
       ).bind(tripId, user.id, itemId).first<{ id: string; changes: string | null }>();
 
       if (recentEntry) {
-        const prev: Record<string, { old: unknown; new: unknown }> = recentEntry.changes ? JSON.parse(recentEntry.changes) : {};
+        const prev: Record<string, { old: unknown; new: unknown }> = (recentEntry.changes ? safeJsonParse(recentEntry.changes) : {}) as Record<string, { old: unknown; new: unknown }>;
         for (const [key, val] of Object.entries(itemChanges)) {
           if (prev[key]) { prev[key].new = val.new; } else { prev[key] = val; }
         }
@@ -1017,8 +1043,8 @@ app.put('/api/trips/:tripId/days/:dayId/reorder', async (c) => {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
 
-  if (!body.itemIds || !Array.isArray(body.itemIds)) {
-    return c.json({ error: 'itemIds array is required' }, 400);
+  if (!body.itemIds || !Array.isArray(body.itemIds) || body.itemIds.length > 200) {
+    return c.json({ error: 'itemIds array is required (max 200)' }, 400);
   }
 
   // Update sort order for each item
@@ -1427,17 +1453,14 @@ app.post('/api/trips/:tripId/cover', async (c) => {
     return c.json({ error: 'Only image files are allowed' }, 400);
   }
 
-  // Validate file size (max 5MB)
-  const contentLength = parseInt(c.req.header('Content-Length') || '0', 10);
-  if (contentLength > 5 * 1024 * 1024) {
-    return c.json({ error: 'File too large (max 5MB)' }, 400);
-  }
-
-  const ext = contentType.split('/')[1] || 'jpg';
+  const ext = sanitizeImageExt(contentType);
   const key = `covers/${tripId}.${ext}`;
 
   try {
     const body = await c.req.arrayBuffer();
+    if (body.byteLength > MAX_IMAGE_SIZE) {
+      return c.json({ error: 'File too large (max 5MB)' }, 400);
+    }
     await c.env.COVERS.put(key, body, {
       httpMetadata: {
         contentType,
@@ -1549,18 +1572,15 @@ app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
     return c.json({ error: 'Only image files are allowed' }, 400);
   }
 
-  // Validate file size (max 5MB)
-  const contentLength = parseInt(c.req.header('Content-Length') || '0', 10);
-  if (contentLength > 5 * 1024 * 1024) {
-    return c.json({ error: 'File too large (max 5MB)' }, 400);
-  }
-
   const photoId = crypto.randomUUID();
-  const ext = contentType.split('/')[1] || 'jpg';
+  const ext = sanitizeImageExt(contentType);
   const key = `photos/items/${itemId}/${photoId}.${ext}`;
 
   try {
     const body = await c.req.arrayBuffer();
+    if (body.byteLength > MAX_IMAGE_SIZE) {
+      return c.json({ error: 'File too large (max 5MB)' }, 400);
+    }
     await c.env.COVERS.put(key, body, {
       httpMetadata: {
         contentType,
@@ -1574,7 +1594,7 @@ app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
     await c.env.DB.prepare(
       `INSERT INTO item_photos (id, item_id, trip_id, photo_url, uploaded_by, uploaded_by_name, uploaded_at)
        VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'))`
-    ).bind(photoId, itemId, tripId, photoUrl, user.id, user.name || user.email || null).run();
+    ).bind(photoId, itemId, tripId, photoUrl, user.id, user.name || null).run();
 
     // Update item with photo URL and uploader info (backward compatibility)
     await c.env.DB.prepare(
@@ -1806,16 +1826,16 @@ app.post('/api/trips/:tripId/items/:itemId/suggestions', async (c) => {
     return c.json({ error: '周辺スポット提案にはログインが必要です' }, 401);
   }
 
-  // Check and deduct credits
-  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'suggestions');
-  if (!creditCheck.ok) {
-    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
-  }
-
   // Check if user can edit this trip (spot suggestions require edit access)
   const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Check and deduct credits (after auth check to avoid losing credits on unauthorized requests)
+  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'suggestions');
+  if (!creditCheck.ok) {
+    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
   }
 
   // Get item details
@@ -1910,16 +1930,16 @@ app.post('/api/trips/:tripId/days/:dayId/optimize', async (c) => {
     return c.json({ error: 'ルート最適化にはログインが必要です' }, 401);
   }
 
-  // Check and deduct credits
-  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'optimize');
-  if (!creditCheck.ok) {
-    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
-  }
-
   // Check if user can edit this trip
   const check = await checkCanEditTrip(c.env.DB, tripId, user);
   if (!check.ok) {
     return c.json({ error: check.error }, check.status as 403 | 404);
+  }
+
+  // Check and deduct credits (after auth check to avoid losing credits on unauthorized requests)
+  const creditCheck = await checkAndDeductCredits(c.env.DB, user.id, ip, 'optimize');
+  if (!creditCheck.ok) {
+    return c.json({ error: creditCheck.error, limitReached: true, remaining: 0 }, creditCheck.status as 429);
   }
 
   // Verify day exists and belongs to this trip
@@ -2275,18 +2295,15 @@ app.post('/api/trips/:tripId/days/:dayId/photos', async (c) => {
     return c.json({ error: 'Only image files are allowed' }, 400);
   }
 
-  // Validate file size (max 5MB)
-  const contentLength = parseInt(c.req.header('Content-Length') || '0', 10);
-  if (contentLength > 5 * 1024 * 1024) {
-    return c.json({ error: 'File too large (max 5MB)' }, 400);
-  }
-
-  const ext = contentType.split('/')[1] || 'jpg';
+  const ext = sanitizeImageExt(contentType);
   const photoId = generateId();
   const key = `photos/days/${dayId}/${photoId}.${ext}`;
 
   try {
     const body = await c.req.arrayBuffer();
+    if (body.byteLength > MAX_IMAGE_SIZE) {
+      return c.json({ error: 'File too large (max 5MB)' }, 400);
+    }
     await c.env.COVERS.put(key, body, {
       httpMetadata: {
         contentType,
@@ -2300,7 +2317,7 @@ app.post('/api/trips/:tripId/days/:dayId/photos', async (c) => {
     await c.env.DB.prepare(
       `INSERT INTO day_photos (id, day_id, trip_id, photo_url, uploaded_by, uploaded_by_name)
        VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(photoId, dayId, tripId, photoUrl, user.id, user.name || user.email || null).run();
+    ).bind(photoId, dayId, tripId, photoUrl, user.id, user.name || null).run();
 
     return c.json({ photoId, photoUrl }, 201);
   } catch (error) {

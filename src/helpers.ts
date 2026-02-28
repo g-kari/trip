@@ -107,7 +107,7 @@ export async function enrichTripData(db: D1Database, tripId: string) {
 
   // Parse photos JSON for each day and merge with new day_photos
   const enrichedDays = days.map((day) => {
-    const oldPhotos: string[] = day.photos ? JSON.parse(day.photos) : [];
+    const oldPhotos: string[] = (day.photos ? safeJsonParse(day.photos) : []) as string[];
     const oldPhotosFormatted: PhotoEntry[] = oldPhotos.map((url, i) => ({
       id: `legacy-${day.id}-${i}`, photoUrl: url,
       uploadedBy: null, uploadedByName: null, uploadedAt: null,

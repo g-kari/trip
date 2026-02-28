@@ -23,9 +23,9 @@ app.post('/api/trips/:tripId/share', async (c) => {
     return c.json({ error: check.error }, check.status as 403 | 404);
   }
 
-  // Check if share token already exists
+  // Check if active share token already exists
   const existing = await c.env.DB.prepare(
-    'SELECT token FROM share_tokens WHERE trip_id = ?'
+    'SELECT token FROM share_tokens WHERE trip_id = ? AND is_active = 1'
   ).bind(tripId).first<{ token: string }>();
 
   if (existing) {
@@ -109,14 +109,15 @@ app.get('/api/shared/:token', async (c) => {
     return c.json({ error: 'Trip not found' }, 404);
   }
 
-  const tripOwnerId = trip.userId;
+  const user = c.get('user');
+  const isOwner = !!(user && trip.userId && trip.userId === user.id);
 
   const { days: daysWithParsedPhotos, items: itemsWithUploaderNames } = await enrichTripData(c.env.DB, share.trip_id);
 
-  // Remove userId from the response to not expose it, but include tripOwnerId for permission checking
+  // Remove userId from the response to not expose internal user ID
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { userId: _unusedUserId, ...tripWithoutUserId } = trip;
-  return c.json({ trip: { ...tripWithoutUserId, days: daysWithParsedPhotos, items: itemsWithUploaderNames }, tripOwnerId });
+  return c.json({ trip: { ...tripWithoutUserId, days: daysWithParsedPhotos, items: itemsWithUploaderNames }, isOwner });
 });
 
 // OGP image for shared trip
@@ -564,7 +565,7 @@ app.get('/api/trips/:tripId/calendar.ics', async (c) => {
     return new Response(icsContent, {
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(trip.title)}.ics"`,
+        'Content-Disposition': `attachment; filename="trip.ics"; filename*=UTF-8''${encodeURIComponent(trip.title)}.ics`,
         'Cache-Control': 'private, max-age=0',
       },
     });
@@ -644,7 +645,7 @@ app.get('/api/shared/:token/calendar.ics', async (c) => {
     return new Response(icsContent, {
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(trip.title)}.ics"`,
+        'Content-Disposition': `attachment; filename="trip.ics"; filename*=UTF-8''${encodeURIComponent(trip.title)}.ics`,
         'Cache-Control': 'private, max-age=0',
       },
     });
