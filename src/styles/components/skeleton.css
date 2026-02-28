@@ -107,6 +107,18 @@
   }
 }
 
+/* Dark mode: reduce shimmer brightness */
+[data-color-mode="dark"] .skeleton::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .skeleton::after,
+  :root:not([data-color-mode]) .skeleton::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+  }
+}
+
 @media (max-width: 360px) {
   .skeleton-timeline-item {
     grid-template-columns: 44px 1fr;

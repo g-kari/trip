@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Item } from '../types'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 // Type for optimized item from API
 type OptimizedItem = {
@@ -26,6 +27,7 @@ type OptimizeModalProps = {
 }
 
 export function OptimizeModal({ tripId, dayId, items, onClose, onApplied }: OptimizeModalProps) {
+  useEscapeKey(onClose)
   const [loading, setLoading] = useState(false)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -132,9 +134,9 @@ export function OptimizeModal({ tripId, dayId, items, onClose, onApplied }: Opti
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal optimize-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal optimize-modal" role="dialog" aria-modal="true" aria-labelledby="optimize-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">ルート最適化</h3>
+          <h3 className="modal-title" id="optimize-modal-title">ルート最適化</h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 

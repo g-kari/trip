@@ -28,19 +28,19 @@
 
 /* Day label with vintage styling */
 [data-theme="retro"] .day-label {
-  font-weight: 600;
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.03em;
 }
 
 /* Timeline time display - bold for classic feel */
 [data-theme="retro"] .timeline-time {
-  font-weight: 600;
+  font-weight: var(--font-weight-bold);
   color: var(--color-text);
 }
 
 /* Timeline title styling */
 [data-theme="retro"] .timeline-title {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 /* Cards with subtle vintage border */

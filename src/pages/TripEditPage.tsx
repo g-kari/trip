@@ -364,7 +364,7 @@ function DraggableItem({
                 type="file"
                 accept="image/*"
                 multiple
-                style={{ display: 'none' }}
+                className="hidden"
                 onChange={async (e) => {
                   const files = e.target.files
                   if (!files || files.length === 0) return
@@ -562,10 +562,9 @@ function DayNotesSection({
 
       {/* Add photo button */}
       <button
-        className="btn-text btn-small no-print"
+        className={`btn-text btn-small no-print${hasContent ? ' trip-edit-photo-btn-spaced' : ''}`}
         onClick={() => photoInputRef.current?.click()}
         disabled={uploadingPhoto}
-        style={{ marginTop: hasContent ? 'var(--space-2)' : 0 }}
       >
         {uploadingPhoto ? `${uploadingPhotoCount}枚アップロード中...` : '+ 写真を追加（複数可）'}
       </button>
@@ -574,7 +573,7 @@ function DayNotesSection({
         type="file"
         accept="image/*"
         multiple
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const files = e.target.files
           if (files && files.length > 0) {
@@ -1593,7 +1592,7 @@ export function TripEditPage() {
 
   return (
     <>
-      <div className="hero print-hero" style={{ padding: 'var(--space-7) 0 var(--space-5)' }}>
+      <div className="hero print-hero trip-edit-hero">
         <div className="edit-trip-form no-print">
           <input
             type="text"
@@ -1700,7 +1699,7 @@ export function TripEditPage() {
               ref={coverInputRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) uploadCoverImage(file)
@@ -1795,16 +1794,16 @@ export function TripEditPage() {
             )}
           </div>
           {/* Auto-save indicator */}
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-faint)', marginTop: 'var(--space-2)', textAlign: 'center' }}>
+          <div className="trip-edit-autosave">
             {saving ? '保存中...' : lastSaved ? `保存済み ${lastSaved.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}` : ''}
           </div>
         </div>
         {editTripStartDate && editTripEndDate && (
-          <p className="hero-subtitle" style={{ marginTop: 'var(--space-3)' }}>
+          <p className="hero-subtitle trip-edit-date-range">
             {formatDateRange(editTripStartDate, editTripEndDate)}
           </p>
         )}
-        <div className="hero-actions-row no-print" style={{ marginTop: 'var(--space-3)' }}>
+        <div className="hero-actions-row no-print trip-edit-actions-row">
           <Link to={`/trips/${trip.id}`} className="btn-icon" title="プレビュー">
             <EyeIcon size={16} />
           </Link>
@@ -1832,13 +1831,13 @@ export function TripEditPage() {
                   <HistoryIcon size={14} /> 変更履歴
                 </button>
                 <hr className="more-menu-divider" />
-                <label className="more-menu-item" style={{ cursor: 'pointer' }}>
+                <label className="more-menu-item trip-edit-template-label">
                   <input
                     type="checkbox"
                     checked={isTemplate}
                     onChange={() => { toggleTemplate(); setShowMoreMenu(false) }}
                     disabled={savingTemplate}
-                    style={{ accentColor: 'var(--color-accent)' }}
+                    className="trip-edit-template-checkbox"
                   />
                   テンプレートとして公開{isTemplate ? ` (${templateUses}回使用)` : ''}
                 </label>
@@ -1881,10 +1880,9 @@ export function TripEditPage() {
           </p>
           {editTripStartDate && editTripEndDate && (
             <button
-              className="btn-outline no-print"
+              className="btn-outline no-print trip-edit-generate-days-btn"
               onClick={generateDays}
               disabled={generatingDays}
-              style={{ marginTop: 'var(--space-4)' }}
             >
               {generatingDays ? '生成中...' : '日程を自動生成'}
             </button>
@@ -1923,7 +1921,7 @@ export function TripEditPage() {
                   >
                     <span className="timeline-time">—</span>
                     <div className="timeline-content">
-                      <span className="timeline-title" style={{ color: 'var(--color-text-faint)' }}>
+                      <span className="timeline-title trip-edit-empty-day-title">
                         {draggedItem && draggedItem.dayId !== day.id
                           ? 'ここにドロップして移動'
                           : '予定がありません'}

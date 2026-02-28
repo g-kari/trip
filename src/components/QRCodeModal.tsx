@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCodeLib from 'qrcode'
 import { useToast } from '../hooks/useToast'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 interface QRCodeModalProps {
   url: string
@@ -14,6 +15,7 @@ export function QRCodeModal({ url, title, onClose }: QRCodeModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const { showSuccess, showError } = useToast()
+  useEscapeKey(onClose)
 
   useEffect(() => {
     async function generateQR() {
@@ -98,8 +100,8 @@ export function QRCodeModal({ url, title, onClose }: QRCodeModalProps) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal qr-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">QRコードで共有</h2>
+      <div className="modal qr-modal" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" onClick={(e) => e.stopPropagation()}>
+        <h2 className="modal-title" id="qr-modal-title">QRコードで共有</h2>
 
         <div className="qr-modal-content">
           {error ? (

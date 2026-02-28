@@ -3,8 +3,8 @@
    ======================================== */
 
 .create-form {
-  @apply flex flex-col gap-4
-         p-6 mb-6
+  @apply flex flex-col gap-[var(--space-4)]
+         p-[var(--space-5)] mb-[var(--space-5)]
          border border-border-light rounded-m
          bg-bg-elevated;
 }
@@ -183,8 +183,8 @@ select.collaborator-role-select::-ms-expand {
 
 /* Inline form (for adding days/items) */
 .inline-form {
-  @apply flex flex-col gap-3
-         p-4 mt-3
+  @apply flex flex-col gap-[var(--space-3)]
+         p-[var(--space-4)] mt-[var(--space-3)]
          border border-border-light rounded-m
          bg-bg-elevated;
 }

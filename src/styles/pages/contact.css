@@ -1,0 +1,25 @@
+/* ========================================
+   Contact Page
+   ======================================== */
+
+.contact-hero {
+  @apply pt-[var(--space-7)] pb-[var(--space-5)];
+}
+
+.contact-submit-another {
+  @apply mt-[var(--space-4)];
+}
+
+.contact-textarea {
+  @apply min-h-[120px];
+  resize: vertical;
+}
+
+.contact-error {
+  @apply text-sm
+         text-danger;
+}
+
+.contact-back-link {
+  @apply mt-[var(--space-6)];
+}

@@ -23,12 +23,12 @@
   &::before {
     content: '';
     @apply inline-block size-2 rounded-full;
-    background: #4ade80;
-    animation: pulse 2s ease-in-out infinite;
+    background: var(--color-success);
+    animation: pulse-travel 2s ease-in-out infinite;
   }
 }
 
-@keyframes pulse {
+@keyframes pulse-travel {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.9); }
 }
@@ -48,7 +48,7 @@
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 6px;
-  transition: background 150ms ease;
+  transition: background var(--transition-fast);
 
   &:hover {
     background: rgba(255, 255, 255, 0.3);
@@ -60,7 +60,7 @@
   @apply inline-flex items-center justify-center
          size-6 border-2 border-border rounded-full
          bg-transparent cursor-pointer shrink-0;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
 
   &:hover:not(.checked):not(:disabled) {
     @apply border-accent;
@@ -69,8 +69,8 @@
 
   &.checked {
     color: white;
-    border-color: #22c55e;
-    background: #22c55e;
+    border-color: var(--color-success);
+    background: var(--color-success);
 
     &::after {
       content: '\2713';
@@ -103,7 +103,7 @@
 /* Check-in Time Display */
 .checkin-time {
   @apply text-xs ml-[var(--space-1)];
-  color: #22c55e;
+  color: var(--color-success);
 }
 
 /* Timeline Item with Check-in */

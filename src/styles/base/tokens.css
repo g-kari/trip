@@ -38,6 +38,10 @@
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-bold:   600;
+  --font-size-caption:  0.75rem;
+  --font-size-small:    0.8125rem;
+  --font-size-body:     0.875rem;
+  --font-size-large:    1.125rem;
   --line-height:        1.8;
   --letter-spacing:     0.02em;
 
@@ -53,6 +57,7 @@
   --space-9: 96px;
 
   /* Radius */
+  --radius-xs: 3px;
   --radius-s: 6px;
   --radius-m: 10px;
   --radius-l: 16px;

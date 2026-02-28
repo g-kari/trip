@@ -198,8 +198,8 @@
 /* Public template warning */
 .public-warning {
   @apply p-[var(--space-4)] rounded-m mb-[var(--space-4)];
-  background-color: #fff8e6;
-  border: 1px solid #ffd966;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
 }
 
 .public-warning-icon {
@@ -221,12 +221,12 @@
 }
 
 .btn-warning {
-  background-color: #e67e22;
-  border-color: #e67e22;
+  background-color: var(--color-danger);
+  border-color: var(--color-danger);
 
   &:hover {
-    background-color: #d35400;
-    border-color: #d35400;
+    background-color: var(--color-danger-hover);
+    border-color: var(--color-danger-hover);
   }
 }
 
@@ -251,9 +251,9 @@
 .trip-template-public-badge {
   @apply text-[0.6875rem] shrink-0;
   padding: 2px 6px;
-  border-radius: 4px;
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-badge-success-bg, #e8f5e9);
+  color: var(--color-badge-success-text, #2e7d32);
 }
 
 /* Mobile responsive */

@@ -491,6 +491,9 @@ app.delete('/api/profile', async (c) => {
   await c.env.DB.prepare('DELETE FROM item_templates WHERE user_id = ?').bind(user.id).run();
   await c.env.DB.prepare('DELETE FROM ai_usage WHERE user_id = ?').bind(user.id).run();
   await c.env.DB.prepare('DELETE FROM trip_feedback WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM trip_history WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('DELETE FROM active_editors WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare('UPDATE trip_members SET user_id = NULL WHERE user_id = ?').bind(user.id).run();
 
   // Delete trips (cascades to days, items, share_tokens, etc.)
   await c.env.DB.prepare('DELETE FROM trips WHERE user_id = ?').bind(user.id).run();

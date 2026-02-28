@@ -314,8 +314,8 @@
          rounded-s
          text-[0.8125rem] font-[var(--font-weight-medium)]
          text-center;
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--color-badge-success-bg, #e8f5e9);
+  color: var(--color-badge-success-text, #2e7d32);
 }
 
 .profile-slot-promo {

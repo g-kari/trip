@@ -85,7 +85,7 @@
 .memory-photo {
   @apply w-full object-cover border border-border-light;
   height: 100px;
-  border-radius: 8px;
+  border-radius: var(--radius-s);
 }
 
 .item-photo-delete {
@@ -96,7 +96,7 @@
   height: 24px;
   font-size: 14px;
   background: rgba(255, 255, 255, 0.9);
-  transition: opacity 150ms ease;
+  transition: opacity var(--transition-fast);
 
   &:hover {
     background: rgba(255, 255, 255, 1);
@@ -106,4 +106,28 @@
 
 .item-photo:hover .item-photo-delete {
   @apply opacity-100;
+}
+
+/* Dark mode photo overlays */
+[data-color-mode="dark"] .day-photo-item .photo-uploader,
+[data-color-mode="dark"] .item-photo-item .photo-uploader {
+  background: rgba(42, 42, 42, 0.9);
+}
+
+[data-color-mode="dark"] .item-photo-delete {
+  background: rgba(42, 42, 42, 0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .day-photo-item .photo-uploader,
+  :root:not([data-color-mode]) .day-photo-item .photo-uploader,
+  [data-color-mode="system"] .item-photo-item .photo-uploader,
+  :root:not([data-color-mode]) .item-photo-item .photo-uploader {
+    background: rgba(42, 42, 42, 0.9);
+  }
+
+  [data-color-mode="system"] .item-photo-delete,
+  :root:not([data-color-mode]) .item-photo-delete {
+    background: rgba(42, 42, 42, 0.95);
+  }
 }

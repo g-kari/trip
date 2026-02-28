@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '../hooks/useToast'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 type Props = {
   tripId: string
@@ -9,6 +10,7 @@ type Props = {
 }
 
 export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Props) {
+  useEscapeKey(onClose)
   const { showError, showSuccess } = useToast()
   const [name, setName] = useState(tripTitle)
   const [description, setDescription] = useState('')
@@ -71,9 +73,9 @@ export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Pro
   if (showPublicWarning) {
     return (
       <div className="modal-overlay" onClick={cancelPublic}>
-        <div className="modal-content save-template-modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-content save-template-modal" role="dialog" aria-modal="true" aria-labelledby="save-template-public-warning-title" onClick={e => e.stopPropagation()}>
           <div className="modal-header">
-            <h2 className="modal-title">公開テンプレートの確認</h2>
+            <h2 className="modal-title" id="save-template-public-warning-title">公開テンプレートの確認</h2>
             <button className="modal-close" onClick={cancelPublic}>×</button>
           </div>
 
@@ -109,9 +111,9 @@ export function SaveAsTemplateModal({ tripId, tripTitle, onClose, onSaved }: Pro
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content save-template-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-content save-template-modal" role="dialog" aria-modal="true" aria-labelledby="save-template-modal-title" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">テンプレートとして保存</h2>
+          <h2 className="modal-title" id="save-template-modal-title">テンプレートとして保存</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 

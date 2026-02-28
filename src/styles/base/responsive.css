@@ -37,10 +37,37 @@
     @apply p-[var(--space-4)];
   }
 
+  .action-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .item-photo-delete,
   .day-photo-delete {
-    @apply size-8 opacity-100;
+    width: 36px;
+    height: 36px;
+    @apply opacity-100;
     font-size: 18px;
+  }
+
+  .star-btn:not(.readonly) {
+    padding: var(--space-2);
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .filter-tag-remove {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
   }
 
   .input {

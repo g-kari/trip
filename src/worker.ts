@@ -557,12 +557,22 @@ app.post('/api/trips/:id/duplicate', async (c) => {
   // Check if user can access the original (owner or shared)
   const isOwner = !original.userId || original.userId === user.id;
   if (!isOwner) {
-    // Check if it's shared
-    const share = await c.env.DB.prepare(
-      'SELECT id FROM share_tokens WHERE trip_id = ? AND is_active = 1'
-    ).bind(id).first();
-    if (!share) {
-      return c.json({ error: 'Forbidden' }, 403);
+    // Check if user is a collaborator
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(id, user.id).first();
+    if (!collab) {
+      // Require valid share token to be provided
+      const shareToken = c.req.query('token');
+      if (!shareToken) {
+        return c.json({ error: 'Forbidden' }, 403);
+      }
+      const share = await c.env.DB.prepare(
+        'SELECT id FROM share_tokens WHERE trip_id = ? AND token = ? AND is_active = 1'
+      ).bind(id, shareToken).first();
+      if (!share) {
+        return c.json({ error: 'Forbidden' }, 403);
+      }
     }
   }
 
@@ -1194,7 +1204,7 @@ app.post('/api/trips/:tripId/history/:historyId/restore', async (c) => {
     return c.json({ error: 'スナップショットが見つかりません' }, 404);
   }
 
-  const snapshot = JSON.parse(entry.snapshot) as {
+  const snapshot = safeJsonParse(entry.snapshot) as {
     trip: { title: string; start_date: string | null; end_date: string | null; theme: string; cover_image_url: string | null; budget: number | null; color_label: string | null };
     days: Array<{ id: string; date: string; sort: number; notes: string | null }>;
     items: Array<{ id: string; day_id: string; title: string; area: string | null; time_start: string | null; time_end: string | null; map_url: string | null; note: string | null; cost: number | null; cost_category: string | null; sort: number; photo_url: string | null }>;
@@ -1484,7 +1494,11 @@ app.post('/api/trips/:tripId/cover', async (c) => {
 
 // Get cover image
 app.get('/api/covers/:key', async (c) => {
-  const key = `covers/${c.req.param('key')}`;
+  const rawKey = c.req.param('key');
+  if (!/^[a-zA-Z0-9._-]+$/.test(rawKey)) {
+    return c.json({ error: 'Invalid key' }, 400);
+  }
+  const key = `covers/${rawKey}`;
 
   const object = await c.env.COVERS.get(key);
   if (!object) {
@@ -2189,7 +2203,11 @@ app.post('/api/trips/:tripId/days/:dayId/apply-optimization', async (c) => {
 
 // Get item photo (legacy single-photo format)
 app.get('/api/photos/items/:key', async (c) => {
-  const key = `photos/items/${c.req.param('key')}`;
+  const rawKey = c.req.param('key');
+  if (!/^[a-zA-Z0-9._-]+$/.test(rawKey)) {
+    return c.json({ error: 'Invalid key' }, 400);
+  }
+  const key = `photos/items/${rawKey}`;
 
   const object = await c.env.COVERS.get(key);
   if (!object) {
@@ -2207,6 +2225,9 @@ app.get('/api/photos/items/:key', async (c) => {
 // Get item photo (multi-photo format)
 app.get('/api/photos/items/:itemId/:key', async (c) => {
   const { itemId, key } = c.req.param();
+  if (!/^[a-zA-Z0-9._-]+$/.test(itemId) || !/^[a-zA-Z0-9._-]+$/.test(key)) {
+    return c.json({ error: 'Invalid key' }, 400);
+  }
   const fullKey = `photos/items/${itemId}/${key}`;
 
   const object = await c.env.COVERS.get(fullKey);
@@ -2347,7 +2368,7 @@ app.delete('/api/trips/:tripId/days/:dayId/photos/:photoId', async (c) => {
     ).bind(dayId, tripId).first<{ id: string; photos: string | null }>();
 
     if (day && day.photos) {
-      const currentPhotos: string[] = JSON.parse(day.photos);
+      const currentPhotos: string[] = (safeJsonParse(day.photos) || []) as string[];
       const photoToDelete = currentPhotos.find(p => p.includes(photoId));
 
       if (photoToDelete) {
@@ -2402,6 +2423,9 @@ app.delete('/api/trips/:tripId/days/:dayId/photos/:photoId', async (c) => {
 // Get day photo
 app.get('/api/photos/days/:dayId/:key', async (c) => {
   const { dayId, key } = c.req.param();
+  if (!/^[a-zA-Z0-9._-]+$/.test(dayId) || !/^[a-zA-Z0-9._-]+$/.test(key)) {
+    return c.json({ error: 'Invalid key' }, 400);
+  }
   const fullKey = `photos/days/${dayId}/${key}`;
 
   const object = await c.env.COVERS.get(fullKey);

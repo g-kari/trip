@@ -81,7 +81,7 @@
   }
 
   &.saturday {
-    color: #3a7bd5;
+    color: var(--color-saturday, #3a7bd5);
   }
 }
 
@@ -111,7 +111,7 @@
   }
 
   &.saturday:not(.disabled) {
-    color: #3a7bd5;
+    color: var(--color-saturday, #3a7bd5);
   }
 
   &.today {

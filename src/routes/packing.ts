@@ -62,7 +62,7 @@ app.post('/api/trips/:tripId/packing', async (c) => {
 
   if (!trip) return c.json({ error: 'Trip not found' }, 404);
 
-  let canEdit = trip.user_id === user.id;
+  let canEdit = !trip.user_id || trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
       "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
@@ -113,7 +113,7 @@ app.patch('/api/trips/:tripId/packing/:itemId', async (c) => {
 
   if (!trip) return c.json({ error: 'Trip not found' }, 404);
 
-  let canEdit = trip.user_id === user.id;
+  let canEdit = !trip.user_id || trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
       "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
@@ -178,7 +178,7 @@ app.delete('/api/trips/:tripId/packing/:itemId', async (c) => {
 
   if (!trip) return c.json({ error: 'Trip not found' }, 404);
 
-  let canEdit = trip.user_id === user.id;
+  let canEdit = !trip.user_id || trip.user_id === user.id;
   if (!canEdit) {
     const collab = await c.env.DB.prepare(
       "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"

@@ -25,12 +25,12 @@
 /* Progress bar */
 .packing-progress-bar {
   @apply h-1 bg-border-light mb-[var(--space-4)] overflow-hidden;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 
 .packing-progress-fill {
   @apply h-full bg-success;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   transition: width var(--transition-normal);
 }
 

@@ -298,6 +298,16 @@ app.post('/api/trip-templates', async (c) => {
     };
   });
 
+  // Limit public templates per user
+  if (body.isPublic) {
+    const publicCount = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM trip_templates WHERE user_id = ? AND is_public = 1'
+    ).bind(user.id).first<{ count: number }>();
+    if (publicCount && publicCount.count >= 5) {
+      return c.json({ error: '公開テンプレートは5件までです' }, 400);
+    }
+  }
+
   const templateId = generateId();
 
   await c.env.DB.prepare(
@@ -392,7 +402,7 @@ app.post('/api/trips/from-template/:templateId', async (c) => {
 
   // Get the template
   const template = await c.env.DB.prepare(
-    `SELECT id, user_id as userId, name, theme, days_data as daysData
+    `SELECT id, user_id as userId, name, theme, days_data as daysData, is_public as isPublic
      FROM trip_templates WHERE id = ?`
   ).bind(templateId).first<{
     id: string;
@@ -400,14 +410,15 @@ app.post('/api/trips/from-template/:templateId', async (c) => {
     name: string;
     theme: string;
     daysData: string;
+    isPublic: number;
   }>();
 
   if (!template) {
     return c.json({ error: 'テンプレートが見つかりません' }, 404);
   }
 
-  // Only owner can use their templates
-  if (template.userId !== user.id) {
+  // Owner can use their own templates; others can only use public ones
+  if (template.userId !== user.id && !template.isPublic) {
     return c.json({ error: 'アクセスが拒否されました' }, 403);
   }
 

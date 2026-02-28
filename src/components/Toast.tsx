@@ -47,11 +47,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast, showError, showSuccess }}>
       {children}
-      <div className="toast-container">
+      <div className="toast-container" aria-live="polite" aria-atomic="true">
         {toasts.map(toast => (
           <div
             key={toast.id}
             className={`toast toast-${toast.type}`}
+            role="alert"
             onClick={() => removeToast(toast.id)}
           >
             <span className="toast-message">{toast.message}</span>

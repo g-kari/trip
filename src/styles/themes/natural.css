@@ -23,7 +23,7 @@
 
 /* Day label — medium weight */
 [data-theme="natural"] .day-label {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 /* Cover image — warm tone filter */

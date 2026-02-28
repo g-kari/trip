@@ -55,7 +55,7 @@
          py-[var(--space-1)] px-[var(--space-3)]
          border border-border rounded-m
          bg-transparent text-text-muted cursor-pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
 
   &:hover {
     @apply border-accent text-accent;

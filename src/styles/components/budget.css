@@ -57,13 +57,13 @@
 /* Progress bar */
 .budget-progress-container {
   @apply h-2 bg-border-light overflow-hidden mt-[var(--space-3)];
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .budget-progress-bar {
   @apply h-full bg-accent;
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-xs);
+  transition: width var(--transition-normal);
 
   &.over {
     @apply bg-danger;
@@ -99,13 +99,13 @@
 
 .budget-category-bar-container {
   @apply h-1.5 bg-border-light overflow-hidden;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
 }
 
 .budget-category-bar {
   @apply h-full bg-accent;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-xs);
+  transition: width var(--transition-normal);
 }
 
 .budget-category-amount {

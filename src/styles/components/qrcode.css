@@ -34,7 +34,7 @@
   transform: translate(-50%, -50%);
   width: 200px;
   height: 200px;
-  animation: pulse 1.5s infinite;
+  animation: pulse-qr 1.5s infinite;
 }
 
 .qr-modal-error {
@@ -69,9 +69,9 @@
   }
 
   &.copied {
-    color: #4caf50;
-    border-color: #4caf50;
-    background-color: #f5fef5;
+    color: var(--color-success);
+    border-color: var(--toast-success-border);
+    background-color: var(--toast-success-bg);
   }
 
   &:disabled {
@@ -85,7 +85,7 @@
 }
 
 [data-color-mode="dark"] .qr-modal-btn.copied {
-  background-color: rgba(76, 175, 80, 0.15);
+  background-color: var(--toast-success-bg);
 }
 
 /* Mobile responsive */

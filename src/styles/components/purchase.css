@@ -39,8 +39,8 @@
   @apply mt-[var(--space-3)]
          py-[var(--space-2)] px-[var(--space-3)]
          rounded-s text-[0.8125rem] font-medium text-center;
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--color-badge-success-bg, #e8f5e9);
+  color: var(--color-badge-success-text, #2e7d32);
 }
 
 /* Form */
@@ -94,18 +94,18 @@
 /* Benefits */
 .purchase-benefits {
   @apply p-[var(--space-3)] rounded-m;
-  background-color: #fff8e6;
-  border: 1px solid #ffd966;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
 }
 
 .purchase-benefit-title {
   @apply text-[0.8125rem] font-medium mb-[var(--space-2)];
-  color: #b8860b;
+  color: var(--color-warning-text);
 }
 
 .purchase-benefit-list {
   @apply m-0 pl-[var(--space-4)] text-[0.8125rem];
-  color: #8b6914;
+  color: var(--color-text-muted);
 
   & li {
     @apply mb-[var(--space-1)];

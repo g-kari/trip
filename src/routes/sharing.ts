@@ -54,7 +54,7 @@ app.get('/api/trips/:tripId/share', async (c) => {
   }
 
   const share = await c.env.DB.prepare(
-    'SELECT token FROM share_tokens WHERE trip_id = ?'
+    'SELECT token FROM share_tokens WHERE trip_id = ? AND is_active = 1'
   ).bind(tripId).first<{ token: string }>();
 
   if (!share) {

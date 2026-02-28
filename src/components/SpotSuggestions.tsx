@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Item, CostCategory } from '../types'
 import { generateMapUrl } from '../utils'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 // Suggestion type from AI
 export type SpotSuggestion = {
@@ -44,6 +45,7 @@ type SpotSuggestionsProps = {
 }
 
 export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: SpotSuggestionsProps) {
+  useEscapeKey(onClose)
   const [suggestions, setSuggestions] = useState<SpotSuggestion[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -124,9 +126,9 @@ export function SpotSuggestions({ tripId, item, dayId, onClose, onAddSpot }: Spo
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal spot-suggestions-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal spot-suggestions-modal" role="dialog" aria-modal="true" aria-labelledby="spot-suggestions-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">周辺スポット</h3>
+          <h3 className="modal-title" id="spot-suggestions-modal-title">周辺スポット</h3>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 

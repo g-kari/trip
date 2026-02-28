@@ -23,9 +23,9 @@
 
 /* Copy button states */
 .share-btn-copy.copied {
-  border-color: #4caf50;
-  color: #4caf50;
-  background-color: #f5fef5;
+  border-color: var(--toast-success-border);
+  color: var(--color-success);
+  background-color: var(--toast-success-bg);
 }
 
 /* QR code button */
@@ -105,7 +105,7 @@
 
 .qr-code-loading {
   @apply bg-bg rounded-m;
-  animation: pulse 1.5s infinite;
+  animation: pulse-qr 1.5s infinite;
 }
 
 .qr-code-error {
@@ -121,8 +121,7 @@
     transform: scale(1.02);
 
     & .qr-code-container {
-      @apply border-border;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border-color: var(--color-text-muted);
     }
 
     & .share-qr-hint {
@@ -136,7 +135,7 @@
   transition: color var(--transition-fast);
 }
 
-@keyframes pulse {
+@keyframes pulse-qr {
   0%, 100% {
     opacity: 1;
   }

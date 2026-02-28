@@ -70,7 +70,7 @@
   @apply text-xs text-text-muted
          py-[var(--space-1)] px-[var(--space-2)]
          bg-border-light self-start;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* Option sections */

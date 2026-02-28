@@ -1,0 +1,42 @@
+/* ========================================
+   Trip Edit Page
+   ======================================== */
+
+.trip-edit-hero {
+  @apply pt-[var(--space-7)] pb-[var(--space-5)];
+}
+
+.trip-edit-autosave {
+  @apply text-xs
+         text-text-faint
+         mt-[var(--space-2)]
+         text-center;
+}
+
+.trip-edit-date-range {
+  @apply mt-[var(--space-3)];
+}
+
+.trip-edit-actions-row {
+  @apply mt-[var(--space-3)];
+}
+
+.trip-edit-template-label {
+  @apply cursor-pointer;
+}
+
+.trip-edit-template-checkbox {
+  accent-color: var(--color-accent);
+}
+
+.trip-edit-generate-days-btn {
+  @apply mt-[var(--space-4)];
+}
+
+.trip-edit-empty-day-title {
+  @apply text-text-faint;
+}
+
+.trip-edit-photo-btn-spaced {
+  @apply mt-[var(--space-2)];
+}

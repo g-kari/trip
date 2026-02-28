@@ -597,7 +597,7 @@ app.post('/api/trips/:tripId/expenses', async (c) => {
   let hasAccess = !trip.userId || (user && trip.userId === user.id);
   if (!hasAccess && user) {
     const collab = await c.env.DB.prepare(
-      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     hasAccess = !!collab;
   }
@@ -687,7 +687,7 @@ app.put('/api/trips/:tripId/expenses/:expenseId', async (c) => {
   let hasAccess = !trip.userId || (user && trip.userId === user.id);
   if (!hasAccess && user) {
     const collab = await c.env.DB.prepare(
-      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     hasAccess = !!collab;
   }
@@ -799,7 +799,7 @@ app.delete('/api/trips/:tripId/expenses/:expenseId', async (c) => {
   let hasAccess = !trip.userId || (user && trip.userId === user.id);
   if (!hasAccess && user) {
     const collab = await c.env.DB.prepare(
-      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+      "SELECT role FROM trip_collaborators WHERE trip_id = ? AND user_id = ? AND role IN ('owner', 'editor')"
     ).bind(tripId, user.id).first();
     hasAccess = !!collab;
   }

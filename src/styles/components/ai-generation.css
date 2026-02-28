@@ -55,15 +55,15 @@
 
 .error-text {
   @apply text-[0.8125rem] text-center;
-  color: #d32f2f;
+  color: var(--color-danger);
 }
 
 .generating-hint {
   @apply text-xs text-text-faint text-center;
-  animation: pulse 1.5s ease-in-out infinite;
+  animation: pulse-generating 1.5s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes pulse-generating {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }

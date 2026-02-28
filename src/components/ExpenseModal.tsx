@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { TripMember, StandaloneExpense, ShareType, SettlementSummary } from '../types'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 type Props = {
   tripId: string
@@ -17,6 +18,7 @@ type ExpenseFormData = {
 }
 
 export function ExpenseModal({ tripId, isOpen, onClose }: Props) {
+  useEscapeKey(onClose)
   const [activeTab, setActiveTab] = useState<Tab>('participants')
   const [members, setMembers] = useState<TripMember[]>([])
   const [expenses, setExpenses] = useState<StandaloneExpense[]>([])
@@ -234,9 +236,9 @@ export function ExpenseModal({ tripId, isOpen, onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content expense-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-content expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">割り勘計算</h2>
+          <h2 className="modal-title" id="expense-modal-title">割り勘計算</h2>
           <button type="button" className="modal-close" onClick={onClose}>
             x
           </button>

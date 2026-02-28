@@ -7,12 +7,21 @@ const app = new Hono<AppEnv>();
 
 // ============ Feedback ============
 
-// Submit feedback (public endpoint)
+// Submit feedback (public endpoint, rate limited)
 app.post('/api/feedback', async (c) => {
   const body = await c.req.json<{ name?: string; message: string }>();
 
   if (!body.message?.trim()) {
     return c.json({ error: 'Message is required' }, 400);
+  }
+
+  // Rate limit: max 10 feedback per day
+  const todayStart = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z';
+  const dailyCount = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM feedback WHERE created_at >= ?'
+  ).bind(todayStart).first<{ count: number }>();
+  if (dailyCount && dailyCount.count >= 50) {
+    return c.json({ error: '本日のフィードバック上限に達しました' }, 429);
   }
 
   const id = generateId();
@@ -25,15 +34,18 @@ app.post('/api/feedback', async (c) => {
   return c.json({ ok: true }, 201);
 });
 
-// Get all feedback as JSON (for GitHub export)
+// Get all feedback as JSON (requires auth)
 app.get('/api/feedback.json', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
   const { results } = await c.env.DB.prepare(
     'SELECT id, name, message, created_at as createdAt FROM feedback ORDER BY created_at DESC'
   ).all();
 
-  return c.json({ feedback: results }, 200, {
-    'Cache-Control': 'public, max-age=60',
-  });
+  return c.json({ feedback: results });
 });
 
 // ============ Trip Feedback (Ratings & Reviews) ============
@@ -41,14 +53,28 @@ app.get('/api/feedback.json', async (c) => {
 // Get trip feedback list with average rating
 app.get('/api/trips/:tripId/feedback', async (c) => {
   const tripId = c.req.param('tripId');
+  const user = c.get('user');
 
-  // Check if trip exists
+  // Check if trip exists and user has access
   const trip = await c.env.DB.prepare(
-    'SELECT id FROM trips WHERE id = ?'
-  ).bind(tripId).first();
+    'SELECT id, user_id as userId FROM trips WHERE id = ?'
+  ).bind(tripId).first<{ id: string; userId: string | null }>();
 
   if (!trip) {
     return c.json({ error: 'Trip not found' }, 404);
+  }
+
+  // Require ownership, collaborator access, or legacy trip
+  const isOwnerOrLegacy = !trip.userId || (user && trip.userId === user.id);
+  let hasAccess = !!isOwnerOrLegacy;
+  if (!hasAccess && user) {
+    const collab = await c.env.DB.prepare(
+      'SELECT id FROM trip_collaborators WHERE trip_id = ? AND user_id = ?'
+    ).bind(tripId, user.id).first();
+    hasAccess = !!collab;
+  }
+  if (!hasAccess) {
+    return c.json({ error: 'Forbidden' }, 403);
   }
 
   // Get all feedback for this trip
@@ -66,12 +92,22 @@ app.get('/api/trips/:tripId/feedback', async (c) => {
     createdAt: string;
   }>();
 
+  // Strip userId, replace with isCurrentUser flag
+  const enriched = feedbackList.map(fb => ({
+    id: fb.id,
+    name: fb.name,
+    rating: fb.rating,
+    comment: fb.comment,
+    createdAt: fb.createdAt,
+    isCurrentUser: !!(user && fb.userId === user.id),
+  }));
+
   // Calculate average rating
   const totalRating = feedbackList.reduce((sum, fb) => sum + fb.rating, 0);
   const averageRating = feedbackList.length > 0 ? totalRating / feedbackList.length : 0;
 
   return c.json({
-    feedback: feedbackList,
+    feedback: enriched,
     stats: {
       count: feedbackList.length,
       averageRating: Math.round(averageRating * 10) / 10,
@@ -90,7 +126,7 @@ app.post('/api/trips/:tripId/feedback', async (c) => {
   }>();
 
   // Validate rating
-  if (!body.rating || body.rating < 1 || body.rating > 5) {
+  if (!body.rating || !Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
     return c.json({ error: '評価は1〜5の間で指定してください' }, 400);
   }
 
@@ -194,13 +230,12 @@ app.get('/api/shared/:token/feedback', async (c) => {
 
   // Get all feedback for this trip
   const { results: feedbackList } = await c.env.DB.prepare(
-    `SELECT id, user_id as userId, name, rating, comment, created_at as createdAt
+    `SELECT id, name, rating, comment, created_at as createdAt
      FROM trip_feedback
      WHERE trip_id = ?
      ORDER BY created_at DESC`
   ).bind(tripId).all<{
     id: string;
-    userId: string | null;
     name: string;
     rating: number;
     comment: string | null;
@@ -231,7 +266,7 @@ app.post('/api/shared/:token/feedback', async (c) => {
   }>();
 
   // Validate rating
-  if (!body.rating || body.rating < 1 || body.rating > 5) {
+  if (!body.rating || !Number.isInteger(body.rating) || body.rating < 1 || body.rating > 5) {
     return c.json({ error: '評価は1〜5の間で指定してください' }, 400);
   }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { TripTemplate, TripTheme } from '../types'
 import { useToast } from '../hooks/useToast'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 import { TrashIcon } from './Icons'
 import { DatePicker } from './DatePicker'
 
@@ -14,6 +15,7 @@ type Props = {
 }
 
 export function TemplateListModal({ onClose, onSelect }: Props) {
+  useEscapeKey(onClose)
   const { showError, showSuccess } = useToast()
   const [templates, setTemplates] = useState<TemplateWithOwnership[]>([])
   const [loading, setLoading] = useState(true)
@@ -104,9 +106,9 @@ export function TemplateListModal({ onClose, onSelect }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content trip-template-modal" onClick={e => e.stopPropagation()}>
+      <div className="modal-content trip-template-modal" role="dialog" aria-modal="true" aria-labelledby="template-modal-title" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">テンプレートから作成</h2>
+          <h2 className="modal-title" id="template-modal-title">テンプレートから作成</h2>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 

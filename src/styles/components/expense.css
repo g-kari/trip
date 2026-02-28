@@ -363,17 +363,17 @@
 }
 
 .settlement-balance-item.balance.positive .settlement-balance-value {
-  color: #22c55e;
+  color: var(--color-success);
 }
 
 .settlement-balance-item.balance.negative .settlement-balance-value {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .settlement-settled {
   @apply flex items-center justify-center gap-[var(--space-2)] p-[var(--space-3)] rounded-s text-sm;
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  background: rgba(74, 124, 74, 0.1);
+  color: var(--color-success);
 }
 
 .settlement-settled-icon {
@@ -421,7 +421,7 @@
 
 .settlement-compact-settled {
   @apply text-sm text-center;
-  color: #22c55e;
+  color: var(--color-success);
 }
 
 /* ========================================
@@ -610,8 +610,8 @@
 
 .expense-settlement-settled {
   @apply flex items-center justify-center gap-[var(--space-2)] p-[var(--space-4)] rounded-s text-sm;
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+  background: rgba(74, 124, 74, 0.1);
+  color: var(--color-success);
 }
 
 .expense-settlement-settled-icon {
@@ -661,9 +661,9 @@
 }
 
 .expense-balance-detail.balance.positive .expense-balance-value {
-  color: #22c55e;
+  color: var(--color-success);
 }
 
 .expense-balance-detail.balance.negative .expense-balance-value {
-  color: #ef4444;
+  color: var(--color-danger);
 }

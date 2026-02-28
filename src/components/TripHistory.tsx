@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { TripHistoryEntry } from '../types'
 import { HistoryIcon } from './Icons'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 type Props = {
   tripId: string
@@ -39,6 +40,7 @@ function actionColor(action: string): string {
 }
 
 export function TripHistory({ tripId, isOwner, onClose, onRestored }: Props) {
+  useEscapeKey(onClose)
   const [entries, setEntries] = useState<TripHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -103,9 +105,9 @@ export function TripHistory({ tripId, isOwner, onClose, onRestored }: Props) {
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-content history-modal">
+      <div className="modal-content history-modal" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
         <div className="modal-header">
-          <h3 className="modal-title">
+          <h3 className="modal-title" id="history-modal-title">
             <HistoryIcon size={16} /> 変更履歴
           </h3>
           <button className="modal-close" onClick={onClose}>×</button>

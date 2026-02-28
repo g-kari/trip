@@ -104,10 +104,10 @@
 }
 
 .countdown-imminent .countdown-badge {
-  animation: pulse 2s ease-in-out infinite;
+  animation: pulse-countdown 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes pulse-countdown {
   0%, 100% {
     opacity: 1;
   }

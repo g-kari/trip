@@ -67,6 +67,8 @@
 @import './pages/feedback.css';
 @import './pages/profile.css';
 @import './pages/invite.css';
+@import './pages/trip-edit.css';
+@import './pages/contact.css';
 
 /* Responsive - must be last */
 @import './base/responsive.css';

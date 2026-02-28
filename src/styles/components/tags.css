@@ -24,7 +24,7 @@
          ml-[var(--space-1)]
          text-text-faint cursor-pointer
          text-xs leading-none opacity-60;
-  transition: opacity 150ms ease;
+  transition: opacity var(--transition-fast);
 
   &:hover {
     @apply opacity-100 text-text-muted;
@@ -38,7 +38,7 @@
          bg-none border border-dashed border-border
          text-xs text-text-faint cursor-pointer;
   border-radius: 20px;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
 
   &:hover {
     @apply border-border-light text-text-muted;
@@ -74,7 +74,7 @@
          text-text-faint cursor-pointer;
   font-size: 0.7rem;
   border-radius: 16px;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
 
   &:hover {
     @apply border-border text-text-muted bg-bg-elevated;
@@ -100,7 +100,7 @@
   padding-bottom: 2px;
   font-size: 0.65rem;
   border-radius: 12px;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
 
   &:hover {
     @apply border-border text-text-muted;
@@ -118,7 +118,7 @@
          bg-transparent border border-border
          text-xs text-text-muted cursor-pointer;
   border-radius: 16px;
-  transition: all 150ms ease;
+  transition: all var(--transition-fast);
 
   &:hover {
     @apply border-border-light bg-bg-elevated;

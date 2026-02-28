@@ -10,6 +10,7 @@ import {
   type TripStartReminderOption,
   type ItemReminderOption,
 } from '../hooks/useNotifications'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 import type { Trip } from '../types'
 
 type ReminderSettingsProps = {
@@ -18,6 +19,7 @@ type ReminderSettingsProps = {
 }
 
 export function ReminderSettings({ trip, onClose }: ReminderSettingsProps) {
+  useEscapeKey(onClose)
   const {
     permission,
     isSupported,
@@ -155,8 +157,8 @@ export function ReminderSettings({ trip, onClose }: ReminderSettingsProps) {
   if (!settings) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal reminder-modal" onClick={(e) => e.stopPropagation()}>
-          <h2 className="modal-title">リマインダー設定</h2>
+        <div className="modal reminder-modal" role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title-loading" onClick={(e) => e.stopPropagation()}>
+          <h2 className="modal-title" id="reminder-modal-title-loading">リマインダー設定</h2>
           <p className="reminder-loading">読み込み中...</p>
         </div>
       </div>
@@ -167,8 +169,8 @@ export function ReminderSettings({ trip, onClose }: ReminderSettingsProps) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal reminder-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">リマインダー設定</h2>
+      <div className="modal reminder-modal" role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title" onClick={(e) => e.stopPropagation()}>
+        <h2 className="modal-title" id="reminder-modal-title">リマインダー設定</h2>
 
         {renderPermissionRequest()}
 

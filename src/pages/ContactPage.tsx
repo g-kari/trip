@@ -46,7 +46,7 @@ export function ContactPage() {
       </header>
 
       <main className="main">
-        <div className="hero" style={{ padding: 'var(--space-7) 0 var(--space-5)' }}>
+        <div className="hero contact-hero">
           <h1 className="hero-title">お問い合わせ</h1>
           <p className="hero-subtitle">ご意見・ご要望をお聞かせください</p>
         </div>
@@ -58,9 +58,8 @@ export function ContactPage() {
               フィードバックを受け付けました。
             </p>
             <button
-              className="btn-outline"
+              className="btn-outline contact-submit-another"
               onClick={() => setSubmitted(false)}
-              style={{ marginTop: 'var(--space-4)' }}
             >
               別のフィードバックを送る
             </button>
@@ -78,13 +77,12 @@ export function ContactPage() {
               placeholder="ご意見・ご要望"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="input"
+              className="input contact-textarea"
               rows={5}
-              style={{ resize: 'vertical', minHeight: '120px' }}
               required
             />
             {error && (
-              <p style={{ color: 'var(--color-danger)', fontSize: '0.875rem' }}>
+              <p className="contact-error">
                 {error}
               </p>
             )}
@@ -98,7 +96,7 @@ export function ContactPage() {
           </form>
         )}
 
-        <Link to="/" className="btn-text back-btn" style={{ marginTop: 'var(--space-6)' }}>
+        <Link to="/" className="btn-text back-btn contact-back-link">
           ← トップに戻る
         </Link>
       </main>

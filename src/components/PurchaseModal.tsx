@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 type SlotInfo = {
   freeSlots: number
@@ -15,6 +16,7 @@ type Props = {
 }
 
 export function PurchaseModal({ onClose }: Props) {
+  useEscapeKey(onClose)
   const [slotInfo, setSlotInfo] = useState<SlotInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
@@ -73,9 +75,9 @@ export function PurchaseModal({ onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal purchase-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal purchase-modal" role="dialog" aria-modal="true" aria-labelledby="purchase-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">旅程枠を購入</h2>
+          <h2 className="modal-title" id="purchase-modal-title">旅程枠を購入</h2>
           <button type="button" className="modal-close" onClick={onClose}>
             ×
           </button>

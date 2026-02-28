@@ -44,7 +44,7 @@
 .day-photo {
   @apply w-full object-cover border border-border-light;
   height: 100px;
-  border-radius: 8px;
+  border-radius: var(--radius-s);
 }
 
 .day-photo-delete {
@@ -55,7 +55,7 @@
   height: 24px;
   font-size: 14px;
   background: rgba(255, 255, 255, 0.9);
-  transition: opacity 150ms ease;
+  transition: opacity var(--transition-fast);
 
   &:hover {
     background: rgba(255, 255, 255, 1);
@@ -65,4 +65,16 @@
 
 .day-photo-item:hover .day-photo-delete {
   @apply opacity-100;
+}
+
+/* Dark mode */
+[data-color-mode="dark"] .day-photo-delete {
+  background: rgba(42, 42, 42, 0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="system"] .day-photo-delete,
+  :root:not([data-color-mode]) .day-photo-delete {
+    background: rgba(42, 42, 42, 0.95);
+  }
 }

@@ -20,13 +20,13 @@
 
 /* Listening state */
 .voice-input-btn--listening {
-  border-color: #e53935;
-  color: #e53935;
-  background: rgba(229, 57, 53, 0.08);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: rgba(181, 80, 80, 0.08);
 
   &:hover:not(:disabled) {
-    border-color: #c62828;
-    color: #c62828;
+    border-color: var(--color-danger-hover);
+    color: var(--color-danger-hover);
   }
 }
 
@@ -46,13 +46,16 @@
 
 @keyframes voice-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4);
+    outline: 2px solid rgba(181, 80, 80, 0.4);
+    outline-offset: 0;
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(229, 57, 53, 0);
+    outline: 2px solid rgba(181, 80, 80, 0);
+    outline-offset: 10px;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(229, 57, 53, 0);
+    outline: 2px solid rgba(181, 80, 80, 0);
+    outline-offset: 10px;
   }
 }
 
@@ -67,13 +70,13 @@
 
 /* Dark mode adjustments */
 [data-color-mode="dark"] .voice-input-btn--listening {
-  background: rgba(229, 57, 53, 0.15);
+  background: rgba(181, 80, 80, 0.15);
 }
 
 @media (prefers-color-scheme: dark) {
   [data-color-mode="system"] .voice-input-btn--listening,
   :root:not([data-color-mode]) .voice-input-btn--listening {
-    background: rgba(229, 57, 53, 0.15);
+    background: rgba(181, 80, 80, 0.15);
   }
 }
 
@@ -90,12 +93,15 @@
 
 @keyframes voice-pulse-photo {
   0% {
-    box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4);
+    outline: 2px solid rgba(233, 69, 96, 0.4);
+    outline-offset: 0;
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(233, 69, 96, 0);
+    outline: 2px solid rgba(233, 69, 96, 0);
+    outline-offset: 10px;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(233, 69, 96, 0);
+    outline: 2px solid rgba(233, 69, 96, 0);
+    outline-offset: 10px;
   }
 }

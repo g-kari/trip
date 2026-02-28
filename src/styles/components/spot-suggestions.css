@@ -75,7 +75,7 @@
 
 .spot-suggestion-item {
   @apply p-[var(--space-4)] bg-bg border border-border-light transition-colors duration-150;
-  border-radius: 10px;
+  border-radius: var(--radius-m);
 
   &:hover {
     @apply border-border;
@@ -98,23 +98,23 @@
 }
 
 .spot-suggestion-category-restaurant {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--spot-restaurant-bg, #fef3c7);
+  color: var(--spot-restaurant-text, #92400e);
 }
 
 .spot-suggestion-category-cafe {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--spot-cafe-bg, #fee2e2);
+  color: var(--spot-cafe-text, #991b1b);
 }
 
 .spot-suggestion-category-attraction {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--spot-attraction-bg, #dbeafe);
+  color: var(--spot-attraction-text, #1e40af);
 }
 
 .spot-suggestion-category-shop {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--spot-shop-bg, #d1fae5);
+  color: var(--spot-shop-text, #065f46);
 }
 
 /* Dark mode category colors */

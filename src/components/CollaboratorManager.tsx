@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TrashIcon, CopyIcon } from './Icons'
+import { useEscapeKey } from '../hooks/useEscapeKey'
 
 type Collaborator = {
   id: string
@@ -26,6 +27,7 @@ type Props = {
 }
 
 export function CollaboratorManager({ tripId, onClose }: Props) {
+  useEscapeKey(onClose)
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,9 +129,9 @@ export function CollaboratorManager({ tripId, onClose }: Props) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content collaborator-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content collaborator-modal" role="dialog" aria-modal="true" aria-labelledby="collaborator-modal-title" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">共同編集者を管理</h2>
+          <h2 className="modal-title" id="collaborator-modal-title">共同編集者を管理</h2>
           <button className="modal-close" onClick={onClose}>
             ×
           </button>

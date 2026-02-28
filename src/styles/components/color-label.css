@@ -26,7 +26,7 @@
   @apply size-7 rounded-full cursor-pointer
          flex items-center justify-center relative;
   border: 2px solid transparent;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform var(--transition-fast);
 
   &:hover:not(:disabled) {
     transform: scale(1.1);
@@ -37,7 +37,8 @@
   }
 
   &.active {
-    box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-text);
+    outline: 2px solid var(--color-text);
+    outline-offset: 2px;
   }
 }
 
@@ -87,14 +88,15 @@
 .color-filter-btn {
   @apply size-5 rounded-full p-0 cursor-pointer;
   border: 2px solid transparent;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
 
   &:hover {
     transform: scale(1.15);
   }
 
   &.active {
-    box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-text);
+    outline: 2px solid var(--color-text);
+    outline-offset: 1px;
   }
 }
 
@@ -164,14 +166,6 @@
 /* ========================================
    Dark Mode
    ======================================== */
-
-[data-theme="dark"] .color-label-btn.active {
-  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-text);
-}
-
-[data-theme="dark"] .color-filter-btn.active {
-  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 3px var(--color-text);
-}
 
 [data-theme="dark"] .color-label-btn-none {
   @apply border-border;
