@@ -277,7 +277,7 @@ app.get('/api/trips/:tripId/settlement', async (c) => {
     const shareToken = c.req.query('token');
     if (shareToken) {
       const share = await c.env.DB.prepare(
-        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ?'
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ? AND is_active = 1'
       ).bind(shareToken, tripId).first();
       hasAccess = !!share;
     }
@@ -508,7 +508,7 @@ app.get('/api/trips/:tripId/expenses', async (c) => {
     const shareToken = c.req.query('token');
     if (shareToken) {
       const share = await c.env.DB.prepare(
-        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ?'
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ? AND is_active = 1'
       ).bind(shareToken, tripId).first();
       hasAccess = !!share;
     }
@@ -851,7 +851,7 @@ app.get('/api/trips/:tripId/combined-settlement', async (c) => {
     const shareToken = c.req.query('token');
     if (shareToken) {
       const share = await c.env.DB.prepare(
-        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ?'
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ? AND is_active = 1'
       ).bind(shareToken, tripId).first();
       hasAccess = !!share;
     }

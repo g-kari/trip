@@ -5,6 +5,7 @@ import {
   generateToken,
   checkTripOwnership,
   checkTripEditAccess,
+  safeJsonParse,
 } from '../helpers';
 import { generateOgpImage } from '../ogp';
 
@@ -83,7 +84,7 @@ app.get('/api/shared/:token', async (c) => {
   const token = c.req.param('token');
 
   const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
+    'SELECT trip_id FROM share_tokens WHERE token = ? AND is_active = 1'
   ).bind(token).first<{ trip_id: string }>();
 
   if (!share) {
@@ -175,7 +176,7 @@ app.get('/api/shared/:token', async (c) => {
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
-    checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
+    checkedInLocation: safeJsonParse(item.checkedInLocation),
     photos: itemPhotosMap.get(item.id) || [],
   }));
 
@@ -228,7 +229,7 @@ app.get('/api/shared/:token/ogp.png', async (c) => {
   const token = c.req.param('token');
 
   const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
+    'SELECT trip_id FROM share_tokens WHERE token = ? AND is_active = 1'
   ).bind(token).first<{ trip_id: string }>();
 
   if (!share) {
@@ -683,7 +684,7 @@ app.get('/api/shared/:token/calendar.ics', async (c) => {
   const token = c.req.param('token');
 
   const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
+    'SELECT trip_id FROM share_tokens WHERE token = ? AND is_active = 1'
   ).bind(token).first<{ trip_id: string }>();
 
   if (!share) {

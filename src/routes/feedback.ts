@@ -174,7 +174,7 @@ app.get('/api/shared/:token/feedback', async (c) => {
   const token = c.req.param('token');
 
   const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
+    'SELECT trip_id FROM share_tokens WHERE token = ? AND is_active = 1'
   ).bind(token).first<{ trip_id: string }>();
 
   if (!share) {
@@ -227,7 +227,7 @@ app.post('/api/shared/:token/feedback', async (c) => {
   }
 
   const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
+    'SELECT trip_id FROM share_tokens WHERE token = ? AND is_active = 1'
   ).bind(token).first<{ trip_id: string }>();
 
   if (!share) {

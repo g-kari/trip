@@ -60,17 +60,33 @@ app.get('/api/auth/google', (c) => {
     state
   );
 
-  // Set state cookie for verification
-  return c.redirect(authUrl, 302);
+  // Set state cookie for verification in callback
+  const isSecure = url.protocol === 'https:';
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: authUrl,
+      'Set-Cookie': `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}; Max-Age=600`,
+    },
+  });
 });
 
 // Google OAuth callback
 app.get('/api/auth/google/callback', async (c) => {
   const url = new URL(c.req.url);
   const code = url.searchParams.get('code');
+  const stateFromQuery = url.searchParams.get('state');
 
   if (!code) {
     return c.redirect('/login?error=no_code', 302);
+  }
+
+  // Verify CSRF state parameter
+  const cookies = c.req.header('Cookie') || '';
+  const stateMatch = cookies.match(/oauth_state=([^;]+)/);
+  const stateFromCookie = stateMatch ? stateMatch[1] : null;
+  if (!stateFromQuery || !stateFromCookie || stateFromQuery !== stateFromCookie) {
+    return c.redirect('/login?error=state_mismatch', 302);
   }
 
   try {
@@ -135,14 +151,12 @@ app.get('/api/auth/google/callback', async (c) => {
     // Create session
     const session = await createSession(c.env.DB, user.id);
 
-    // Redirect to trips page with session cookie
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: '/trips',
-        'Set-Cookie': createSessionCookie(session.id),
-      },
-    });
+    // Redirect to trips page with session cookie (clear oauth_state)
+    const headers = new Headers();
+    headers.append('Location', '/trips');
+    headers.append('Set-Cookie', createSessionCookie(session.id));
+    headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; Max-Age=0');
+    return new Response(null, { status: 302, headers });
   } catch (error) {
     console.error('Google auth error:', error);
     return c.redirect('/login?error=auth_failed', 302);
@@ -163,17 +177,33 @@ app.get('/api/auth/line', (c) => {
     state
   );
 
-  // Set state cookie for verification
-  return c.redirect(authUrl, 302);
+  // Set state cookie for verification in callback
+  const isSecure = url.protocol === 'https:';
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: authUrl,
+      'Set-Cookie': `oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax${isSecure ? '; Secure' : ''}; Max-Age=600`,
+    },
+  });
 });
 
 // LINE OAuth callback
 app.get('/api/auth/line/callback', async (c) => {
   const url = new URL(c.req.url);
   const code = url.searchParams.get('code');
+  const stateFromQuery = url.searchParams.get('state');
 
   if (!code) {
     return c.redirect('/login?error=no_code', 302);
+  }
+
+  // Verify CSRF state parameter
+  const cookies = c.req.header('Cookie') || '';
+  const stateMatch = cookies.match(/oauth_state=([^;]+)/);
+  const stateFromCookie = stateMatch ? stateMatch[1] : null;
+  if (!stateFromQuery || !stateFromCookie || stateFromQuery !== stateFromCookie) {
+    return c.redirect('/login?error=state_mismatch', 302);
   }
 
   try {
@@ -239,14 +269,12 @@ app.get('/api/auth/line/callback', async (c) => {
     // Create session
     const session = await createSession(c.env.DB, user.id);
 
-    // Redirect to trips page with session cookie
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: '/trips',
-        'Set-Cookie': createSessionCookie(session.id),
-      },
-    });
+    // Redirect to trips page with session cookie (clear oauth_state)
+    const headers = new Headers();
+    headers.append('Location', '/trips');
+    headers.append('Set-Cookie', createSessionCookie(session.id));
+    headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; Max-Age=0');
+    return new Response(null, { status: 302, headers });
   } catch (error) {
     console.error('LINE auth error:', error);
     return c.redirect('/login?error=auth_failed', 302);

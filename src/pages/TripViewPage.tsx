@@ -26,8 +26,6 @@ import { useScrollReveal } from '../hooks/useScrollReveal'
 
 // Budget summary component
 function BudgetSummaryCard({ summary }: { summary: BudgetSummary }) {
-  const { formatCost } = { formatCost: (cost: number) => `¥${cost.toLocaleString()}` }
-
   return (
     <div className="budget-summary-card">
       <h3 className="budget-summary-title">予算サマリー</h3>

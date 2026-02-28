@@ -3,18 +3,20 @@ import { generateId } from './auth/session';
 import type { User } from './auth/types';
 import type { WeatherInfo } from './worker-types';
 
+// ============ Safe JSON ============
+
+// Helper to safely parse JSON without throwing
+export function safeJsonParse(value: string | null | undefined): unknown {
+  if (!value) return null;
+  try { return JSON.parse(value); }
+  catch { return null; }
+}
+
 // ============ Token Generation ============
 
-// Helper to generate random token for share links
+// Helper to generate random token for share links (no modulo bias)
 export function generateToken(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let token = '';
-  const array = new Uint8Array(12);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < 12; i++) {
-    token += chars[array[i] % chars.length];
-  }
-  return token;
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 24);
 }
 
 // ============ Trip History ============
@@ -380,16 +382,24 @@ export async function checkAndDeductCredits(
   }
 
   // IP daily limit (abuse prevention)
-  const today = now.toISOString().split('T')[0];
+  const todayStart = now.toISOString().split('T')[0] + 'T00:00:00.000Z';
   const ipResult = await db.prepare(
-    "SELECT COUNT(*) as count FROM ai_usage WHERE ip_address = ? AND created_at >= ? || 'T00:00:00.000Z'"
-  ).bind(ip, today).first<{ count: number }>();
+    'SELECT COUNT(*) as count FROM ai_usage WHERE ip_address = ? AND created_at >= ?'
+  ).bind(ip, todayStart).first<{ count: number }>();
   if ((ipResult?.count || 0) >= AI_IP_DAILY_LIMIT) {
     return { ok: false, error: 'このIPアドレスからの利用上限に達しました。', status: 429 };
   }
 
-  // Deduct and record
-  await db.prepare('UPDATE users SET ai_credits = ? WHERE id = ?').bind(currentCredits - cost, userId).run();
+  // Deduct atomically (WHERE ensures no negative balance from concurrent requests)
+  const deductResult = await db.prepare(
+    'UPDATE users SET ai_credits = ai_credits - ? WHERE id = ? AND ai_credits >= ?'
+  ).bind(cost, userId, cost).run();
+
+  if (!deductResult.meta.changes || deductResult.meta.changes === 0) {
+    return { ok: false, error: 'AIクレジットの消費に失敗しました。再度お試しください。', status: 429 };
+  }
+
+  // Record usage
   const usageId = generateId();
   await db.prepare(
     'INSERT INTO ai_usage (id, user_id, ip_address, credits_used, feature_type) VALUES (?, ?, ?, ?, ?)'

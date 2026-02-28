@@ -22,6 +22,7 @@ import {
   isCrawler,
   generateOgpHtml,
   getWeatherInfo,
+  safeJsonParse,
 } from './helpers';
 import packingRoutes from './routes/packing';
 import feedbackRoutes from './routes/feedback';
@@ -305,7 +306,7 @@ app.get('/api/trips/:id', async (c) => {
   const itemsWithUploaderNames = items.map((item) => ({
     ...item,
     photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
-    checkedInLocation: item.checkedInLocation ? JSON.parse(item.checkedInLocation) : null,
+    checkedInLocation: safeJsonParse(item.checkedInLocation),
     photos: itemPhotosMap.get(item.id) || [],
   }));
 
@@ -1619,9 +1620,25 @@ app.post('/api/trips/:tripId/items/:itemId/photo', async (c) => {
   const { tripId, itemId } = c.req.param();
   const user = c.get('user');
 
-  // Allow any logged-in user to upload photos to shared trips
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Check user has access to this trip (owner, collaborator, or has a valid share token)
+  const editCheck = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!editCheck.ok) {
+    // Also allow users with a valid share token to upload photos
+    const shareToken = c.req.query('token') || c.req.header('X-Share-Token');
+    if (shareToken) {
+      const share = await c.env.DB.prepare(
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ? AND is_active = 1'
+      ).bind(shareToken, tripId).first();
+      if (!share) {
+        return c.json({ error: 'Forbidden' }, 403);
+      }
+    } else {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
   }
 
   const existing = await c.env.DB.prepare(
@@ -2330,9 +2347,24 @@ app.post('/api/trips/:tripId/days/:dayId/photos', async (c) => {
   const { tripId, dayId } = c.req.param();
   const user = c.get('user');
 
-  // Allow any logged-in user to upload photos to shared trips
   if (!user) {
     return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  // Check user has access to this trip (owner, collaborator, or has a valid share token)
+  const editCheck = await checkCanEditTrip(c.env.DB, tripId, user);
+  if (!editCheck.ok) {
+    const shareToken = c.req.query('token') || c.req.header('X-Share-Token');
+    if (shareToken) {
+      const share = await c.env.DB.prepare(
+        'SELECT id FROM share_tokens WHERE token = ? AND trip_id = ? AND is_active = 1'
+      ).bind(shareToken, tripId).first();
+      if (!share) {
+        return c.json({ error: 'Forbidden' }, 403);
+      }
+    } else {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
   }
 
   const existing = await c.env.DB.prepare(
@@ -2785,7 +2817,7 @@ app.get('/s/:token', async (c) => {
 
   // For crawlers, return OGP HTML
   const share = await c.env.DB.prepare(
-    'SELECT trip_id FROM share_tokens WHERE token = ?'
+    'SELECT trip_id FROM share_tokens WHERE token = ? AND is_active = 1'
   ).bind(token).first<{ trip_id: string }>();
 
   if (!share) {
