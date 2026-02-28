@@ -5,7 +5,7 @@ import {
   generateToken,
   checkTripOwnership,
   checkTripEditAccess,
-  safeJsonParse,
+  enrichTripData,
 } from '../helpers';
 import { generateOgpImage } from '../ogp';
 
@@ -111,112 +111,7 @@ app.get('/api/shared/:token', async (c) => {
 
   const tripOwnerId = trip.userId;
 
-  const { results: days } = await c.env.DB.prepare(
-    'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
-  ).bind(share.trip_id).all<{ id: string; date: string; sort: number; notes: string | null; photos: string | null }>();
-
-  const { results: items } = await c.env.DB.prepare(
-    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
-     map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
-     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt,
-     checked_in_at as checkedInAt, checked_in_location as checkedInLocation
-     FROM items WHERE trip_id = ? ORDER BY sort ASC`
-  ).bind(share.trip_id).all<{
-    id: string; dayId: string; title: string; area: string | null;
-    timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
-    note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
-    photoUploadedBy: string | null; photoUploadedAt: string | null;
-    checkedInAt: string | null; checkedInLocation: string | null;
-  }>();
-
-  // Get day_photos from the new table
-  const { results: dayPhotos } = await c.env.DB.prepare(
-    `SELECT id, day_id as dayId, photo_url as photoUrl, uploaded_by as uploadedBy,
-     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
-     FROM day_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
-  ).bind(share.trip_id).all<{
-    id: string; dayId: string; photoUrl: string;
-    uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
-  }>();
-
-  // Get item_photos from the new table
-  const { results: itemPhotos } = await c.env.DB.prepare(
-    `SELECT id, item_id as itemId, photo_url as photoUrl, uploaded_by as uploadedBy,
-     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
-     FROM item_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
-  ).bind(share.trip_id).all<{
-    id: string; itemId: string; photoUrl: string;
-    uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
-  }>();
-
-  // Get uploader names for items
-  const uploaderIds = items.filter(i => i.photoUploadedBy).map(i => i.photoUploadedBy);
-  const uniqueUploaderIds = [...new Set(uploaderIds)];
-  const uploaderNames: Map<string, string> = new Map();
-
-  if (uniqueUploaderIds.length > 0) {
-    const placeholders = uniqueUploaderIds.map(() => '?').join(',');
-    const { results: users } = await c.env.DB.prepare(
-      `SELECT id, name FROM users WHERE id IN (${placeholders})`
-    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null }>();
-    for (const u of users) {
-      uploaderNames.set(u.id, u.name || '匿名');
-    }
-  }
-
-  // Group item_photos by item_id
-  const itemPhotosMap = new Map<string, Array<{id: string; photoUrl: string; uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null}>>();
-  for (const ip of itemPhotos) {
-    const arr = itemPhotosMap.get(ip.itemId) || [];
-    arr.push({ id: ip.id, photoUrl: ip.photoUrl, uploadedBy: ip.uploadedBy, uploadedByName: ip.uploadedByName, uploadedAt: ip.uploadedAt });
-    itemPhotosMap.set(ip.itemId, arr);
-  }
-
-  // Enrich items with uploader names and parse check-in location
-  const itemsWithUploaderNames = items.map((item) => ({
-    ...item,
-    photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
-    checkedInLocation: safeJsonParse(item.checkedInLocation),
-    photos: itemPhotosMap.get(item.id) || [],
-  }));
-
-  // Group day_photos by day_id
-  const dayPhotosMap = new Map<string, Array<{
-    id: string; photoUrl: string; uploadedBy: string | null;
-    uploadedByName: string | null; uploadedAt: string | null;
-  }>>();
-  for (const photo of dayPhotos) {
-    const existing = dayPhotosMap.get(photo.dayId) || [];
-    existing.push({
-      id: photo.id,
-      photoUrl: photo.photoUrl,
-      uploadedBy: photo.uploadedBy,
-      uploadedByName: photo.uploadedByName,
-      uploadedAt: photo.uploadedAt,
-    });
-    dayPhotosMap.set(photo.dayId, existing);
-  }
-
-  // Parse photos JSON for each day and merge with new day_photos
-  const daysWithParsedPhotos = days.map((day) => {
-    // Old format photos (string array)
-    const oldPhotos: string[] = day.photos ? JSON.parse(day.photos) : [];
-    const oldPhotosFormatted = oldPhotos.map((url, i) => ({
-      id: `legacy-${day.id}-${i}`,
-      photoUrl: url,
-      uploadedBy: null,
-      uploadedByName: null,
-      uploadedAt: null,
-    }));
-
-    // New format photos from day_photos table
-    const newPhotos = dayPhotosMap.get(day.id) || [];
-
-    return {
-      ...day,
-      photos: [...oldPhotosFormatted, ...newPhotos],
-    };
-  });
+  const { days: daysWithParsedPhotos, items: itemsWithUploaderNames } = await enrichTripData(c.env.DB, share.trip_id);
 
   // Remove userId from the response to not expose it, but include tripOwnerId for permission checking
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

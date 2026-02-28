@@ -12,6 +12,113 @@ export function safeJsonParse(value: string | null | undefined): unknown {
   catch { return null; }
 }
 
+// ============ Trip Data Enrichment ============
+
+// Raw row types from D1 queries
+interface RawDay { id: string; date: string; sort: number; notes: string | null; photos: string | null }
+interface RawItem {
+  id: string; dayId: string; title: string; area: string | null;
+  timeStart: string | null; timeEnd: string | null; mapUrl: string | null;
+  note: string | null; cost: number | null; costCategory: string | null; sort: number; photoUrl: string | null;
+  photoUploadedBy: string | null; photoUploadedAt: string | null;
+  checkedInAt: string | null; checkedInLocation: string | null;
+}
+interface RawDayPhoto {
+  id: string; dayId: string; photoUrl: string;
+  uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
+}
+interface RawItemPhoto {
+  id: string; itemId: string; photoUrl: string;
+  uploadedBy: string | null; uploadedByName: string | null; uploadedAt: string | null;
+}
+
+interface PhotoEntry {
+  id: string; photoUrl: string; uploadedBy: string | null;
+  uploadedByName: string | null; uploadedAt: string | null;
+}
+
+// Fetch and enrich trip days/items/photos data (shared between trip view & shared trip endpoints)
+export async function enrichTripData(db: D1Database, tripId: string) {
+  const { results: days } = await db.prepare(
+    'SELECT id, date, sort, notes, photos FROM days WHERE trip_id = ? ORDER BY sort ASC'
+  ).bind(tripId).all<RawDay>();
+
+  const { results: items } = await db.prepare(
+    `SELECT id, day_id as dayId, title, area, time_start as timeStart, time_end as timeEnd,
+     map_url as mapUrl, note, cost, cost_category as costCategory, sort, photo_url as photoUrl,
+     photo_uploaded_by as photoUploadedBy, photo_uploaded_at as photoUploadedAt,
+     checked_in_at as checkedInAt, checked_in_location as checkedInLocation
+     FROM items WHERE trip_id = ? ORDER BY sort ASC`
+  ).bind(tripId).all<RawItem>();
+
+  const { results: dayPhotos } = await db.prepare(
+    `SELECT id, day_id as dayId, photo_url as photoUrl, uploaded_by as uploadedBy,
+     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
+     FROM day_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
+  ).bind(tripId).all<RawDayPhoto>();
+
+  const { results: itemPhotos } = await db.prepare(
+    `SELECT id, item_id as itemId, photo_url as photoUrl, uploaded_by as uploadedBy,
+     uploaded_by_name as uploadedByName, uploaded_at as uploadedAt
+     FROM item_photos WHERE trip_id = ? ORDER BY uploaded_at ASC`
+  ).bind(tripId).all<RawItemPhoto>();
+
+  // Get uploader names for items
+  const uploaderIds = items.filter(i => i.photoUploadedBy).map(i => i.photoUploadedBy);
+  const uniqueUploaderIds = [...new Set(uploaderIds)];
+  const uploaderNames: Map<string, string> = new Map();
+
+  if (uniqueUploaderIds.length > 0) {
+    const placeholders = uniqueUploaderIds.map(() => '?').join(',');
+    const { results: users } = await db.prepare(
+      `SELECT id, name FROM users WHERE id IN (${placeholders})`
+    ).bind(...uniqueUploaderIds).all<{ id: string; name: string | null }>();
+    for (const u of users) {
+      uploaderNames.set(u.id, u.name || '匿名');
+    }
+  }
+
+  // Group item_photos by item_id
+  const itemPhotosMap = new Map<string, PhotoEntry[]>();
+  for (const ip of itemPhotos) {
+    const arr = itemPhotosMap.get(ip.itemId) || [];
+    arr.push({ id: ip.id, photoUrl: ip.photoUrl, uploadedBy: ip.uploadedBy, uploadedByName: ip.uploadedByName, uploadedAt: ip.uploadedAt });
+    itemPhotosMap.set(ip.itemId, arr);
+  }
+
+  // Enrich items
+  const enrichedItems = items.map((item) => ({
+    ...item,
+    photoUploadedByName: item.photoUploadedBy ? uploaderNames.get(item.photoUploadedBy) || null : null,
+    checkedInLocation: safeJsonParse(item.checkedInLocation),
+    photos: itemPhotosMap.get(item.id) || [],
+  }));
+
+  // Group day_photos by day_id
+  const dayPhotosMap = new Map<string, PhotoEntry[]>();
+  for (const photo of dayPhotos) {
+    const existing = dayPhotosMap.get(photo.dayId) || [];
+    existing.push({
+      id: photo.id, photoUrl: photo.photoUrl, uploadedBy: photo.uploadedBy,
+      uploadedByName: photo.uploadedByName, uploadedAt: photo.uploadedAt,
+    });
+    dayPhotosMap.set(photo.dayId, existing);
+  }
+
+  // Parse photos JSON for each day and merge with new day_photos
+  const enrichedDays = days.map((day) => {
+    const oldPhotos: string[] = day.photos ? JSON.parse(day.photos) : [];
+    const oldPhotosFormatted: PhotoEntry[] = oldPhotos.map((url, i) => ({
+      id: `legacy-${day.id}-${i}`, photoUrl: url,
+      uploadedBy: null, uploadedByName: null, uploadedAt: null,
+    }));
+    const newPhotos = dayPhotosMap.get(day.id) || [];
+    return { ...day, photos: [...oldPhotosFormatted, ...newPhotos] };
+  });
+
+  return { days: enrichedDays, items: enrichedItems };
+}
+
 // ============ Token Generation ============
 
 // Helper to generate random token for share links (no modulo bias)

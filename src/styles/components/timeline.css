@@ -214,11 +214,12 @@
   transform: translateY(0);
 }
 
-/* Stagger each day section slightly */
+/* Stagger each day section slightly (capped at 0.3s) */
 [data-reveal]:nth-child(2) { transition-delay: 0.06s; }
 [data-reveal]:nth-child(3) { transition-delay: 0.12s; }
 [data-reveal]:nth-child(4) { transition-delay: 0.18s; }
 [data-reveal]:nth-child(5) { transition-delay: 0.24s; }
+[data-reveal]:nth-child(n+6) { transition-delay: 0.3s; }
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
