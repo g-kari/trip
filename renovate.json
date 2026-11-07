@@ -6,7 +6,7 @@
   ],
   "automerge": false,
   "automergeType": "pr",
-  "platformAutomerge": false,
+  "platformAutomerge": true,
   "ignoreTests": false,
   "ignoreScripts": true,
   "rebaseWhen": "behind-base-branch",
@@ -20,6 +20,14 @@
         "*"
       ],
       "automerge": false
+    },
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
     }
   ],
   "vulnerabilityAlerts": {
