@@ -4,7 +4,7 @@
     "config:recommended",
     "helpers:pinGitHubActionDigests"
   ],
-  "automerge": false,
+  "automerge": true,
   "automergeType": "pr",
   "platformAutomerge": true,
   "ignoreTests": false,
@@ -19,7 +19,7 @@
       "matchPackageNames": [
         "*"
       ],
-      "automerge": false
+      "automerge": true
     },
     {
       "matchUpdateTypes": [
